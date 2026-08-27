@@ -57,6 +57,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const data = updateProductSchema.parse(body)
 
+    // Log stock history if stock quantity changed
+    if (data.stockQty !== undefined) {
+      const prevProduct = await db.product.findUnique({ where: { id }, select: { stockQty: true } })
+      if (prevProduct && prevProduct.stockQty !== data.stockQty) {
+        await db.stockHistory.create({
+          data: {
+            productId: id,
+            previousQty: prevProduct.stockQty,
+            newQty: data.stockQty,
+            changeReason: body.changeReason || 'Ajustement manuel',
+            adminId: admin.id,
+          },
+        })
+      }
+    }
+
     const product = await db.product.update({
       where: { id },
       data,

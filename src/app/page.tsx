@@ -26,12 +26,13 @@ import {
   Search,
   ChevronRight,
   ChevronUp,
+  ChevronDown,
   Droplets,
   Eye,
-  Globe,
   Quote,
   CheckCircle,
   Clock,
+  ClipboardList,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -76,6 +77,7 @@ interface ProductType {
   volume: string | null
   isFeatured: boolean
   inStock: boolean
+  stockQty: number
   longDescription?: string | null
   category?: { id: string; name: string; slug: string }
 }
@@ -93,6 +95,23 @@ interface ChatMessageType {
   content: string
   senderType: 'customer' | 'admin'
   createdAt: string
+}
+
+interface ReviewType {
+  id: string
+  customerName: string
+  rating: number
+  comment: string | null
+  createdAt: string
+}
+
+interface TrackedOrder {
+  id: string
+  orderNumber: string
+  status: string
+  totalAmount: number
+  createdAt: string
+  items: { productName: string; quantity: number; unitPrice: number; totalPrice: number }[]
 }
 
 // ==================== HELPERS ====================
@@ -125,6 +144,39 @@ function getCategoryInitial(slug: string): string {
     default:
       return 'CC'
   }
+}
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200'
+    case 'confirmed': return 'bg-blue-100 text-blue-700 border-blue-200'
+    case 'processing': return 'bg-purple-100 text-purple-700 border-purple-200'
+    case 'shipped': return 'bg-cyan-100 text-cyan-700 border-cyan-200'
+    case 'delivered': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    case 'cancelled': return 'bg-red-100 text-red-700 border-red-200'
+    default: return 'bg-gray-100 text-gray-700 border-gray-200'
+  }
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'pending': return 'En attente'
+    case 'confirmed': return 'Confirmée'
+    case 'processing': return 'En traitement'
+    case 'shipped': return 'Expédiée'
+    case 'delivered': return 'Livrée'
+    case 'cancelled': return 'Annulée'
+    default: return status
+  }
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 // ==================== ANIMATED COUNTER ====================
@@ -222,6 +274,20 @@ export default function Home() {
   const [orderForm, setOrderForm] = useState({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
   const [orderLoading, setOrderLoading] = useState(false)
 
+  // Order tracking state
+  const [trackEmail, setTrackEmail] = useState('')
+  const [trackLoading, setTrackLoading] = useState(false)
+  const [trackedOrders, setTrackedOrders] = useState<TrackedOrder[]>([])
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+
+  // Reviews state
+  const [reviewForm, setReviewForm] = useState({ customerName: '', rating: 5, comment: '' })
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviews, setReviews] = useState<ReviewType[]>([])
+  const [avgRating, setAvgRating] = useState(0)
+  const [totalReviews, setTotalReviews] = useState(0)
+  const [showReviewForm, setShowReviewForm] = useState(false)
+
   // Cart store
   const cart = useCartStore()
 
@@ -296,6 +362,15 @@ export default function Home() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
+
+  // Fetch reviews when product is selected
+  useEffect(() => {
+    if (selectedProduct) {
+      fetchReviews(selectedProduct.id)
+      setShowReviewForm(false)
+      setReviewForm({ customerName: '', rating: 5, comment: '' })
+    }
+  }, [selectedProduct])
 
   // Add to cart handler
   const handleAddToCart = (product: ProductType) => {
@@ -449,6 +524,89 @@ export default function Home() {
       toast.error('Erreur de connexion')
     } finally {
       setOrderLoading(false)
+    }
+  }
+
+  // Order tracking submit
+  const handleTrackOrder = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!trackEmail) {
+      toast.error('Veuillez entrer votre email')
+      return
+    }
+    setTrackLoading(true)
+    setTrackedOrders([])
+    setExpandedOrder(null)
+    try {
+      const res = await fetch('/api/orders/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trackEmail }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const orders = data.data || data.orders || []
+        setTrackedOrders(orders)
+        if (orders.length === 0) {
+          toast.info('Aucune commande trouvée pour cet email')
+        }
+      } else {
+        toast.error('Erreur lors de la recherche')
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setTrackLoading(false)
+    }
+  }
+
+  // Fetch reviews for a product
+  const fetchReviews = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`)
+      if (res.ok) {
+        const data = await res.json()
+        const reviewData = data.data || data
+        setReviews(reviewData.reviews || [])
+        setAvgRating(reviewData.averageRating || 0)
+        setTotalReviews(reviewData.totalReviews || 0)
+      }
+    } catch {
+      // silently fail
+    }
+  }
+
+  // Submit review
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedProduct || !reviewForm.customerName) {
+      toast.error('Veuillez entrer votre nom')
+      return
+    }
+    setReviewLoading(true)
+    try {
+      const res = await fetch(`/api/products/${selectedProduct.id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: reviewForm.customerName,
+          rating: reviewForm.rating,
+          comment: reviewForm.comment || undefined,
+        }),
+      })
+      if (res.ok) {
+        toast.success('Avis ajouté avec succès !')
+        setReviewForm({ customerName: '', rating: 5, comment: '' })
+        setShowReviewForm(false)
+        await fetchReviews(selectedProduct.id)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Erreur lors de l\'ajout de l\'avis')
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setReviewLoading(false)
     }
   }
 
@@ -633,9 +791,9 @@ export default function Home() {
   // ==================== HOW TO ORDER SECTION ====================
 
   const steps = [
-    { step: '01', title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaités à votre panier.' },
-    { step: '02', title: 'Passez votre commande', desc: 'Remplissez vos informations de livraison et confirmez votre commande.' },
-    { step: '03', title: 'Recevez votre livraison', desc: 'Notre équipe vous livre rapidement à Pointe-Noire et environs.' },
+    { step: '01', icon: ShoppingCart, title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaités à votre panier.' },
+    { step: '02', icon: ClipboardList, title: 'Passez votre commande', desc: 'Remplissez vos informations de livraison et confirmez votre commande.' },
+    { step: '03', icon: Truck, title: 'Recevez votre livraison', desc: 'Notre équipe vous livre rapidement à Pointe-Noire et environs.' },
   ]
 
   const HowToOrderSection = (
@@ -647,6 +805,7 @@ export default function Home() {
             <p className="text-gray-500 max-w-2xl mx-auto">
               En 3 étapes simples, recevez vos produits chez vous
             </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
           </div>
         </FadeInSection>
         <div className="grid md:grid-cols-3 gap-8 relative">
@@ -656,8 +815,9 @@ export default function Home() {
             <FadeInSection key={i}>
               <div className="relative text-center">
                 <div className="w-24 h-24 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200 relative z-10">
-                  <span className="text-2xl font-bold">{s.step}</span>
+                  <s.icon className="w-7 h-7" />
                 </div>
+                <p className="text-xs text-emerald-600 font-medium mb-2">Étape {s.step}</p>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{s.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
               </div>
@@ -684,6 +844,7 @@ export default function Home() {
             <p className="text-gray-500 max-w-2xl mx-auto">
               Découvrez notre gamme de produits d&rsquo;hygiène de qualité industrielle, fabriqués avec soin au Congo-Brazzaville.
             </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
           </div>
         </FadeInSection>
 
@@ -749,7 +910,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
-                  <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer">
+                  <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer border-t-4 border-t-transparent hover:border-t-emerald-500">
                     {/* Product Image */}
                     <div className="relative h-48 bg-gray-100 overflow-hidden group/img">
                       {product.image ? (
@@ -810,6 +971,13 @@ export default function Home() {
                       {product.description && (
                         <p className="text-gray-500 text-sm mb-3 line-clamp-2 flex-1">{product.description}</p>
                       )}
+                      {product.inStock
+                        ? (product.stockQty > 10
+                          ? <span className="text-xs text-emerald-600 mb-1">En stock</span>
+                          : <span className="text-xs text-amber-600 mb-1">Plus que {product.stockQty} en stock</span>
+                        )
+                        : <span className="text-xs text-red-500 mb-1">Rupture de stock</span>
+                      }
                       <div className="flex items-baseline gap-2 mb-4">
                         <span className="text-lg font-bold text-emerald-700">{formatPrice(product.price)}</span>
                         {product.comparePrice && product.comparePrice > product.price && (
@@ -873,6 +1041,17 @@ export default function Home() {
     <section id="about" className="py-16 sm:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <FadeInSection>
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              À Propos de <span className="text-emerald-600">CongoClean</span>
+            </h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Notre engagement pour la qualité et le développement local
+            </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+          </div>
+        </FadeInSection>
+        <FadeInSection>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Image side */}
             <div className="relative">
@@ -885,9 +1064,6 @@ export default function Home() {
 
             {/* Text side */}
             <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
-                À Propos de <span className="text-emerald-600">CongoClean</span>
-              </h2>
               <p className="text-gray-600 mb-4 leading-relaxed">
                 CongoClean est une entreprise de fabrication de produits d&rsquo;hygiène basée à Pointe-Noire, au cœur du Congo-Brazzaville. Depuis notre création, nous nous engageons à fournir des produits de qualité industrielle pour les ménages et les entreprises.
               </p>
@@ -938,12 +1114,13 @@ export default function Home() {
             <p className="text-gray-500 max-w-2xl mx-auto">
               La satisfaction de nos clients est notre plus grande fierté
             </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
           </div>
         </FadeInSection>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
             <FadeInSection key={i}>
-              <Card className="p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300">
+              <Card className="p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300 border-l-4 border-emerald-400">
                 <CardContent className="p-0 flex flex-col flex-1">
                   <div className="mb-4">
                     <Quote className="w-8 h-8 text-emerald-200" />
@@ -955,8 +1132,15 @@ export default function Home() {
                   </div>
                   <p className="text-gray-600 leading-relaxed flex-1 mb-4">{t.text}</p>
                   <div className="border-t border-gray-100 pt-4">
-                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                        <span className="text-emerald-700 font-semibold text-sm">{getInitials(t.name)}</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -967,18 +1151,194 @@ export default function Home() {
     </section>
   )
 
+  // ==================== DELIVERY & PRICING SECTION ====================
+
+  const DeliveryPricingSection = (
+    <FadeInSection>
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Livraison & Tarifs</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Livraison rapide et fiable à Pointe-Noire et environs
+            </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Left Column - Livraison & Tarifs */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Livraison & Tarifs</h2>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Livraison gratuite à partir de 25 000 FCFA</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Zone de livraison : Pointe-Noire et périphérie (rayon de 15 km)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Délai de livraison : 24-48h après confirmation</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Frais de livraison : 1 500 FCFA (sous 25 000 FCFA)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Package className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Commandes en gros : Contactez-nous pour des tarifs préférentiels</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Right Column - Pourquoi CongoClean ? */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Pourquoi CongoClean ?</h2>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Fabrication 100% congolaise avec des matières premières locales</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Contrôle qualité rigoureux à chaque étape de production</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Prix compétitifs adaptés au marché local</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Service client réactif et disponible 7j/7</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-gray-700">Produits biodégradables et respectueux de l'environnement</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </FadeInSection>
+  )
+
+  // ==================== ORDER TRACKING SECTION ====================
+
+  const OrderTrackingSection = (
+    <section className="py-16 sm:py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <FadeInSection>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Suivi de Commande</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Entrez votre email pour retrouver et suivre l&rsquo;état de vos commandes
+            </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+          </div>
+        </FadeInSection>
+        <FadeInSection>
+          <div className="max-w-lg mx-auto">
+            <form onSubmit={handleTrackOrder} className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="email"
+                  placeholder="Votre email de commande"
+                  value={trackEmail}
+                  onChange={(e) => setTrackEmail(e.target.value)}
+                  required
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={trackLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6"
+              >
+                {trackLoading ? '...' : 'Rechercher'}
+                <Search className="w-4 h-4 ml-2" />
+              </Button>
+            </form>
+
+            {/* Tracked Orders Results */}
+            {trackedOrders.length > 0 && (
+              <div className="mt-8 space-y-4">
+                <h3 className="font-semibold text-gray-900 text-lg">Résultats ({trackedOrders.length})</h3>
+                {trackedOrders.map((order) => (
+                  <Card key={order.id} className="overflow-hidden">
+                    <button
+                      onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                      className="w-full p-4 flex flex-col sm:flex-row sm:items-center gap-3 text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-900 text-sm">#{order.orderNumber}</span>
+                          <Badge variant="outline" className={getStatusColor(order.status)}>
+                            {getStatusLabel(order.status)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-emerald-700">{formatPrice(order.totalAmount)}</span>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedOrder === order.id ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                    <AnimatePresence>
+                      {expandedOrder === order.id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Articles</p>
+                            <div className="space-y-2">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <Package className="w-3.5 h-3.5 text-gray-400" />
+                                    <span className="text-gray-700">{item.productName}</span>
+                                    <span className="text-gray-400">x{item.quantity}</span>
+                                  </div>
+                                  <span className="text-gray-900 font-medium">{formatPrice(item.totalPrice)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </FadeInSection>
+      </div>
+    </section>
+  )
+
   // ==================== NEWSLETTER SECTION ====================
 
   const NewsletterSection = (
-    <section className="py-16 bg-gradient-to-r from-emerald-600 to-teal-600">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 bg-gradient-to-r from-emerald-600 to-teal-600 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <FadeInSection>
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Restez Informé</h2>
             <p className="text-emerald-100 mb-8">
               Inscrivez-vous pour recevoir nos offres spéciales et nouveautés
             </p>
-            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <div className="w-16 h-1 bg-gradient-to-r from-white/80 to-white/40 rounded-full mx-auto mt-4" />
+            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-8">
               <Input
                 type="email"
                 placeholder="Votre adresse email"
@@ -1013,6 +1373,7 @@ export default function Home() {
             <p className="text-gray-500 max-w-2xl mx-auto">
               Une question ? N&rsquo;hésitez pas à nous contacter. Notre équipe est à votre disposition.
             </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
           </div>
         </FadeInSection>
 
@@ -1297,9 +1658,15 @@ export default function Home() {
                       key={item.id}
                       className="flex gap-3 p-3 bg-gray-50 rounded-xl"
                     >
-                      {/* Item image placeholder */}
-                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0">
-                        <Package className="w-6 h-6 text-white/60" />
+                      {/* Item image */}
+                      <div className="w-14 h-14 rounded-lg shrink-0 overflow-hidden">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <div className="w-full h-full rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                            <Package className="w-6 h-6 text-white/60" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 text-sm truncate">{item.name}</h4>
@@ -1437,7 +1804,7 @@ export default function Home() {
 
       {/* Product Detail Dialog */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
               {selectedProduct?.category && (
@@ -1448,6 +1815,20 @@ export default function Home() {
             <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Rating summary */}
+            {selectedProduct && (
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, si) => (
+                    <Star key={si} className={`w-4 h-4 ${si < Math.round(avgRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">
+                  {avgRating > 0 ? `${avgRating}/5` : 'Pas encore d\'avis'}
+                  {totalReviews > 0 && ` (${totalReviews})`}
+                </span>
+              </div>
+            )}
             <div className="h-40 rounded-xl bg-gray-100 overflow-hidden">
               {selectedProduct?.image ? (
                 <img 
@@ -1472,6 +1853,100 @@ export default function Home() {
               <div className={`w-2.5 h-2.5 rounded-full ${selectedProduct?.inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-sm text-gray-600">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
             </div>
+
+            {/* Reviews list */}
+            {reviews.length > 0 && (
+              <div className="border-t border-gray-100 pt-4">
+                <h4 className="font-semibold text-gray-900 text-sm mb-3">
+                  Avis clients ({totalReviews})
+                </h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <span className="text-emerald-700 font-semibold text-xs">{getInitials(review.customerName)}</span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{review.customerName}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {new Date(review.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="flex gap-0.5 mb-1">
+                        {Array.from({ length: 5 }).map((_, si) => (
+                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                        ))}
+                      </div>
+                      {review.comment && (
+                        <p className="text-sm text-gray-600 leading-relaxed">{review.comment}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Review toggle button */}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowReviewForm(!showReviewForm)}
+            >
+              <Star className="w-4 h-4 mr-2" />
+              {showReviewForm ? 'Fermer le formulaire' : 'Laisser un avis'}
+            </Button>
+
+            {/* Review form */}
+            {showReviewForm && (
+              <form onSubmit={handleReviewSubmit} className="space-y-3 border border-gray-200 rounded-lg p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="review-name">Nom <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="review-name"
+                    placeholder="Votre nom"
+                    value={reviewForm.customerName}
+                    onChange={(e) => setReviewForm({ ...reviewForm, customerName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Note</Label>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, si) => (
+                      <button
+                        key={si}
+                        type="button"
+                        onClick={() => setReviewForm({ ...reviewForm, rating: si + 1 })}
+                        className="p-0.5 hover:scale-110 transition-transform"
+                        aria-label={`${si + 1} étoile(s)`}
+                      >
+                        <Star className={`w-6 h-6 ${si < reviewForm.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="review-comment">Commentaire (optionnel)</Label>
+                  <Textarea
+                    id="review-comment"
+                    placeholder="Votre avis sur ce produit..."
+                    rows={3}
+                    value={reviewForm.comment}
+                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                    maxLength={500}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={reviewLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                >
+                  {reviewLoading ? 'Envoi en cours...' : 'Publier l\'avis'}
+                </Button>
+              </form>
+            )}
           </div>
           <DialogFooter>
             {selectedProduct?.inStock && (
@@ -1505,13 +1980,13 @@ export default function Home() {
             </p>
             <div className="flex items-center gap-3 mt-4">
               <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
-                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
               </a>
               <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
-                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
               </a>
               <a href="#" aria-label="Twitter" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
-                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
               </a>
             </div>
           </div>
@@ -1611,70 +2086,8 @@ export default function Home() {
         {ProductsSection}
         {AboutSection}
         {TestimonialsSection}
-
-        {/* Delivery & Pricing Section */}
-        <FadeInSection>
-          <section className="py-16 bg-gray-50">
-            <div className="container mx-auto px-4">
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Left Column - Livraison & Tarifs */}
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 sm:p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Livraison & Tarifs</h2>
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3">
-                      <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Livraison gratuite à partir de 25 000 FCFA</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Zone de livraison : Pointe-Noire et périphérie (rayon de 15 km)</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Clock className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Délai de livraison : 24-48h après confirmation</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Frais de livraison : 1 500 FCFA (sous 25 000 FCFA)</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Package className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Commandes en gros : Contactez-nous pour des tarifs préférentiels</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Right Column - Pourquoi CongoClean ? */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Pourquoi CongoClean ?</h2>
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Fabrication 100% congolaise avec des matières premières locales</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Contrôle qualité rigoureux à chaque étape de production</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Prix compétitifs adaptés au marché local</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Service client réactif et disponible 7j/7</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">Produits biodégradables et respectueux de l'environnement</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </section>
-        </FadeInSection>
-
+        {DeliveryPricingSection}
+        {OrderTrackingSection}
         {NewsletterSection}
         {ContactSection}
       </main>
@@ -1690,7 +2103,7 @@ export default function Home() {
         className="fixed bottom-6 right-[5.5rem] z-40 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
       >
         <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-30 animate-ping" />
-        <Phone className="w-6 h-6 relative z-10" />
+        <MessageCircle className="w-6 h-6 relative z-10" />
       </a>
 
       {/* Back to Top Button */}

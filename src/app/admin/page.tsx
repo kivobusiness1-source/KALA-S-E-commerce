@@ -37,6 +37,7 @@ import {
   Inbox,
   FileDown,
   Printer,
+  History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -92,7 +93,7 @@ import { BarChart, Bar, XAxis, YAxis, Cell, PieChart, Pie, Label as PieLabel } f
 
 // ==================== TYPES ====================
 
-type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings'
+type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history'
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -250,21 +251,21 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800 border-amber-200',
-  confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
-  processing: 'bg-orange-100 text-orange-800 border-orange-200',
-  shipped: 'bg-purple-100 text-purple-800 border-purple-200',
-  delivered: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  cancelled: 'bg-red-100 text-red-800 border-red-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  confirmed: 'bg-blue-50 text-blue-700 border-blue-200',
+  processing: 'bg-purple-50 text-purple-700 border-purple-200',
+  shipped: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  delivered: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cancelled: 'bg-red-50 text-red-700 border-red-200',
 }
 
 const statusDotColors: Record<string, string> = {
-  pending: 'bg-amber-500',
-  confirmed: 'bg-blue-500',
-  processing: 'bg-orange-500',
-  shipped: 'bg-purple-500',
-  delivered: 'bg-emerald-500',
-  cancelled: 'bg-red-500',
+  pending: 'bg-amber-400',
+  confirmed: 'bg-blue-400',
+  processing: 'bg-purple-400',
+  shipped: 'bg-cyan-400',
+  delivered: 'bg-emerald-400',
+  cancelled: 'bg-red-400',
 }
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#f97316']
@@ -281,6 +282,15 @@ const CATEGORY_PIE_CONFIG = {
   'Savon Liquide': { label: 'Savon Liquide', color: PIE_COLORS[0] },
   'Détergent': { label: 'Détergent', color: PIE_COLORS[1] },
   'Eau de Javel': { label: 'Eau de Javel', color: PIE_COLORS[2] },
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant="outline" className={`${statusColors[status] || 'bg-gray-50 text-gray-700 border-gray-200'} flex items-center gap-1.5`}>
+      <span className={`w-2 h-2 rounded-full shrink-0 ${statusDotColors[status] || 'bg-gray-400'}`} />
+      {statusLabels[status] || status}
+    </Badge>
+  )
 }
 
 // ==================== MAIN COMPONENT ====================
@@ -416,6 +426,7 @@ export default function AdminPage() {
     { key: 'contact', label: 'Contact', icon: <Inbox className="h-5 w-5" /> },
     { key: 'emails', label: 'Emails', icon: <Mail className="h-5 w-5" /> },
     { key: 'settings', label: 'Paramètres', icon: <Settings className="h-5 w-5" /> },
+    { key: 'stock-history', label: 'Historique Stock', icon: <History className="h-5 w-5" /> },
   ]
 
   return (
@@ -459,7 +470,7 @@ export default function AdminPage() {
                   setSection(item.key)
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${section === item.key ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-colors border-l-4 ${section === item.key ? 'border-l-emerald-500 bg-emerald-50 text-emerald-700 [&>svg]:text-emerald-600' : 'border-l-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
               >
                 {item.icon}
                 <span className="flex-1 text-left">{item.label}</span>
@@ -514,6 +525,7 @@ export default function AdminPage() {
           {section === 'contact' && <ContactSection />}
           {section === 'emails' && <EmailsSection />}
           {section === 'settings' && <SettingsSection />}
+          {section === 'stock-history' && <StockHistorySection />}
         </div>
       </main>
     </div>
@@ -572,12 +584,18 @@ function DashboardSection() {
 
   return (
     <div className="space-y-6">
+      {/* Section heading */}
+      <div className="flex items-center">
+        <div className="w-1 h-6 bg-emerald-500 rounded-full mr-3" />
+        <h2 className="text-xl font-bold text-gray-900">Tableau de Bord</h2>
+      </div>
+
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Package className="h-5 w-5" />} label="Total Produits" value={stats.totalProducts} color="emerald" />
-        <StatCard icon={<ShoppingCart className="h-5 w-5" />} label="Total Commandes" value={stats.totalOrders} color="blue" />
-        <StatCard icon={<DollarSign className="h-5 w-5" />} label="Revenu Total" value={formatPrice(stats.totalRevenue)} color="amber" />
-        <StatCard icon={<Users className="h-5 w-5" />} label="Clients Uniques" value={stats.totalCustomers} color="purple" />
+        <StatCard icon={<Package className="h-5 w-5" />} label="Total Produits" value={stats.totalProducts} color="emerald" borderColor="border-t-emerald-500" />
+        <StatCard icon={<ShoppingCart className="h-5 w-5" />} label="Total Commandes" value={stats.totalOrders} color="blue" borderColor="border-t-blue-500" />
+        <StatCard icon={<DollarSign className="h-5 w-5" />} label="Revenu Total" value={formatPrice(stats.totalRevenue)} color="amber" borderColor="border-t-amber-500" />
+        <StatCard icon={<Users className="h-5 w-5" />} label="Clients Uniques" value={stats.totalCustomers} color="purple" borderColor="border-t-purple-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -662,7 +680,7 @@ function DashboardSection() {
         {/* Recent orders */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Commandes Récentes</CardTitle>
+            <CardTitle className="text-base flex items-center"><div className="w-1 h-6 bg-emerald-500 rounded-full mr-3" />Commandes Récentes</CardTitle>
           </CardHeader>
           <CardContent>
             {stats.recentOrders.length > 0 ? (
@@ -682,9 +700,7 @@ function DashboardSection() {
                       <TableCell className="text-sm">{o.customerName}</TableCell>
                       <TableCell className="text-sm">{formatPrice(o.totalAmount)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusColors[o.status]}>
-                          {statusLabels[o.status] || o.status}
-                        </Badge>
+                        <StatusBadge status={o.status} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -700,6 +716,7 @@ function DashboardSection() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
+              <div className="w-1 h-6 bg-emerald-500 rounded-full mr-1" />
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               Alertes de Stock
             </CardTitle>
@@ -758,7 +775,7 @@ function DashboardSection() {
   )
 }
 
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
+function StatCard({ icon, label, value, color, borderColor }: { icon: React.ReactNode; label: string; value: string | number; color: string; borderColor: string }) {
   const colorClasses: Record<string, string> = {
     emerald: 'bg-emerald-50 text-emerald-600',
     blue: 'bg-blue-50 text-blue-600',
@@ -766,7 +783,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     purple: 'bg-purple-50 text-purple-600',
   }
   return (
-    <Card>
+    <Card className={`border-t-4 ${borderColor}`}>
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-center gap-4">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorClasses[color] || colorClasses.emerald}`}>
@@ -1088,7 +1105,7 @@ function ProductsSection() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-gray-50/80">
                     <TableHead className="w-16">Image</TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Catégorie</TableHead>
@@ -1099,8 +1116,8 @@ function ProductsSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map(p => (
-                    <TableRow key={p.id} className={!p.isActive ? 'opacity-50' : ''}>
+                  {products.map((p, i) => (
+                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                       <TableCell>
                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
                           {p.image ? (
@@ -1120,7 +1137,7 @@ function ProductsSection() {
                       <TableCell className="text-right text-sm font-medium">{formatPrice(p.price)}</TableCell>
                       <TableCell className="text-right">
                         <button
-                          className={`text-sm font-medium hover:underline cursor-pointer ${p.stockQty <= p.minStockAlert ? 'text-red-600' : 'text-gray-900'}`}
+                          className={`text-sm font-medium hover:underline cursor-pointer ${p.stockQty < p.minStockAlert ? 'text-red-600 font-bold' : 'text-gray-900'}`}
                           onClick={() => { setStockAdjustProduct(p); setStockAdjustQty(String(p.stockQty)) }}
                         >
                           {p.stockQty}
@@ -1509,7 +1526,7 @@ function OrdersSection() {
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusColors[o.status]}>{statusLabels[o.status] || o.status}</Badge>
+                        <StatusBadge status={o.status} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -1586,7 +1603,7 @@ function OrdersSection() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Statut:</span>
-                    <Badge variant="outline" className={statusColors[orderDetail.status]}>{statusLabels[orderDetail.status]}</Badge>
+                    <StatusBadge status={orderDetail.status} />
                   </div>
                   <Select value={orderDetail.status} onValueChange={v => updateStatus(orderDetail.id, v)}>
                     <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
@@ -1786,11 +1803,16 @@ function MessagesSection() {
                 <div className="space-y-3">
                   {convDetail.messages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${msg.senderType === 'admin' ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}>
-                        <p>{msg.content}</p>
-                        <p className={`text-xs mt-1 ${msg.senderType === 'admin' ? 'text-emerald-100' : 'text-gray-400'}`}>
-                          {format(new Date(msg.createdAt), 'HH:mm', { locale: fr })}
+                      <div className={`max-w-[75%] ${msg.senderType === 'admin' ? 'border-l-2 border-emerald-400' : ''}`}>
+                        <p className={`text-xs mb-1 ${msg.senderType === 'admin' ? 'text-right' : ''} text-gray-400`}>
+                          {msg.senderType === 'admin' ? 'Vous' : 'Client'}
                         </p>
+                        <div className={`rounded-2xl px-4 py-2.5 text-sm ${msg.senderType === 'admin' ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}>
+                          <p>{msg.content}</p>
+                          <p className={`text-xs mt-1 ${msg.senderType === 'admin' ? 'text-emerald-100' : 'text-gray-400'}`}>
+                            {format(new Date(msg.createdAt), 'HH:mm', { locale: fr })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2248,6 +2270,11 @@ function SettingsSection() {
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [changingPw, setChangingPw] = useState(false)
 
+  // Promo banner state
+  const [promoEnabled, setPromoEnabled] = useState(false)
+  const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+  const [promoSaving, setPromoSaving] = useState(false)
+
   const handleChangePassword = async () => {
     if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
       toast.error('Tous les champs sont requis')
@@ -2307,6 +2334,8 @@ function SettingsSection() {
         currency: settings.currency || 'FCFA',
         free_shipping_threshold: settings.free_shipping_threshold || '',
       }))
+      setPromoEnabled(settings.promo_banner_enabled === 'true')
+      setPromoText(settings.promo_banner_text || 'Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
       setLoading(false)
     }
   }, [settings])
@@ -2369,6 +2398,33 @@ function SettingsSection() {
     }
   }
 
+  const savePromoBanner = async () => {
+    setPromoSaving(true)
+    try {
+      const res = await fetch('/api/site-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: [
+            { key: 'promo_banner_enabled', value: promoEnabled ? 'true' : 'false' },
+            { key: 'promo_banner_text', value: promoText },
+          ],
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Bannière promotionnelle sauvegardée')
+        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setPromoSaving(false)
+    }
+  }
+
   const fields = [
     { key: 'site_name', label: 'Nom du site', placeholder: 'CongoClean' },
     { key: 'site_tagline', label: 'Slogan', placeholder: 'Produits d\'hygiène de qualité' },
@@ -2422,6 +2478,39 @@ function SettingsSection() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Promotional Banner */}
+      <div className="max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>Bannière Promotionnelle</CardTitle>
+            <CardDescription>Gérez la bannière promotionnelle affichée sur le site.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Activer la bannière</Label>
+                <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} />
+              </div>
+              <div className="space-y-2">
+                <Label>Message promotionnel</Label>
+                <Textarea
+                  value={promoText}
+                  onChange={e => setPromoText(e.target.value)}
+                  placeholder="Message de la bannière promotionnelle"
+                  rows={3}
+                />
+              </div>
+              <div className="pt-2">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
+                  {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -2585,6 +2674,135 @@ function SettingsSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+// ==================== STOCK HISTORY SECTION ====================
+
+interface StockHistoryEntry {
+  id: string
+  productId: string
+  previousQty: number
+  newQty: number
+  changeReason: string | null
+  adminId: string | null
+  createdAt: string
+  product: { name: string } | null
+  admin: { name: string; email: string } | null
+}
+
+function StockHistorySection() {
+  const [page, setPage] = useState(1)
+  const [productFilter, setProductFilter] = useState('all')
+  const limit = 20
+
+  const { data: products } = useQuery({
+    queryKey: ['stock-history-products'],
+    queryFn: () => fetch('/api/products?all=true').then(r => r.json()).then(d => d.data as Product[]),
+  })
+
+  const { data: historyData, isLoading } = useQuery({
+    queryKey: ['stock-history', page, productFilter],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (productFilter !== 'all') params.set('productId', productFilter)
+      return fetch(`/api/stock-history?${params}`).then(r => r.json())
+    },
+  })
+
+  const entries: StockHistoryEntry[] = historyData?.data ?? []
+  const totalPages = historyData?.pagination?.pages ?? 1
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <h3 className="text-xl font-semibold text-gray-900">Historique du Stock</h3>
+        <div className="flex-1" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select value={productFilter} onValueChange={v => { setProductFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Tous les produits" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les produits</SelectItem>
+              {products?.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : entries.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/80">
+                    <TableHead>Date</TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead className="text-right">Avant</TableHead>
+                    <TableHead className="text-right">Après</TableHead>
+                    <TableHead className="text-right">Variation</TableHead>
+                    <TableHead>Raison</TableHead>
+                    <TableHead>Admin</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry, i) => {
+                    const diff = entry.newQty - entry.previousQty
+                    return (
+                      <TableRow key={entry.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(entry.createdAt)}</TableCell>
+                        <TableCell className="text-sm font-medium">{entry.product?.name || entry.productId}</TableCell>
+                        <TableCell className="text-right text-sm">{entry.previousQty}</TableCell>
+                        <TableCell className="text-right text-sm">{entry.newQty}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={`text-sm font-semibold ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                            {diff > 0 ? `+${diff}` : String(diff)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{entry.changeReason || '—'}</TableCell>
+                        <TableCell className="text-sm">{entry.admin?.name || 'Système'}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-muted-foreground">Aucun historique de stock</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+            <Button
+              key={p}
+              variant={page === p ? 'default' : 'outline'}
+              size="sm"
+              className={page === p ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

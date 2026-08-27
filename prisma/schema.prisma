@@ -17,7 +17,8 @@ model Admin {
   role      String   @default("admin") // admin, super_admin
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  sessions  AdminSession[]
+  sessions       AdminSession[]
+  stockHistories StockHistory[]
 }
 
 model AdminSession {
@@ -66,7 +67,9 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   category    Category  @relation(fields: [categoryId], references: [id])
-  orderItems  OrderItem[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  stockHistories StockHistory[]
 }
 
 // ==================== ORDERS ====================
@@ -172,6 +175,39 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@index([adminId])
+  @@index([createdAt])
+}
+
+// ==================== PRODUCT REVIEWS ====================
+
+model Review {
+  id          String   @id @default(cuid())
+  productId   String
+  customerName String
+  rating      Int      // 1-5
+  comment     String?
+  isApproved  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ==================== STOCK HISTORY ====================
+
+model StockHistory {
+  id           String   @id @default(cuid())
+  productId    String
+  previousQty  Int
+  newQty       Int
+  changeReason String?
+  adminId      String?
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  admin   Admin?   @relation(fields: [adminId], references: [id])
+
+  @@index([productId])
   @@index([createdAt])
 }
 
