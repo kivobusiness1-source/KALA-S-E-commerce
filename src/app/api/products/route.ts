@@ -51,11 +51,36 @@ export async function GET(request: NextRequest) {
 
     const products = await db.product.findMany({
       where,
-      include: { category: true },
+      include: {
+        category: true,
+        _count: { select: { reviews: { where: { approved: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
     })
 
-    return ok(products)
+    // Calculate average ratings for all products
+    const productIds = products.map(p => p.id)
+    const ratingAggregates = productIds.length > 0
+      ? await db.review.groupBy({
+          by: ['productId'],
+          where: { productId: { in: productIds }, approved: true },
+          _avg: { rating: true },
+          _count: { id: true },
+        })
+      : []
+
+    const ratingMap = new Map(ratingAggregates.map(r => [r.productId, { avg: r._avg.rating || 0, count: r._count.id }]))
+
+    const productsWithRatings = products.map(p => {
+      const r = ratingMap.get(p.id)
+      return {
+        ...p,
+        averageRating: r ? Math.round(r.avg * 10) / 10 : 0,
+        reviewCount: r ? r.count : 0,
+      }
+    })
+
+    return ok(productsWithRatings)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return err('Invalid query parameters', 400)

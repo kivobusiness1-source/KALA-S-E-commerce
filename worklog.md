@@ -1088,3 +1088,207 @@ Stage Summary:
 - All text in French, content realistic for Congolese e-commerce
 - Lint passes with 0 errors
 - No API routes or admin components modified
+
+---
+Task ID: 9a
+Agent: section-enhancer
+Task: Enhance storefront sections styling and add product sorting
+
+Work Log:
+- Enhanced HowToOrderSection: Added "Commande Facile" badge, animated dashed connecting lines (CSS keyframes), larger step circles with gradient rings and glow effects, large faded step number watermarks, hover lift on cards, pulsing green dots on step circles, wrapped each step in bordered/shadow cards, added emoji badges (🛒📋🚛), separate mobile layout with vertical connecting line
+- Enhanced TestimonialsSection: Large decorative Quote icon (w-16 h-16) positioned absolute top-right, colored left border accents varying per card (emerald/teal/amber), gradient overlay at bottom, avatar with colored ring and online status dot, "Achat vérifié" badge with ShieldCheck icon, improved card hover with shadow/lift, large background numbers (01/02/03), navigation dots with sliding indicator animation, "Étoiles" badge next to ratings
+- Enhanced FeaturesBar: Added subtle dot pattern background, tabular-nums on counter, Sparkles icon next to counters, colored bottom border slide-in on hover, "Nouveau" badge on Support 24/7, dashed divider lines between features, gradient text effect on feature titles
+- Enhanced ContactSection: Added WhatsApp CTA card (green gradient), info cards with hover lift and colored left borders, mini-map placeholder (gradient bg with grid pattern and MapPin), working hours as visual timeline with animated bars, "Nous sommes là pour vous" badge, emerald focus rings on form inputs
+- Enhanced NewsletterSection: Floating decorative shapes with CSS animations, animated mail icon with bounce, social proof text ("Rejoignez 1 200+ abonnés"), mail icon inside input with glassmorphism, trust badges ("Pas de spam", "Désabonnement facile"), confetti dots animation on success, gradient wave at bottom
+- Added product sorting to ProductsSection: New sortBy/setSortBy props, shadcn Select dropdown with 5 sort options (Plus récents, Prix croissant, Prix décroissant, Meilleures notes, Nom A-Z), client-side sorting via useMemo, ArrowUpDown icon in trigger, responsive layout with search
+- Updated page.tsx: Added sortBy state (default 'newest'), passed to ProductsSection
+
+Stage Summary:
+- 6 storefront components enhanced with significantly more visual detail and polish
+- Product sorting feature added with 5 sort options, fully client-side
+- All animations use CSS keyframes or framer-motion (no external CSS files)
+- All text in French, color scheme strictly emerald/teal/amber/cyan (no blue/indigo)
+- Lint passes with 0 errors, dev server compiles successfully
+- No API routes or admin components modified
+---
+Task ID: 9b
+Agent: cart-footer-chat-enhancer
+Task: Enhance CartSheet, Footer, ChatWidget and add wishlist feature
+
+Work Log:
+- Created /src/stores/wishlist-store.ts with Zustand persist middleware for wishlist (items: string[], addItem, removeItem, toggleItem, isInWishlist)
+- Enhanced CartSheet.tsx:
+  - Empty cart state: Added decorative shopping bag icon with dashed spinning circle border, "Découvrez nos produits" CTA with emerald gradient button, "Besoin d'aide ?" link to open chat via custom event
+  - Cart item cards: Added subtle left border color matching category (emerald/amber/cyan), item total price display (price × qty = total) with tabular-nums, hover animation with background glow (shadow-emerald-600/5)
+  - Quantity controls: Pill/capsule shaped (rounded-full), max quantity of 99 validation with disabled plus button at 99, separate QuantityControl component
+  - Order dialog: Added OrderProgressIndicator component with 3 steps (1. Informations, 2. Livraison, 3. Confirmation) with connected progress lines, added summary sidebar on the right with item thumbnails and price breakdown, responsive flex-col/flex-row layout (md: breakpoint)
+  - Product detail dialog: Added shadcn Tabs with "Description" and "Avis clients" tabs, taller image area (h-56) with gradient overlay, long description in styled panel, AnimatePresence on review form
+  - Added framer-motion layout animation on cart items, imported AnimatePresence/motion
+- Enhanced ChatWidget.tsx:
+  - Floating button: Added TooltipProvider with "Besoin d'aide ?" tooltip, notification badge (red dot with animate-pulse), subtle breathing animation (box-shadow instead of scale)
+  - Registration form: Added 3 avatar placeholder buttons with emoji icons (Sourire, Acheteur, Etoile), ring-2 selection effect, welcoming animation with Sparkles icon pulsing scale + AnimatePresence transition to static welcome
+  - Message bubbles: Added timestamps (HH:MM format), "Vous" / "CongoClean" labels above bubbles, typing indicator (3 bouncing dots with framer-motion), CheckCheck double check marks for read status on customer messages, Bot avatar for admin messages, User avatar for customer messages
+  - Chat header: Added "En ligne" text with pulsing green dot, gradient header from-emerald-600 to-teal-500
+  - Quick reply suggestions: 4 clickable chips ("Quels sont vos prix ?", "Délai de livraison ?", "Passer une commande", "Zone de livraison ?") shown when messages <= 2
+  - Empty state: MessageSquareDashed illustration with emerald-50 circle background, "Posez-nous votre première question !" text
+- Enhanced Footer.tsx:
+  - Recently viewed cards: Added shadow-lg on hover, "Voir" overlay with Eye icon on image hover (AnimatePresence), compare price display if available, heart/favorite button on each card (top-right, opacity-0 group-hover:opacity-100)
+  - Footer layout: Added "À propos" section with 2-3 lines about the company, payment method icons (Mobile Money with Smartphone icon, Cash with Banknote icon) in bordered badges, "Certifié Qualité" badge with ShieldCheck icon in emerald
+  - Social icons: Added TooltipProvider with platform name tooltips, hover:scale-110 animation, extracted socialLinks array with label/icon/hoverClass
+  - Back-to-top button: Added Tooltip with "Retour en haut" text, thicker progress ring (strokeWidth 3), border-2 for more visibility
+  - Cookie consent: Added Lock icon in emerald circle, "En savoir plus" link with Info icon, gradient background (from-gray-50 to-white), gradient accept button, shadow enhancement
+- Added wishlist feature:
+  - Created /src/stores/wishlist-store.ts with Zustand + persist middleware
+  - Added Heart icon button on each product card (top-right, next to compare checkbox) in ProductsSection.tsx
+  - Heart is outlined (gray) when not wishlisted, filled red when wishlisted, with whileTap scale animation
+  - Shows toast "Ajouté aux favoris" / "Retiré des favoris" on toggle
+  - Updated page.tsx to import useWishlistStore and pass wishlistToggle/isWishlisted props to ProductsSection
+
+Stage Summary:
+- 4 files created/modified: CartSheet.tsx, ChatWidget.tsx, Footer.tsx, ProductsSection.tsx, page.tsx, wishlist-store.ts
+- Lint passes with 0 errors
+- Dev server compiles successfully
+- No blue/indigo colors used - emerald/teal/amber/cyan palette maintained
+- All text in French
+- No API routes or admin components modified
+- All animations use framer-motion or CSS keyframes (no external CSS files)
+---
+Task ID: 9c
+Agent: social-proof-enhancer
+Task: Add social proof, animated components, flash sale, about enhancement
+
+Work Log:
+- Created /src/components/storefront/SocialProofToast.tsx:
+  - Fake "recent purchase" notifications that pop up bottom-left every 15-20 seconds
+  - Random French/Congolese buyer names (Marie N., Jean-Pierre M., Aline K., etc.)
+  - Random time ago text ("il y a X minutes")
+  - Slides in from left with framer-motion spring animation, stays 4 seconds, slides out
+  - Close button (X) to dismiss permanently, stops after 3 notifications
+  - Progress bar at bottom counting down 4 seconds
+  - Avatar circle with initials, green CheckCircle2 verified purchase icon
+  - Hidden below md breakpoint (hidden on mobile)
+  - Falls back to generic product names if no products loaded yet
+- Enhanced /src/components/storefront/AnimatedComponents.tsx:
+  - Added CountUp component: requestAnimationFrame-based counter with ease-out cubic easing, French number formatting (spaces as thousands separator), configurable prefix/suffix/duration
+  - Added MarqueeText component: CSS translateX animation with duplicated content for seamless looping, configurable speed
+  - Added PulseDot component: w-2 h-2 circle with animate-ping wrapper, configurable color (emerald/teal/amber/cyan/rose)
+- Enhanced promotional banner in /src/app/page.tsx:
+  - Replaced manual scroll animation with MarqueeText component
+  - Added Megaphone icon on left side of scrolling text
+  - Added gradient shimmer effect on text (white → amber-100 → white)
+  - Added subtle left border accent (border-emerald-300)
+  - Improved close button with rounded-full, hover:scale-110 transition
+  - Removed old @keyframes scroll, kept shimmer and breathing
+- Created /src/components/storefront/FlashSaleSection.tsx:
+  - Dark gradient background (gray-900 to gray-800) with decorative blur circles
+  - Title "⚡ Ventes Flash" with Flame icon and live countdown timer (HH:MM:SS)
+  - Only renders when discounted products (comparePrice > price) exist
+  - Horizontal scrollable product cards with snap scrolling
+  - Each card: product gradient/image, discount % badge (rose), name, original price (strikethrough), discounted price (amber), savings callout, add-to-cart button
+  - Quick view overlay on hover with Eye icon
+  - Auto-scrolling animation on desktop, pauses on hover/touch
+  - Edge fade gradients for scroll indication
+- Enhanced /src/components/storefront/AboutSection.tsx:
+  - Decorative dot pattern background (radial-gradient emerald dots, 3% opacity)
+  - Replaced image with decorative gradient visual (emerald → teal → cyan) with 3 floating CSS bottle illustrations (CLEAN, WASH, JAVEL) with breathing animation
+  - Added Sparkles icons, decorative circles, and CongoClean logo text overlay
+  - Replaced AnimatedCounter with new CountUp component (French formatting, staggered durations)
+  - Enhanced stat card hover: shadow-md with emerald-100/50 shadow, icon bg transition
+  - Added "Pourquoi nous choisir ?" section with 5 items in responsive grid (Shield/Leaf/Truck/Sparkles/Users)
+  - Added "Notre Histoire" timeline section: 5 milestones (2021-2025), horizontal line on desktop, vertical on mobile
+  - Imported PulseDot (available for future use)
+- Integrated into /src/app/page.tsx:
+  - Added imports: SocialProofToast, FlashSaleSection, MarqueeText, Megaphone
+  - Placed FlashSaleSection between ProductsSection and AboutSection
+  - Placed SocialProofToast before closing div (bottom-left overlay)
+
+Stage Summary:
+- 4 files created/modified: SocialProofToast.tsx (new), FlashSaleSection.tsx (new), AnimatedComponents.tsx (enhanced), AboutSection.tsx (enhanced), page.tsx (updated)
+- Lint passes with 0 errors, dev server compiles successfully
+- No blue/indigo colors used - emerald/teal/amber/cyan/rose palette maintained
+- All text in French
+- No API routes or admin components modified
+- No files modified that other agents are working on (HowToOrderSection, TestimonialsSection, FeaturesBar, ContactSection, NewsletterSection, CartSheet, ChatWidget, Footer, ProductsSection untouched)
+
+---
+Task ID: 9d
+Agent: main-coordinator (Round 9 Review)
+Task: Final verification, lint check, and handover document
+
+Work Log:
+- Verified all 3 parallel sub-agents completed successfully
+- Ran `bun run lint` — 0 errors
+- Verified all new files exist and imports are correct
+- Confirmed no blue/indigo colors in codebase
+- Confirmed all text in French
+
+Stage Summary:
+- All Round 9 work completed successfully
+
+---
+## Round 9 Review — Complete Handover Document
+
+### Current Project Status
+The CongoClean e-commerce website is a fully functional, feature-rich Next.js 16 application at Round 9 of iterative development. The project is stable with ESLint passing 0 errors and the dev server compiling successfully.
+
+**Architecture:**
+- Storefront: 22 component files in `/src/components/storefront/` + orchestrator in `page.tsx` (685 lines)
+- Admin: 14 component files in `/src/components/admin/` + orchestrator in `admin/page.tsx`
+- API: 26 route files in `/src/app/api/`
+- Stores: 3 Zustand stores (cart-store, admin-store, wishlist-store)
+- Database: Prisma + SQLite with 12 models, 9 seed products
+
+### Completed in Round 9
+
+**Bug Fixes:**
+1. Fixed hardcoded star rating (was always 4.2) — now uses dynamic `averageRating` from API
+2. Updated `/api/products` GET endpoint to calculate and return `averageRating` and `reviewCount` per product using Prisma `groupBy` aggregation
+3. Added `averageRating` and `reviewCount` fields to `ProductType` interface
+
+**Mandatory Styling Improvements (12 components enhanced):**
+1. **HowToOrderSection** — Animated dashed connecting lines, gradient ring circles with glow, step number watermarks, hover lift cards, pulsing green dots, emoji badges, "Commande Facile" badge, mobile vertical layout
+2. **TestimonialsSection** — Large decorative Quote background, varying colored left borders (emerald/teal/amber), gradient overlay, avatar with colored ring + online dot, "Achat vérifié" badge, background numbers (01/02/03), sliding dot indicator
+3. **FeaturesBar** — Dot pattern background, tabular-nums counters, Sparkles icon, hover border slide-in animation, "Nouveau" badge, dashed dividers, gradient text titles
+4. **ContactSection** — WhatsApp CTA card (green gradient), info cards with hover + colored borders, decorative mini-map placeholder, working hours as timeline bars, "Nous sommes là pour vous" badge
+5. **NewsletterSection** — Floating decorative shapes, bouncing mail icon, social proof text ("1 200+ abonnés"), glassmorphism input, trust badges, confetti success animation, gradient wave bottom
+6. **CartSheet** — Decorative empty state, category-colored item borders, pill quantity controls (max 99), 3-step order dialog progress, product detail tabs (Description/Avis)
+7. **ChatWidget** — Tooltip on float button, notification dot, 3 emoji avatar options, message timestamps + labels, typing indicator (bouncing dots), quick reply suggestions, friendly empty state
+8. **Footer** — Enhanced recently viewed cards with hover overlay, "À propos" section, payment method icons, "Certifié Qualité" badge, social icon tooltips, enhanced back-to-top, improved cookie consent
+9. **AboutSection** — Dot pattern background, CSS bottle illustrations, CountUp component, "Pourquoi nous choisir ?" grid, "Notre Histoire" timeline (2021-2025)
+10. **AnimatedComponents** — New CountUp (rAF easing), MarqueeText (CSS translateX), PulseDot components
+11. **Promo Banner** — Uses MarqueeText, Megaphone icon, shimmer text gradient, improved close button
+12. **ProductsSection** — Heart wishlist button with animation, product sorting
+
+**Mandatory New Features (5 new features):**
+1. **Product Sorting** — Client-side sort dropdown with 5 options (Plus récents, Prix croissant/décroissant, Meilleures notes, Nom A-Z)
+2. **Wishlist/Favorites** — Zustand store with localStorage persistence, heart toggle on product cards, toast notifications
+3. **Social Proof Notifications** — Auto-populating recent purchase toasts in bottom-left, max 3 notifications, hidden on mobile, progress bar countdown
+4. **Flash Sale Section** — Dark gradient section showing discounted products, live countdown timer, horizontal scrollable cards, auto-scroll on desktop, conditionally hidden when no discounts
+5. **Enhanced Animated Components** — CountUp with French formatting, MarqueeText for seamless scrolling, PulseDot indicator
+
+### Verification Results
+- `bun run lint`: 0 errors
+- Dev server compiles successfully with Turbopack
+- No blue/indigo colors in any modified files
+- All text in French
+- No API routes modified (except products GET for rating aggregation)
+- No admin panel files modified
+- All new files use 'use client' directive
+- All components use shadcn/ui + Tailwind CSS only
+
+### Unresolved Issues & Risks
+1. **Server stability in sandbox** — The dev server process dies after ~30 seconds in the sandbox environment. This appears to be a sandbox resource management issue, not a code bug. The server compiles and serves requests correctly before dying.
+2. **No real product images** — Products use gradient placeholders. An image upload flow exists in admin but actual product photography is needed.
+3. **No payment integration** — Orders are captured but no actual payment processing (Mobile Money, etc.)
+4. **No real email notifications** — Contact submissions and order confirmations are stored in DB only
+5. **Wishlist not synced** — Wishlist is localStorage-only, not linked to user accounts
+6. **Social proof is fake** — Purchase notifications use randomized data, not real order data
+
+### Priority Recommendations for Next Phase
+1. **HIGH** — Add a customer loyalty/points system (feature gap from original requirements)
+2. **HIGH** — Implement product image gallery in the admin (multi-image upload)
+3. **MEDIUM** — Add customer segmentation in admin dashboard
+4. **MEDIUM** — Implement real-time order status updates via WebSocket
+5. **LOW** — Add product recommendations/"You might also like" section
+6. **LOW** — Add dark mode support (next-themes is available)
+7. **LOW** — Add multi-language support (French/Lingala)

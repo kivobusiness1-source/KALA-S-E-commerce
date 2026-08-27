@@ -1,7 +1,8 @@
 'use client'
 
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Star, Eye, Package, Search, GitCompareArrows } from 'lucide-react'
+import { Plus, Star, Eye, Package, Search, GitCompareArrows, ArrowUpDown, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { FadeInSection } from './AnimatedComponents'
 import { formatPrice, getCategoryColor, getCategoryInitial, isNewProduct } from './helpers'
@@ -24,6 +26,8 @@ interface ProductsSectionProps {
   setActiveCategory: (val: string) => void
   searchQuery: string
   setSearchQuery: (val: string) => void
+  sortBy: string
+  setSortBy: (val: string) => void
   quickAddedId: string | null
   onQuickAdd: (product: ProductType) => void
   onAddToCart: (product: ProductType) => void
@@ -31,6 +35,9 @@ interface ProductsSectionProps {
   // Comparison
   comparisonIds: string[]
   onToggleComparison: (id: string) => void
+  // Wishlist
+  wishlistToggle: (id: string) => void
+  isWishlisted: (id: string) => boolean
 }
 
 function StarRating({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) {
@@ -66,13 +73,28 @@ export function ProductsSection({
   setActiveCategory,
   searchQuery,
   setSearchQuery,
+  sortBy,
+  setSortBy,
   quickAddedId,
   onQuickAdd,
   onAddToCart,
   onViewProduct,
   comparisonIds,
   onToggleComparison,
+  wishlistToggle,
+  isWishlisted,
 }: ProductsSectionProps) {
+
+  const handleWishlistToggle = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    const wasInWishlist = isWishlisted(id)
+    wishlistToggle(id)
+    if (wasInWishlist) {
+      toast.success('Retiré des favoris')
+    } else {
+      toast.success('Ajouté aux favoris')
+    }
+  }
 
   const handleCompareToggle = (id: string) => {
     if (comparisonIds.includes(id)) {
@@ -85,10 +107,36 @@ export function ProductsSection({
     }
     onToggleComparison(id)
   }
+
   const categoryTabs = [
     { label: 'Tous', value: 'all' },
     ...(categories || []).map((c) => ({ label: c.name, value: c.id })),
   ]
+
+  // Client-side sorting with useMemo
+  const sortedProducts = useMemo(() => {
+    if (!products) return products
+    const sorted = [...products]
+    switch (sortBy) {
+      case 'price-asc':
+        sorted.sort((a, b) => a.price - b.price)
+        break
+      case 'price-desc':
+        sorted.sort((a, b) => b.price - a.price)
+        break
+      case 'rating':
+        sorted.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+        break
+      case 'name-az':
+        sorted.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+        break
+      case 'newest':
+      default:
+        // API default order - no client sort needed
+        break
+    }
+    return sorted
+  }, [products, sortBy])
 
   return (
     <section id="products" className="py-16 sm:py-20 bg-gray-50">
@@ -104,7 +152,7 @@ export function ProductsSection({
         </FadeInSection>
 
         <FadeInSection>
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-8">
             {/* Category Tabs */}
             <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full sm:w-auto">
               <TabsList className="bg-white border border-gray-200 shadow-sm w-full sm:w-auto flex flex-wrap">
@@ -120,15 +168,30 @@ export function ProductsSection({
               </TabsList>
             </Tabs>
 
-            {/* Search with enhanced styling */}
-            <div className="relative w-full sm:w-72 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-300" />
-              <Input
-                placeholder="Rechercher un produit..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white border-gray-200 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400 transition-all duration-300"
-              />
+            {/* Search + Sort controls */}
+            <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
+              <div className="relative flex-1 sm:flex-none sm:w-64 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-300" />
+                <Input
+                  placeholder="Rechercher un produit..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-white border-gray-200 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400 transition-all duration-300 w-full"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-200 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all duration-300">
+                  <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                  <SelectValue placeholder="Trier par" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Plus récents</SelectItem>
+                  <SelectItem value="price-asc">Prix croissant</SelectItem>
+                  <SelectItem value="price-desc">Prix décroissant</SelectItem>
+                  <SelectItem value="rating">Meilleures notes</SelectItem>
+                  <SelectItem value="name-az">Nom A-Z</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </FadeInSection>
@@ -148,9 +211,9 @@ export function ProductsSection({
               </Card>
             ))}
           </div>
-        ) : products && products.length > 0 ? (
+        ) : sortedProducts && sortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product, index) => {
+            {sortedProducts.map((product, index) => {
               const discount = product.comparePrice && product.comparePrice > product.price
                 ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
                 : 0
@@ -196,8 +259,16 @@ export function ProductsSection({
                             <Eye className="w-5 h-5 text-emerald-700" />
                           </div>
                         </button>
-                        {/* Compare checkbox */}
-                        <div className="absolute top-3 right-3 z-10">
+                        {/* Heart + Compare row */}
+                        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                          <motion.button
+                            whileTap={{ scale: 0.8 }}
+                            onClick={(e) => handleWishlistToggle(e, product.id)}
+                            className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-gray-200 flex items-center justify-center hover:border-red-300 hover:bg-red-50 transition-all duration-200"
+                            aria-label="Favori"
+                          >
+                            <Heart className={`w-4 h-4 transition-colors duration-200 ${isWishlisted(product.id) ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} />
+                          </motion.button>
                           <label
                             className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-2.5 py-1 cursor-pointer hover:border-emerald-300 hover:bg-emerald-50 transition-colors"
                             onClick={(e) => e.stopPropagation()}
@@ -262,8 +333,8 @@ export function ProductsSection({
                         )}
                         {/* Star rating display */}
                         <div className="flex items-center gap-1.5 mb-2">
-                          <StarRating rating={4.2} size="sm" />
-                          <span className="text-xs text-gray-400">(4.2)</span>
+                          <StarRating rating={product.averageRating || 0} size="sm" />
+                          <span className="text-xs text-gray-400">{product.averageRating && product.averageRating > 0 ? `(${product.averageRating})` : ''}{product.reviewCount && product.reviewCount > 0 ? ` · ${product.reviewCount} avis` : ''}</span>
                         </div>
                         {product.inStock
                           ? (product.stockQty > 10

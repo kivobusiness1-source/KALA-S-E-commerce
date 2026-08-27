@@ -14,6 +14,8 @@ export interface ProductType {
   longDescription?: string | null
   category?: { id: string; name: string; slug: string }
   createdAt?: string | null
+  averageRating?: number
+  reviewCount?: number
 }
 
 export interface CategoryType {

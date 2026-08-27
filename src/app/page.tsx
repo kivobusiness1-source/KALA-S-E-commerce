@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { X } from 'lucide-react'
+import { X, Megaphone } from 'lucide-react'
 import { useCartStore } from '@/stores/cart-store'
+import { useWishlistStore } from '@/stores/wishlist-store'
 
 import { Navbar } from '@/components/storefront/Navbar'
 import { HeroSection } from '@/components/storefront/HeroSection'
@@ -22,6 +23,9 @@ import { ChatWidget } from '@/components/storefront/ChatWidget'
 import { CartSheet, type DeliveryZoneId } from '@/components/storefront/CartSheet'
 import { Footer } from '@/components/storefront/Footer'
 import { ProductComparison } from '@/components/storefront/ProductComparison'
+import { SocialProofToast } from '@/components/storefront/SocialProofToast'
+import { FlashSaleSection } from '@/components/storefront/FlashSaleSection'
+import { MarqueeText } from '@/components/storefront/AnimatedComponents'
 import type { ProductType, CategoryType, ChatMessageType, ReviewType, TrackedOrder } from '@/components/storefront/types'
 
 export default function Home() {
@@ -57,6 +61,7 @@ export default function Home() {
   // Products state
   const [activeCategory, setActiveCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
 
   // Contact form state
   const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' })
@@ -127,6 +132,9 @@ export default function Home() {
 
   // Cart store
   const cart = useCartStore()
+
+  // Wishlist store
+  const wishlist = useWishlistStore()
 
   // Page load animation
   const [pageLoaded, setPageLoaded] = useState(false)
@@ -531,23 +539,23 @@ export default function Home() {
 
       {/* Promotional Banner Bar */}
       {promoBarVisible && (
-        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden">
-          <div className="overflow-hidden whitespace-nowrap flex-1">
-            <div className="animate-[scroll_20s_linear_infinite] inline-block">
-              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
-              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
-              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
-              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
-            </div>
+        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden border-l-2 border-emerald-300">
+          <div className="flex items-center pl-3 pr-2 shrink-0">
+            <Megaphone className="w-4 h-4 text-amber-300" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <MarqueeText speed={25} className="py-2">
+              <span className="mx-8 text-white text-xs sm:text-sm bg-gradient-to-r from-white via-amber-100 to-white bg-[length:200%_100%] bg-clip-text text-transparent animate-[shimmer_3s_linear_infinite]">{promoText}</span>
+            </MarqueeText>
           </div>
           <button
             onClick={() => setPromoBarVisible(false)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800 rounded-full transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800/60 rounded-full transition-all duration-200 hover:scale-110"
             aria-label="Fermer la bannière"
           >
             <X className="w-3.5 h-3.5" />
           </button>
-          <style>{`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
+          <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
         </div>
       )}
 
@@ -563,13 +571,18 @@ export default function Home() {
           setActiveCategory={setActiveCategory}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
           quickAddedId={quickAddedId}
           onQuickAdd={handleQuickAdd}
           onAddToCart={handleAddToCart}
           onViewProduct={setSelectedProduct}
           comparisonIds={comparisonIds}
           onToggleComparison={toggleComparison}
+          wishlistToggle={wishlist.toggleItem}
+          isWishlisted={wishlist.isInWishlist}
         />
+        <FlashSaleSection products={products} onAddToCart={handleAddToCart} onViewProduct={setSelectedProduct} />
         <AboutSection />
         <TestimonialsSection
           activeTestimonial={activeTestimonial}
@@ -664,6 +677,8 @@ export default function Home() {
         onRegister={handleChatRegister}
         onSend={handleChatSend}
       />
+
+      <SocialProofToast products={products} />
     </div>
   )
 }

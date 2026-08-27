@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, useInView } from 'framer-motion'
 
 export function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -26,6 +26,119 @@ export function AnimatedCounter({ target, suffix = '' }: { target: number; suffi
   }, [isInView, target])
 
   return <span ref={ref}>{count}{suffix}</span>
+}
+
+/**
+ * CountUp - Sophisticated counter with easing and French number formatting
+ * Uses requestAnimationFrame for smooth 60fps animation
+ */
+export function CountUp({ target, duration = 2000, prefix = '', suffix = '' }: { target: number; duration?: number; prefix?: string; suffix?: string }) {
+  const [displayValue, setDisplayValue] = useState(0)
+  const ref = useRef<HTMLSpanElement>(null)
+  const isInView = useInView(ref, { once: true })
+  const animationRef = useRef<number | null>(null)
+
+  // French number formatting: spaces as thousands separator
+  const formatNumber = useCallback((num: number): string => {
+    return num.toLocaleString('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!isInView) return
+
+    const startTime = performance.now()
+    const from = 0
+    const to = target
+
+    // Ease-out cubic for smooth deceleration
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const easedProgress = easeOutCubic(progress)
+
+      const currentValue = Math.round(from + (to - from) * easedProgress)
+      setDisplayValue(currentValue)
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate)
+      }
+    }
+
+    animationRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [isInView, target, duration])
+
+  return (
+    <span ref={ref}>
+      {prefix}{formatNumber(displayValue)}{suffix}
+    </span>
+  )
+}
+
+/**
+ * MarqueeText - Horizontal scrolling marquee for text
+ * Uses CSS animation with translateX for seamless looping
+ */
+export function MarqueeText({ children, speed = 30, className = '' }: { children: React.ReactNode; speed?: number; className?: string }) {
+  // Calculate duration based on speed (lower speed = faster scroll)
+  const animationDuration = `${speed}s`
+
+  return (
+    <div className={`overflow-hidden whitespace-nowrap ${className}`}>
+      <div
+        className="inline-block animate-[marquee-scroll_var(--marquee-duration)_linear_infinite]"
+        style={{ '--marquee-duration': animationDuration } as React.CSSProperties}
+      >
+        <span className="inline-block">{children}</span>
+        <span className="inline-block mx-8">{children}</span>
+        <span className="inline-block">{children}</span>
+        <span className="inline-block mx-8">{children}</span>
+      </div>
+      <style>{`
+        @keyframes marquee-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+/**
+ * PulseDot - Simple pulsing dot indicator
+ */
+export function PulseDot({ color = 'emerald' }: { color?: string }) {
+  const colorClasses: Record<string, string> = {
+    emerald: 'bg-emerald-500',
+    teal: 'bg-teal-500',
+    amber: 'bg-amber-500',
+    cyan: 'bg-cyan-500',
+    rose: 'bg-rose-500',
+  }
+  const pingClasses: Record<string, string> = {
+    emerald: 'bg-emerald-400',
+    teal: 'bg-teal-400',
+    amber: 'bg-amber-400',
+    cyan: 'bg-cyan-400',
+    rose: 'bg-rose-400',
+  }
+
+  return (
+    <span className="relative inline-flex">
+      <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${pingClasses[color] || pingClasses.emerald}`} />
+      <span className={`relative inline-flex w-2 h-2 rounded-full ${colorClasses[color] || colorClasses.emerald}`} />
+    </span>
+  )
 }
 
 export function TypingEffect({ phrases }: { phrases: string[] }) {
