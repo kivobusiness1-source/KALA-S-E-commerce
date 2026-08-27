@@ -548,3 +548,190 @@ The application is production-grade with 15 storefront sections and 10 admin sec
 14. Add customer segmentation
 15. ~~Add promotional banner management in admin~~ DONE (Round 5)
 16. ~~Add order tracking for customers~~ DONE (Round 5)
+---
+Task ID: 6-storefront
+Agent: r6-storefront-dev
+Task: Round 6 Storefront styling improvements + FAQ + footer + promo from settings
+
+Work Log:
+- Added `createdAt` field to ProductType interface
+- Created `isNewProduct()` helper function to check if product was created within 30 days
+- Added `promoText` state with default emoji promo text, moved `promoBarVisible` to top of state declarations
+- Added `expandedFaq` state for FAQ accordion
+- Added `useEffect` to fetch site settings from `/api/site-settings` on mount, updating `promoText` and `promoBarVisible`
+- Hero section: Added 3px animated gradient border at bottom (emerald-400 via teal-300 to cyan-400 with shimmer animation)
+- Features bar: Added `shadow-sm` to section, added thin emerald gradient line (h-0.5) at bottom
+- Product cards: Added `animate-pulse` to skeleton loading cards, added 'Nouveau' badge (bg-emerald-500) for products within 30 days
+- Testimonials section: Changed background to `bg-gradient-to-b from-white to-gray-50/50`
+- Newsletter section: Added wave SVG divider at top for smooth transition from white/gray to emerald gradient
+- Chat widget: Added breathing animation (scale 1 to 1.05, 2s, ease-in-out, infinite) to floating button
+- Contact section: Added working hours card (Lun-Ven 8h-18h, Sam 8h-14h, Dim Fermé) with Clock icons
+- Footer: Added 'Retour en haut' button with ChevronUp, added 'Conditions Générales' and 'Politique de Confidentialité' links with vertical separators, changed copyright to 2025
+- FAQ section: Added between Order Tracking and Newsletter with 6 expandable FAQ items using AnimatePresence, ChevronDown rotation, and FadeInSection wrapper
+- Promo bar: Replaced all 4 hardcoded text spans with `{promoText}` state variable
+- Added `shimmer` and `breathing` CSS keyframes to the existing style tag
+- ESLint: Zero errors
+
+Stage Summary:
+- 10 styling improvements applied to storefront
+- New FAQ section with 6 questions and animated expand/collapse
+- Enhanced footer with legal links, back-to-top button, updated copyright
+- Promo bar now reads from site-settings API with fallback default
+- Product cards show 'Nouveau' badge for recent products (30 days)
+- All animations: hero shimmer border, features shadow+line, skeleton pulse, chat breathing, FAQ accordion
+--- Task ID: 6-admin Agent: r6-admin-dev Task: Round 6 Admin - Review moderation + dashboard + styling improvements Work Log:
+- Read full admin/page.tsx (~2808 lines) to understand all sections, types, and patterns
+- Read lib/auth.ts for validateSession/logActivity signatures
+- Read lib/db.ts for db import
+- Read prisma/schema.prisma for Review model structure
+- Read admin-store.ts for useAdminStore interface
+- Created /api/reviews/route.ts - GET endpoint returning all reviews with product name, admin-only via validateSession
+- Created /api/reviews/[id]/route.ts - PUT endpoint for approve/reject (isApproved boolean), DELETE endpoint, both admin-only with logActivity
+- Added Star, Droplets, MapPin to lucide-react imports
+- Extended Section type to include 'reviews'
+- Added 'Avis Clients' nav item with Star icon to sidebar navigation
+- Changed sidebar logo icon from Package to Droplets (matching storefront)
+- Added ReviewsSection route rendering in main content area
+- Added pending review count badge logic to NavBadge component via useQuery for reviews
+- Added 'reviews' type to NavBadge for badge display
+- Created ReviewsSection component with: stats cards (Total avis, Note moyenne, Approuvés, En attente), filter tabs (Tous, En attente, Approuvés, Rejetés), reviews table with columns (Produit, Client, Note with star display, Commentaire, Date, Statut badge, Actions), approve/reject/delete buttons, delete confirmation dialog
+- Added getInitials helper function for customer avatars
+- Added customer initials avatar (emerald-100 bg, emerald-700 text) before customer name in Orders table
+- Improved product image placeholder: gradient from-emerald-100 to-teal-100 with Package icon in emerald-300
+- Added 'Bienvenue, {admin.name} !' greeting and current date in French format to Dashboard section
+- Added useAdminStore() to DashboardSection for admin name access
+- Added revenue progress bar below stat cards showing 'Objectif: 500 000 FCFA' with amber progress bar
+- Added delivery zones card to Settings section with textarea, save button, and state management
+- Loaded delivery_zones from site-settings on mount in SettingsSection
+- Ran bun run lint - zero errors
+ Stage Summary:
+- All 7 features implemented: Review moderation section, revenue progress bar, sidebar logo, dashboard greeting, orders avatar, product placeholder, delivery zones settings
+- 2 new API routes created: /api/reviews (GET) and /api/reviews/[id] (PUT/DELETE)
+- Zero lint errors, all existing functionality preserved
+
+---
+Task ID: 6-main
+Agent: main
+Task: Round 6 - QA, bug fixes, styling improvements, new features
+
+Work Log:
+- Reviewed worklog to understand project state (Round 5 completed, 15 storefront sections, 10 admin sections)
+- QA tested storefront via agent-browser: all sections render, category filtering works, cart works
+- QA tested admin panel: login works, dashboard renders, products table displays all 9 products
+- Found 2 runtime errors in dev.log: `db.review.findMany` and `db.stockHistory.findMany` failing with `Cannot read properties of undefined`
+- Root cause: Turbopack/Next.js cached old PrismaClient instance in globalThis that didn't have Review/StockHistory models
+- Fixed by reverting reviews/stock-history API routes to use `db` from `@/lib/db` (works with fresh server process)
+- Also fixed accidental null character in reviews route file
+- Launched 2 parallel subagents for UI improvements
+- Verified all code changes via grep/read (FAQ section, promoText, Conditions Générales, review moderation, etc.)
+- ESLint: zero errors
+- Final QA: homepage compiles in ~7.5s with 104KB output, all sections render correctly
+
+Stage Summary:
+- 2 critical bugs fixed (Prisma Review/StockHistory model access)
+- 10 storefront styling improvements (hero shimmer, features shadow, skeleton pulse, testimonial gradient, wave divider, chat breathing, etc.)
+- 1 new storefront section: FAQ (Foire Aux Questions) with 6 expandable items
+- Enhanced footer (legal links, back-to-top, 2025 copyright)
+- Promo bar now reads from site-settings API
+- 'Nouveau' badge on products created within 30 days
+- Contact section: working hours card added
+- Admin: Review moderation section (full CRUD, filter tabs, stats)
+- Admin: Revenue progress bar, dashboard greeting, orders avatars, product placeholder, delivery zones settings
+- 2 new API routes: /api/reviews, /api/reviews/[id]
+- Admin page grew from ~2808 to ~3176 lines
+- Storefront page grew from ~2134 to ~2298 lines
+- Total: 25 API routes, 14 DB models, 16 storefront sections, 11 admin sections
+
+---
+
+## Current Project Status (Updated 2026-08-27 Round 6)
+
+### Current Status Assessment
+The application is production-grade with 16 storefront sections and 11 admin sections. Round 6 fixed critical Prisma model access bugs (Review/StockHistory), added comprehensive styling polish, a new FAQ section, review moderation in admin, and multiple UX enhancements. The site has 14 DB models and 25 API routes.
+
+### Completed This Round
+**Bug Fixes:**
+- Fixed Prisma Review model access error (db.review.findMany undefined) - was caused by cached PrismaClient
+- Fixed Prisma StockHistory model access error (same root cause)
+- Fixed null character corruption in reviews route file
+
+**Storefront Styling (7 items):**
+- Hero: Animated gradient shimmer border (emerald-teal-cyan, 3px)
+- Features bar: Shadow + emerald gradient line at bottom
+- Product skeletons: Pulse animation on loading cards
+- Testimonials: Gradient background (white to gray-50/50)
+- Newsletter: Wave SVG divider for smooth section transition
+- Chat widget: Breathing animation (scale 1→1.05, 2s infinite)
+- Product cards: 'Nouveau' badge for products < 30 days old
+
+**Storefront Features (4 items):**
+- FAQ Section: 6 expandable questions with animated accordion (AnimatePresence + ChevronDown rotation)
+- Promo bar from settings: Fetches promo_banner_text from /api/site-settings on mount
+- Contact working hours: New info card with Lun-Ven/Sam/Dim schedule
+- Enhanced footer: 'Retour en haut', 'Conditions Générales', 'Politique de Confidentialité', © 2025
+
+**Admin Styling (3 items):**
+- Sidebar: Droplets logo icon (matching storefront)
+- Orders table: Customer initials avatar (emerald-100/emerald-700)
+- Products table: Gradient placeholder image (emerald-100 to teal-100)
+
+**Admin Features (4 items):**
+- Review moderation section (Avis Clients): Full table with stats, filter tabs, approve/reject/delete
+- Dashboard greeting: 'Bienvenue, {name}!' with French date
+- Revenue progress bar: 'Objectif: 500 000 FCFA' visual indicator
+- Delivery zones settings: Textarea with save to site-settings
+
+**API Routes (2 new):**
+- GET /api/reviews (admin, all reviews with product names)
+- PUT/DELETE /api/reviews/[id] (admin, approve/reject/delete with activity logging)
+
+### What's Working
+- Public storefront (16 sections): promo bar (from settings), hero (shimmer border), features (shadow+line), how-to-order, products (filter/search/detail modal/reviews/stock indicator/Nouveau badge), about (factory photo + animated counters), testimonials (gradient bg), delivery/pricing, order tracking, FAQ (6 expandable items), newsletter (wave divider), contact (working hours), chat widget (breathing animation)
+- Shopping cart with real images, checkout, order placement
+- WhatsApp floating button (pulse) + back-to-top + social footer (real SVGs, legal links, 2025)
+- Admin panel at /admin (11 sections): login, dashboard (greeting + revenue bar), products (avatar + gradient placeholder + image upload + stock adjust), orders (avatar + CSV export + print), messages, contact, emails, settings (admin users + password change + promo banner + delivery zones), stock history, review moderation
+- 25 API routes with auth, validation, rate limiting
+- 14 DB models
+- ESLint clean (zero errors)
+
+### Admin Access
+- URL: /admin
+- Email: admin@congosoap.cg
+- Password: Admin@2024!
+
+### Known Issues / Risks
+1. **No email sending**: Contact form and newsletter only store data in DB
+2. **No payment integration**: Orders are cash on delivery only
+3. **Memory pressure in sandbox**: Large page files (2298 + 3176 lines) cause Turbopack compilation to use ~1.1GB RAM; server may OOM in constrained environments
+4. **Review moderation**: Reviews auto-approved by default (isApproved=true on create). Admin can change status.
+5. **Conditions/Privacy links**: Footer links exist but don't navigate anywhere (placeholder buttons)
+
+### Priority Recommendations for Next Phase
+1. **HIGH**: Split page.tsx and admin/page.tsx into smaller component files to reduce memory pressure
+2. **MEDIUM**: Implement real email notifications for orders and contact forms
+3. **MEDIUM**: Add Terms/Conditions and Privacy Policy pages (currently placeholder links)
+4. **MEDIUM**: Add delivery zone management with fee calculation
+5. **LOW**: Add multi-language support (French/Lingala)
+6. **LOW**: Add customer loyalty/discount program
+
+---
+## Original Potential Improvements (Tracking)
+1. ~~Add product image upload~~ DONE (Round 3)
+2. ~~Add WhatsApp integration~~ DONE (Round 2)
+3. Implement order status email notifications
+4. ~~Add a product detail modal/page with full description~~ DONE (Round 2)
+5. Add delivery tracking system
+6. Add payment integration
+7. Add multi-language support (French/Lingala)
+8. ~~Add product reviews/ratings~~ DONE (Round 5)
+9. Add customer loyalty program
+10. ~~Add analytics dashboard with charts~~ DONE (Round 2)
+11. ~~Improve product images with AI-generated product visuals~~ DONE (Round 3)
+12. ~~Add order export to CSV/PDF~~ DONE (Round 2 CSV, Round 4 Print)
+13. ~~Add inventory history tracking~~ DONE (Round 5)
+14. Add customer segmentation
+15. ~~Add promotional banner management in admin~~ DONE (Round 5)
+16. ~~Add order tracking for customers~~ DONE (Round 5)
+17. ~~Add admin review moderation~~ DONE (Round 6)
+18. ~~Add FAQ section~~ DONE (Round 6)
+19. ~~Add promotional banner content from settings~~ DONE (Round 6)

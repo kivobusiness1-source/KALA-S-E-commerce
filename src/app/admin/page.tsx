@@ -38,6 +38,9 @@ import {
   FileDown,
   Printer,
   History,
+  Star,
+  Droplets,
+  MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -93,7 +96,7 @@ import { BarChart, Bar, XAxis, YAxis, Cell, PieChart, Pie, Label as PieLabel } f
 
 // ==================== TYPES ====================
 
-type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history'
+type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews'
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -239,6 +242,10 @@ function formatDate(dateStr: string): string {
 
 function formatRelative(dateStr: string): string {
   return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: fr })
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2)
 }
 
 const statusLabels: Record<string, string> = {
@@ -427,6 +434,7 @@ export default function AdminPage() {
     { key: 'emails', label: 'Emails', icon: <Mail className="h-5 w-5" /> },
     { key: 'settings', label: 'Paramètres', icon: <Settings className="h-5 w-5" /> },
     { key: 'stock-history', label: 'Historique Stock', icon: <History className="h-5 w-5" /> },
+    { key: 'reviews', label: 'Avis Clients', icon: <Star className="h-5 w-5" /> },
   ]
 
   return (
@@ -453,7 +461,7 @@ export default function AdminPage() {
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
             <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
-              <Package className="h-5 w-5 text-white" />
+              <Droplets className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <h1 className="font-bold text-gray-900 text-lg leading-tight truncate">CongoClean</h1>
@@ -526,6 +534,7 @@ export default function AdminPage() {
           {section === 'emails' && <EmailsSection />}
           {section === 'settings' && <SettingsSection />}
           {section === 'stock-history' && <StockHistorySection />}
+          {section === 'reviews' && <ReviewsSection />}
         </div>
       </main>
     </div>
@@ -547,6 +556,16 @@ function NavBadge({ itemKey, activeSection }: { itemKey: Section; activeSection:
   else if (itemKey === 'contact') count = stats?.unreadContactCount ?? 0
   else if (itemKey === 'orders') count = stats?.pendingOrdersCount ?? 0
 
+  // Pending reviews badge
+  const { data: reviewsData } = useQuery({
+    queryKey: ['admin-reviews-badge'],
+    queryFn: () => fetch('/api/reviews').then(r => r.json()).then(d => d.data as { id: string; isApproved: boolean }[]),
+    enabled: itemKey === 'reviews',
+  })
+  if (itemKey === 'reviews' && reviewsData) {
+    count = reviewsData.filter(r => !r.isApproved).length
+  }
+
   if (count === 0) return null
   return (
     <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${activeSection === itemKey ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
@@ -558,6 +577,7 @@ function NavBadge({ itemKey, activeSection }: { itemKey: Section; activeSection:
 // ==================== DASHBOARD SECTION ====================
 
 function DashboardSection() {
+  const { admin } = useAdminStore()
   const { data: stats, isLoading } = useQuery({
     queryKey: ['stats'],
     queryFn: () => fetch('/api/stats').then(r => r.json()).then(d => d.data as StatsData),
@@ -587,7 +607,14 @@ function DashboardSection() {
       {/* Section heading */}
       <div className="flex items-center">
         <div className="w-1 h-6 bg-emerald-500 rounded-full mr-3" />
-        <h2 className="text-xl font-bold text-gray-900">Tableau de Bord</h2>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Tableau de Bord</h2>
+          {admin?.name && (
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Bienvenue, {admin.name} ! &mdash; {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -597,6 +624,22 @@ function DashboardSection() {
         <StatCard icon={<DollarSign className="h-5 w-5" />} label="Revenu Total" value={formatPrice(stats.totalRevenue)} color="amber" borderColor="border-t-amber-500" />
         <StatCard icon={<Users className="h-5 w-5" />} label="Clients Uniques" value={stats.totalCustomers} color="purple" borderColor="border-t-purple-500" />
       </div>
+
+      {/* Revenue progress bar */}
+      <Card className="border-t-4 border-t-amber-500">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-gray-700">Objectif: 500 000 FCFA</p>
+            <p className="text-sm text-muted-foreground">{Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%</p>
+          </div>
+          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%` }}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Orders by status chart */}
@@ -1119,11 +1162,13 @@ function ProductsSection() {
                   {products.map((p, i) => (
                     <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                       <TableCell>
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden">
                           {p.image ? (
                             <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                           ) : (
-                            <Package className="h-4 w-4 text-gray-400" />
+                            <div className="w-full h-full rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+                              <Package className="h-4 w-4 text-emerald-300" />
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -1521,7 +1566,14 @@ function OrdersSection() {
                   {orders.map((o: Order) => (
                     <TableRow key={o.id}>
                       <TableCell className="font-mono text-xs font-medium">{o.orderNumber}</TableCell>
-                      <TableCell className="text-sm font-medium">{o.customerName}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                            {getInitials(o.customerName)}
+                          </div>
+                          {o.customerName}
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{o.customerEmail}</TableCell>
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
@@ -2275,6 +2327,36 @@ function SettingsSection() {
   const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
   const [promoSaving, setPromoSaving] = useState(false)
 
+  // Delivery zones state
+  const [deliveryZones, setDeliveryZones] = useState('Centre-ville, Pointe-Noire\nMboukou\nLoango\nTchinouka')
+  const [deliveryZonesSaving, setDeliveryZonesSaving] = useState(false)
+
+  const saveDeliveryZones = async () => {
+    setDeliveryZonesSaving(true)
+    try {
+      const res = await fetch('/api/site-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: [
+            { key: 'delivery_zones', value: deliveryZones },
+          ],
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Zones de livraison sauvegardées')
+        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setDeliveryZonesSaving(false)
+    }
+  }
+
   const handleChangePassword = async () => {
     if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
       toast.error('Tous les champs sont requis')
@@ -2336,6 +2418,7 @@ function SettingsSection() {
       }))
       setPromoEnabled(settings.promo_banner_enabled === 'true')
       setPromoText(settings.promo_banner_text || 'Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+      if (settings.delivery_zones) setDeliveryZones(settings.delivery_zones)
       setLoading(false)
     }
   }, [settings])
@@ -2478,6 +2561,38 @@ function SettingsSection() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Delivery Zones */}
+      <div className="max-w-2xl">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-emerald-600" />
+              <CardTitle>Zone de livraison</CardTitle>
+            </div>
+            <CardDescription>Configurez les zones de livraison disponibles.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Zones de livraison (une par ligne)</Label>
+                <Textarea
+                  value={deliveryZones}
+                  onChange={e => setDeliveryZones(e.target.value)}
+                  placeholder="Centre-ville, Pointe-Noire&#10;Mboukou&#10;Loango&#10;Tchinouka"
+                  rows={5}
+                />
+              </div>
+              <div className="pt-2">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveDeliveryZones} disabled={deliveryZonesSaving}>
+                  {deliveryZonesSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -2803,6 +2918,259 @@ function StockHistorySection() {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+// ==================== REVIEWS SECTION ====================
+
+interface Review {
+  id: string
+  productId: string
+  customerName: string
+  rating: number
+  comment: string | null
+  isApproved: boolean
+  createdAt: string
+  product: { name: string }
+}
+
+type ReviewFilter = 'all' | 'pending' | 'approved' | 'rejected'
+
+function StarDisplay({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <Star
+          key={i}
+          className={`h-3.5 w-3.5 ${i <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ReviewsSection() {
+  const queryClient = useQueryClient()
+  const [filter, setFilter] = useState<ReviewFilter>('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingReview, setDeletingReview] = useState<Review | null>(null)
+
+  const { data: reviews, isLoading } = useQuery({
+    queryKey: ['admin-reviews'],
+    queryFn: () => fetch('/api/reviews').then(r => r.json()).then(d => d.data as Review[]),
+  })
+
+  const filtered = (reviews ?? []).filter(r => {
+    if (filter === 'all') return true
+    if (filter === 'pending') return !r.isApproved
+    if (filter === 'approved') return r.isApproved
+    if (filter === 'rejected') return false
+    return true
+  })
+
+  const totalReviews = reviews?.length ?? 0
+  const approvedCount = reviews?.filter(r => r.isApproved).length ?? 0
+  const pendingCount = reviews?.filter(r => !r.isApproved).length ?? 0
+  const avgRating = totalReviews > 0
+    ? (reviews!.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
+    : '0.0'
+
+  const approveReview = async (reviewId: string, isApproved: boolean) => {
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isApproved }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(isApproved ? 'Avis approuvé' : 'Avis rejeté')
+        queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
+        queryClient.invalidateQueries({ queryKey: ['admin-reviews-badge'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    }
+  }
+
+  const deleteReview = async () => {
+    if (!deletingReview) return
+    try {
+      const res = await fetch(`/api/reviews/${deletingReview.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Avis supprimé')
+        queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
+        queryClient.invalidateQueries({ queryKey: ['admin-reviews-badge'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setDeleteDialogOpen(false)
+      setDeletingReview(null)
+    }
+  }
+
+  const filterTabs: { key: ReviewFilter; label: string }[] = [
+    { key: 'all', label: 'Tous' },
+    { key: 'pending', label: 'En attente' },
+    { key: 'approved', label: 'Approuvés' },
+    { key: 'rejected', label: 'Rejetés' },
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total avis</p>
+            <p className="text-2xl font-bold text-gray-900">{totalReviews}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Note moyenne</p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold text-gray-900">{avgRating}</p>
+              <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Approuvés</p>
+            <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">En attente</p>
+            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {filterTabs.map(tab => (
+          <Button
+            key={tab.key}
+            variant={filter === tab.key ? 'default' : 'outline'}
+            size="sm"
+            className={`shrink-0 ${filter === tab.key ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+            onClick={() => setFilter(tab.key)}
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Reviews table */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : filtered.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/80">
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="hidden lg:table-cell">Commentaire</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="w-28">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((r, i) => (
+                    <TableRow key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+                      <TableCell className="text-sm font-medium">{r.product?.name || '—'}</TableCell>
+                      <TableCell className="text-sm">{r.customerName}</TableCell>
+                      <TableCell><StarDisplay rating={r.rating} /></TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{r.comment || '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={r.isApproved
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }
+                        >
+                          {r.isApproved ? 'Approuvé' : 'En attente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {!r.isApproved && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
+                              onClick={() => approveReview(r.id, true)}
+                              title="Approuver"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {r.isApproved && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-amber-600 hover:text-amber-700"
+                              onClick={() => approveReview(r.id, false)}
+                              title="Rejeter"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700"
+                            onClick={() => { setDeletingReview(r); setDeleteDialogOpen(true) }}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <Star className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-muted-foreground">Aucun avis trouvé</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cet avis ?</AlertDialogTitle>
+            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={deleteReview}>Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

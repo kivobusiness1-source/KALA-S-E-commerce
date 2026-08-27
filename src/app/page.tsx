@@ -80,6 +80,7 @@ interface ProductType {
   stockQty: number
   longDescription?: string | null
   category?: { id: string; name: string; slug: string }
+  createdAt?: string | null
 }
 
 interface CategoryType {
@@ -170,6 +171,14 @@ function getStatusLabel(status: string): string {
   }
 }
 
+function isNewProduct(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false
+  const created = new Date(createdAt)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  return created >= thirtyDaysAgo
+}
+
 function getInitials(name: string): string {
   return name
     .split(' ')
@@ -228,6 +237,13 @@ function FadeInSection({ children, className = '' }: { children: React.ReactNode
 // ==================== MAIN PAGE ====================
 
 export default function Home() {
+  // Promo bar state
+  const [promoText, setPromoText] = useState('🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉')
+  const [promoBarVisible, setPromoBarVisible] = useState(true)
+
+  // FAQ state
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+
   // Navigation scroll state
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -245,9 +261,6 @@ export default function Home() {
   // Newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterLoading, setNewsletterLoading] = useState(false)
-
-  // Promo bar state
-  const [promoBarVisible, setPromoBarVisible] = useState(true)
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
@@ -299,6 +312,28 @@ export default function Home() {
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Fetch site settings for promo banner
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/site-settings')
+        if (res.ok) {
+          const data = await res.json()
+          const settings = data.data || data.settings || data
+          if (settings.promo_banner_text) {
+            setPromoText(settings.promo_banner_text)
+          }
+          if (typeof settings.promo_banner_enabled === 'boolean') {
+            setPromoBarVisible(settings.promo_banner_enabled)
+          }
+        }
+      } catch {
+        // Use default values on error
+      }
+    }
+    fetchSettings()
   }, [])
 
   // Smooth scroll helper
@@ -754,6 +789,8 @@ export default function Home() {
           </div>
         </motion.div>
       </div>
+      {/* Animated gradient border */}
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400" style={{ backgroundSize: '200% 100%', animation: 'shimmer 3s ease-in-out infinite' }} />
     </section>
   )
 
@@ -767,7 +804,7 @@ export default function Home() {
   ]
 
   const FeaturesBar = (
-    <section className="bg-white py-10 border-b border-gray-100">
+    <section className="bg-white py-10 border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((f, i) => (
@@ -785,6 +822,7 @@ export default function Home() {
           ))}
         </div>
       </div>
+      <div className="h-0.5 bg-gradient-to-r from-transparent via-emerald-300 to-transparent" />
     </section>
   )
 
@@ -882,7 +920,7 @@ export default function Home() {
         {productsLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="overflow-hidden">
+              <Card key={i} className="overflow-hidden animate-pulse">
                 <Skeleton className="w-full h-48" />
                 <CardContent className="p-4 space-y-3">
                   <Skeleton className="h-4 w-1/3" />
@@ -945,6 +983,11 @@ export default function Home() {
                         {discount > 0 && (
                           <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
                             -{discount}%
+                          </Badge>
+                        )}
+                        {isNewProduct(product.createdAt) && (
+                          <Badge className="bg-emerald-500 text-white text-xs px-2 py-0.5">
+                            Nouveau
                           </Badge>
                         )}
                       </div>
@@ -1106,7 +1149,7 @@ export default function Home() {
   ]
 
   const TestimonialsSection = (
-    <section className="py-16 sm:py-20 bg-white">
+    <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <FadeInSection>
           <div className="text-center mb-12">
@@ -1325,10 +1368,92 @@ export default function Home() {
     </section>
   )
 
+  // ==================== FAQ SECTION ====================
+
+  const faqs = [
+    {
+      question: 'Quelle est votre zone de livraison ?',
+      answer: 'Nous livrons à Pointe-Noire et dans sa périphérie dans un rayon de 15 km. La livraison est gratuite pour les commandes de plus de 25 000 FCFA. Pour les zones éloignées, veuillez nous contacter pour vérifier la disponibilité.'
+    },
+    {
+      question: 'Quels sont les modes de paiement acceptés ?',
+      answer: 'Nous acceptons le paiement à la livraison (espèces), les virements mobiles (M-Pesa, Orange Money), et les virements bancaires. Le paiement en ligne par carte sera bientôt disponible.'
+    },
+    {
+      question: 'Quel est le délai de livraison ?',
+      answer: 'Le délai de livraison standard est de 24 à 48 heures après confirmation de votre commande. Pour les commandes en gros, le délai peut être de 2 à 5 jours ouvrables selon la disponibilité des produits.'
+    },
+    {
+      question: 'Quelle est votre politique de retours et échanges ?',
+      answer: 'En cas de produit défectueux ou non conforme, vous disposez de 7 jours après réception pour demander un échange ou un remboursement. Contactez-nous par email à contact@congoclean.cg ou par téléphone au +242 06 123 4567.'
+    },
+    {
+      question: 'Proposez-vous des commandes en gros ?',
+      answer: 'Oui, nous proposons des tarifs préférentiels pour les commandes en gros (hôtels, restaurants, entreprises, etc.). Contactez-nous directement par téléphone ou via le formulaire de contact pour obtenir un devis personnalisé.'
+    },
+    {
+      question: 'Quelle est la qualité de vos produits ?',
+      answer: 'Nos produits sont fabriqués selon des normes industrielles strictes avec des matières premières de qualité. Chaque lot est contrôlé avant la mise sur le marché. Nos produits sont biodégradables et respectueux de l\'environnement.'
+    },
+  ]
+
+  const FAQSection = (
+    <section className="py-16 sm:py-20 bg-gray-50">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <FadeInSection>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Foire Aux Questions</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Trouvez rapidement les réponses à vos questions les plus fréquentes
+            </p>
+            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+          </div>
+        </FadeInSection>
+        <FadeInSection>
+          <div className="space-y-3">
+            {faqs.map((faq, i) => (
+              <Card key={i} className="overflow-hidden border border-gray-200">
+                <button
+                  onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                  aria-expanded={expandedFaq === i}
+                >
+                  <span className="font-medium text-gray-900 pr-4">{faq.question}</span>
+                  <ChevronDown className={`w-5 h-5 text-emerald-600 shrink-0 transition-transform duration-200 ${expandedFaq === i ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {expandedFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
+                        <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            ))}
+          </div>
+        </FadeInSection>
+      </div>
+    </section>
+  )
+
   // ==================== NEWSLETTER SECTION ====================
 
   const NewsletterSection = (
     <section className="py-16 bg-gradient-to-r from-emerald-600 to-teal-600 relative overflow-hidden">
+      {/* Wave SVG divider */}
+      <div className="absolute top-0 left-0 right-0 -translate-y-[99%]">
+        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto block">
+          <path d="M0 60L48 55C96 50 192 40 288 35C384 30 480 30 576 33.3C672 36.7 768 43.3 864 45C960 46.7 1056 43.3 1152 40C1248 36.7 1344 33.3 1392 31.7L1440 30V60H0Z" fill="white"/>
+        </svg>
+      </div>
       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <FadeInSection>
@@ -1409,6 +1534,39 @@ export default function Home() {
                     <div>
                       <p className="text-sm text-gray-500">Adresse</p>
                       <p className="font-medium text-gray-900">Zone Industrielle, Pointe-Noire</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Working Hours Card */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-semibold text-gray-900 text-lg mb-6">Horaires d'ouverture</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Lun-Ven</p>
+                      <p className="font-medium text-gray-900">8h - 18h</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Samedi</p>
+                      <p className="font-medium text-gray-900">8h - 14h</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Dimanche</p>
+                      <p className="font-medium text-gray-400">Fermé</p>
                     </div>
                   </div>
                 </div>
@@ -1496,6 +1654,7 @@ export default function Home() {
       <button
         onClick={() => setChatOpen(true)}
         className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+        style={{ animation: 'breathing 2s ease-in-out infinite' }}
         aria-label="Ouvrir le chat"
       >
         <MessageCircle className="w-6 h-6" />
@@ -2036,8 +2195,20 @@ export default function Home() {
         <Separator className="my-6 bg-gray-700" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
-          <p>© 2024 CongoClean. Tous droits réservés.</p>
-          <p>Fabriqué avec ❤️ à Pointe-Noire, Congo-Brazzaville</p>
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              Retour en haut
+            </button>
+            <Separator orientation="vertical" className="h-3 bg-gray-700 hidden sm:block" />
+            <button className="hover:text-emerald-400 transition-colors">Conditions Générales</button>
+            <Separator orientation="vertical" className="h-3 bg-gray-700 hidden sm:block" />
+            <button className="hover:text-emerald-400 transition-colors">Politique de Confidentialité</button>
+          </div>
+          <p>© 2025 CongoClean. Tous droits réservés. Fabriqué avec ❤️ à Pointe-Noire, Congo-Brazzaville</p>
         </div>
       </div>
     </footer>
@@ -2054,18 +2225,10 @@ export default function Home() {
         <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden">
           <div className="overflow-hidden whitespace-nowrap flex-1">
             <div className="animate-[scroll_20s_linear_infinite] inline-block">
-              <span className="mx-8 text-white text-xs sm:text-sm">
-                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
-              </span>
-              <span className="mx-8 text-white text-xs sm:text-sm">
-                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
-              </span>
-              <span className="mx-8 text-white text-xs sm:text-sm">
-                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
-              </span>
-              <span className="mx-8 text-white text-xs sm:text-sm">
-                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
-              </span>
+              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
             </div>
           </div>
           <button
@@ -2075,7 +2238,7 @@ export default function Home() {
           >
             <X className="w-3.5 h-3.5" />
           </button>
-          <style>{`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+          <style>{`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
         </div>
       )}
 
@@ -2088,6 +2251,7 @@ export default function Home() {
         {TestimonialsSection}
         {DeliveryPricingSection}
         {OrderTrackingSection}
+        {FAQSection}
         {NewsletterSection}
         {ContactSection}
       </main>
