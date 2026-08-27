@@ -1,0 +1,121 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { validateSession, logActivity } from '@/lib/auth'
+import { z } from 'zod'
+
+function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
+function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
+
+async function getAdmin(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
+const querySchema = z.object({
+  categoryId: z.string().optional(),
+  search: z.string().optional(),
+  featured: z.enum(['true', 'false']).optional(),
+  all: z.enum(['true', 'false']).optional(),
+})
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const query = querySchema.parse(Object.fromEntries(searchParams))
+
+    const admin = await getAdmin(request)
+    const isAdmin = !!admin
+
+    const where: Record<string, unknown> = {}
+
+    // Only filter by isActive for non-admin or if 'all' is not set
+    if (!isAdmin || query.all !== 'true') {
+      where.isActive = true
+    }
+
+    if (query.categoryId) {
+      where.categoryId = query.categoryId
+    }
+
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search } },
+        { description: { contains: query.search } },
+      ]
+    }
+
+    if (query.featured === 'true') {
+      where.isFeatured = true
+    }
+
+    const products = await db.product.findMany({
+      where,
+      include: { category: true },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return ok(products)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return err('Invalid query parameters', 400)
+    }
+    console.error('Products GET error:', error)
+    return err('Failed to fetch products', 500)
+  }
+}
+
+const createProductSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  longDescription: z.string().optional(),
+  price: z.number().positive('Price must be positive'),
+  comparePrice: z.number().positive().optional().nullable(),
+  categoryId: z.string().min(1, 'Category is required'),
+  image: z.string().optional().nullable(),
+  images: z.string().optional(),
+  volume: z.string().optional().nullable(),
+  isActive: z.boolean().optional().default(true),
+  isFeatured: z.boolean().optional().default(false),
+  inStock: z.boolean().optional().default(true),
+  stockQty: z.number().int().min(0).optional().default(0),
+  minStockAlert: z.number().int().min(0).optional().default(10),
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await getAdmin(request)
+    if (!admin) return err('Unauthorized', 401)
+
+    const body = await request.json()
+    const data = createProductSchema.parse(body)
+
+    // Generate slug from name
+    const slug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+
+    const product = await db.product.create({
+      data: {
+        ...data,
+        slug,
+        images: data.images || '[]',
+      },
+      include: { category: true },
+    })
+
+    await logActivity(admin.id, 'CREATE_PRODUCT', `Created product: ${product.name}`, request.headers.get('x-forwarded-for') ?? undefined)
+
+    return ok(product, 201)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(e => e.message).join(', ')
+      return err(messages, 400)
+    }
+    console.error('Products POST error:', error)
+    return err('Failed to create product', 500)
+  }
+}
