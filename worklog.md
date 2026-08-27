@@ -145,32 +145,28 @@ Stage Summary:
 
 ---
 
-## Current Project Status (Updated 2026-08-27 Round 3)
+## Current Project Status (Updated 2026-08-27 Round 4)
 
 ### Current Status Assessment
-The application is highly polished and feature-rich. Round 3 focused on the #1 visual gap (product images), admin power features, and additional storefront sections. The site now has real AI-generated product photography, an image upload system, admin user management, animated counters, and a "How to Order" trust section. Codebase remains clean (zero ESLint errors).
+The application is production-grade with 14 storefront sections and 9 admin sections. Round 4 added the last visual polish (factory photo), a promotional scrolling banner, delivery/pricing info section, and critical admin operational tools (order printing, stock quick-adjust, password change). The site is visually rich with real AI photography, animated elements, and comprehensive business management.
 
 ### Completed This Round
-- **AI PRODUCT IMAGES**: Generated 9 professional product photos using z-ai image generation (savon 1L/5L/10L, detergent 500g/1L/5L, javel 1L/5L/20L)
-- **UPDATED DB**: All 9 products now have image paths pointing to /products/*.png
-- **REAL IMAGES**: Product cards and detail modal now show real photos with zoom-on-hover, falling back to gradient placeholders
-- **IMAGE UPLOAD API**: Created /api/upload (POST, admin auth, validates jpeg/png/webp, max 5MB, saves to /public/uploads/)
-- **ADMIN IMAGE UPLOAD**: Product create/edit dialogs now have file upload with preview
-- **ADMIN USER MANAGEMENT**: Settings section now shows admin users table + "Ajouter" dialog (super_admin only)
-- **ADMIN USERS API**: Created /api/admin/users (GET list, POST create, super_admin only)
-- **ANIMATED COUNTERS**: About section stats (500+ clients, 3+ categories, 100% Congolaise) now animate when scrolled into view
-- **HERO POLISH**: Added bottom gradient shimmer, 3 decorative floating blurred circles with staggered pulse animations, enhanced badge styling
-- **HOW TO ORDER SECTION**: New 3-step process section (Choisissez → Passez commande → Recevez livraison) with numbered circles and connecting line
-- **QA VERIFIED**: All features tested via agent-browser, upload API tested via curl
+- **ABOUT SECTION REAL IMAGE**: Generated AI factory photo, replaced gradient placeholder with real `usine CongoClean à Pointe-Noire` image
+- **PROMOTIONAL BANNER**: Full-width emerald scrolling marquee bar between navbar and hero with close button
+- **DELIVERY & PRICING SECTION**: New two-column section with delivery zones, fees, timeline, and "Pourquoi CongoClean ?" trust section with 5 value propositions
+- **ORDER PRINT**: Added "Imprimer" button in admin order detail dialog with print CSS (`data-printable` attribute hides everything except the dialog when printing)
+- **STOCK QUICK ADJUSTMENT**: Clickable stock quantity in products table opens dialog with number input and quick-adjust buttons (+10, +50, +100, -10, Reset)
+- **PASSWORD CHANGE**: New section in admin settings with current/new/confirm password fields, POST to new `/api/admin/change-password` endpoint
+- **CHANGE PASSWORD API**: Created `/api/admin/change-password` (POST, admin auth, Zod validation, hash verification, activity logging)
+- **QA VERIFIED**: All features tested via agent-browser (promo bar, delivery section, stock adjust dialog, order print button, password change form)
 
 ### What's Working
-- ✅ Public storefront (12 sections): hero, features, how-to-order, products (real images + filter/search + detail modal), about (animated counters), testimonials, newsletter, contact, chat widget
+- ✅ Public storefront (14 sections): promo bar, hero, features, how-to-order, products (real images + filter/search + detail modal), about (real factory photo + animated counters), testimonials, delivery/pricing, newsletter, contact, chat widget
 - ✅ Shopping cart with checkout/order placement
-- ✅ WhatsApp floating button + back-to-top button
-- ✅ Footer with social media links
-- ✅ Admin panel at /admin (9 sections): login, dashboard, products (with image upload), orders (with CSV export), messages, contact, emails, settings (with admin user management)
+- ✅ WhatsApp floating button + back-to-top button + social footer
+- ✅ Admin panel at /admin (9 sections): login, dashboard, products (with image upload + stock adjust), orders (with CSV export + print), messages, contact, emails, settings (with admin users + password change)
 - ✅ Admin dashboard with 2 charts + notification badges
-- ✅ 19 API routes with auth, validation, rate limiting
+- ✅ 20 API routes with auth, validation, rate limiting
 - ✅ Database: 9 products with real images, 3 categories, test orders, contact submissions, email subscribers
 - ✅ Responsive design (mobile-first)
 - ✅ ESLint clean (zero errors)
@@ -182,18 +178,17 @@ The application is highly polished and feature-rich. Round 3 focused on the #1 v
 
 ### Known Issues / Risks
 1. **No email sending**: Contact form and newsletter only store data in DB - no actual email sending implemented.
-2. **WhatsApp/Chat overlap**: Both floating buttons at bottom-right could overlap on very small screens.
-3. **No payment integration**: Orders are placed without online payment (cash on delivery model).
-4. **Single admin password change**: No UI to change own password.
+2. **No payment integration**: Orders are placed without online payment (cash on delivery model).
+3. **WhatsApp/Chat overlap**: Both floating buttons at bottom-right could overlap on very small screens.
+4. **No inventory history**: Stock changes overwrite; no audit trail of adjustments.
 
 ### Priority Recommendations for Next Phase
 1. **MEDIUM**: Implement real email notifications for orders and contact forms
-2. **MEDIUM**: Add order print/PDF generation (beyond CSV export)
+2. **MEDIUM**: Add inventory/stock adjustment audit trail
 3. **MEDIUM**: Add delivery zone management and delivery fee calculation
 4. **LOW**: Add multi-language support (French/Lingala)
 5. **LOW**: Add customer loyalty/discount program
 6. **LOW**: Add promotional banner management in admin
-7. **LOW**: Add inventory history/audit trail
 
 ---
 ## Original Potential Improvements (Tracking)
@@ -208,7 +203,7 @@ The application is highly polished and feature-rich. Round 3 focused on the #1 v
 9. Add customer loyalty program
 10. ~~Add analytics dashboard with charts~~ ✅ DONE (Round 2)
 11. ~~Improve product images with AI-generated product visuals~~ ✅ DONE (Round 3)
-12. ~~Add order export to CSV/PDF~~ ✅ CSV DONE (Round 2)
+12. ~~Add order export to CSV/PDF~~ ✅ CSV DONE (Round 2), Print DONE (Round 4)
 13. Add inventory history tracking
 14. Add customer segmentation
 15. Add promotional banner management in admin
@@ -298,4 +293,49 @@ Stage Summary:
 - 3 new features: image upload API, product image upload in admin, admin user management
 - Admin page grew from ~2200 to ~2418 lines
 - 2 new API routes (/api/upload, /api/admin/users)
+- All existing functionality preserved, zero lint errors
+
+---
+Task ID: r4-storefront
+Agent: r4-storefront-dev
+Task: Add delivery/pricing section and promotional banner
+
+Work Log:
+- Added CheckCircle and Clock icons to lucide-react imports
+- Added promoBarVisible state (useState) with default true
+- Added promotional banner bar between NavBar and main element: emerald gradient background, marquee CSS animation (scroll keyframes), duplicated text for seamless loop, close button (X icon), responsive text (text-xs on mobile, text-sm on sm+)
+- Added Delivery & Pricing info section before NewsletterSection with FadeInSection wrapper: two-column grid layout
+  - Left column (bg-emerald-50, emerald border): "Livraison & Tarifs" title with 5 delivery info items using Truck, MapPin, Clock, Package icons
+  - Right column (white bg, gray border): "Pourquoi CongoClean ?" title with 5 benefit items using emerald CheckCircle icons
+- Ran ESLint: zero errors
+- Verified dev server compilation successful
+
+Stage Summary:
+- 2 new storefront sections: promotional marquee banner and delivery/pricing info block
+- Page grew from ~1621 to ~1720 lines
+- All existing functionality preserved, zero lint errors
+
+---
+Task ID: r4-admin
+Agent: r4-admin-dev
+Task: Add order print, password change, stock adjustment
+
+Work Log:
+- Added Printer to lucide-react imports
+- Added print button ("Imprimer") with Printer icon to order detail dialog header, positioned top-right using flex justify-between
+- Added `data-printable` attribute to order detail DialogContent
+- Added `<style dangerouslySetInnerHTML>` with @media print CSS that hides everything except [data-printable]
+- Added stock adjustment state (stockAdjustProduct, stockAdjustQty, stockAdjustLoading) to ProductsSection
+- Added handleStockAdjust function that PUTs stockQty/inStock to /api/products/:id
+- Made stock quantity cell clickable with hover:underline and cursor-pointer styling
+- Added Stock Adjustment Dialog with number input, quick buttons (+10, +50, +100, -10, Reset), and Enregistrer/Annuler footer
+- Added password change state (pwForm, changingPw) and handleChangePassword function to SettingsSection
+- Added "Changer le mot de passe" card in Settings with 3 password inputs and "Changer" button
+- Created /api/admin/change-password/route.ts: POST with Zod validation, admin auth, verifyPassword check, hashPassword update, activity logging
+- Ran ESLint: zero errors
+
+Stage Summary:
+- 3 new admin features: order detail print, quick stock adjustment, password change
+- Admin page grew from ~2418 to ~2540 lines
+- 1 new API route (/api/admin/change-password)
 - All existing functionality preserved, zero lint errors

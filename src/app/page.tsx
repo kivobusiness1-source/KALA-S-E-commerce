@@ -30,6 +30,8 @@ import {
   Eye,
   Globe,
   Quote,
+  CheckCircle,
+  Clock,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -191,6 +193,9 @@ export default function Home() {
   // Newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterLoading, setNewsletterLoading] = useState(false)
+
+  // Promo bar state
+  const [promoBarVisible, setPromoBarVisible] = useState(true)
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
@@ -871,12 +876,8 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Image side */}
             <div className="relative">
-              <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 overflow-hidden flex items-center justify-center shadow-xl">
-                <div className="text-center text-white p-8">
-                  <Droplets className="w-20 h-20 mx-auto mb-4 opacity-80" />
-                  <p className="text-3xl font-bold">CongoClean</p>
-                  <p className="text-emerald-100 mt-2">Depuis Pointe-Noire</p>
-                </div>
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
+                <img src="/about-factory.png" alt="Usine CongoClean à Pointe-Noire" className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-amber-400 rounded-2xl -z-10" />
               <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-200 rounded-2xl -z-10" />
@@ -1572,6 +1573,37 @@ export default function Home() {
   return (
     <>
       {NavBar}
+
+      {/* Promotional Banner Bar */}
+      {promoBarVisible && (
+        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden">
+          <div className="overflow-hidden whitespace-nowrap flex-1">
+            <div className="animate-[scroll_20s_linear_infinite] inline-block">
+              <span className="mx-8 text-white text-xs sm:text-sm">
+                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
+              </span>
+              <span className="mx-8 text-white text-xs sm:text-sm">
+                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
+              </span>
+              <span className="mx-8 text-white text-xs sm:text-sm">
+                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
+              </span>
+              <span className="mx-8 text-white text-xs sm:text-sm">
+                🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setPromoBarVisible(false)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800 rounded-full transition-colors"
+            aria-label="Fermer la bannière"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+          <style>{`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+        </div>
+      )}
+
       <main>
         {HeroSection}
         {FeaturesBar}
@@ -1579,6 +1611,70 @@ export default function Home() {
         {ProductsSection}
         {AboutSection}
         {TestimonialsSection}
+
+        {/* Delivery & Pricing Section */}
+        <FadeInSection>
+          <section className="py-16 bg-gray-50">
+            <div className="container mx-auto px-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left Column - Livraison & Tarifs */}
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 sm:p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Livraison & Tarifs</h2>
+                  <ul className="space-y-4">
+                    <li className="flex items-start gap-3">
+                      <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Livraison gratuite à partir de 25 000 FCFA</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Zone de livraison : Pointe-Noire et périphérie (rayon de 15 km)</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Délai de livraison : 24-48h après confirmation</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Frais de livraison : 1 500 FCFA (sous 25 000 FCFA)</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Package className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Commandes en gros : Contactez-nous pour des tarifs préférentiels</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Right Column - Pourquoi CongoClean ? */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Pourquoi CongoClean ?</h2>
+                  <ul className="space-y-4">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Fabrication 100% congolaise avec des matières premières locales</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Contrôle qualité rigoureux à chaque étape de production</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Prix compétitifs adaptés au marché local</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Service client réactif et disponible 7j/7</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-gray-700">Produits biodégradables et respectueux de l'environnement</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
+
         {NewsletterSection}
         {ContactSection}
       </main>

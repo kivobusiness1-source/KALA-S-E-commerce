@@ -36,6 +36,7 @@ import {
   Download,
   Inbox,
   FileDown,
+  Printer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -419,6 +420,15 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+      {/* Print styles */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body * { visibility: hidden !important; }
+          [data-printable], [data-printable] * { visibility: visible !important; }
+          [data-printable] { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+      ` }} />
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -805,6 +815,9 @@ function ProductsSection() {
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false)
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null)
+  const [stockAdjustQty, setStockAdjustQty] = useState('')
+  const [stockAdjustLoading, setStockAdjustLoading] = useState(false)
 
   // Product form state
   const [pForm, setPForm] = useState({
@@ -933,6 +946,31 @@ function ProductsSection() {
       }
     } catch {
       toast.error('Erreur serveur')
+    }
+  }
+
+  const handleStockAdjust = async () => {
+    if (!stockAdjustProduct) return
+    const qty = parseInt(stockAdjustQty)
+    if (isNaN(qty) || qty < 0) { toast.error('Quantité invalide'); return }
+    setStockAdjustLoading(true)
+    try {
+      const res = await fetch(`/api/products/${stockAdjustProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stockQty: qty, inStock: qty > 0 }),
+      })
+      if (res.ok) {
+        toast.success(`Stock mis à jour: ${qty} unités`)
+        setStockAdjustProduct(null)
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      } else {
+        toast.error('Erreur lors de la mise à jour')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setStockAdjustLoading(false)
     }
   }
 
@@ -1081,7 +1119,12 @@ function ProductsSection() {
                       <TableCell className="text-sm">{p.category?.name}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(p.price)}</TableCell>
                       <TableCell className="text-right">
-                        <span className={`text-sm font-medium ${p.stockQty <= p.minStockAlert ? 'text-red-600' : 'text-gray-900'}`}>{p.stockQty}</span>
+                        <button
+                          className={`text-sm font-medium hover:underline cursor-pointer ${p.stockQty <= p.minStockAlert ? 'text-red-600' : 'text-gray-900'}`}
+                          onClick={() => { setStockAdjustProduct(p); setStockAdjustQty(String(p.stockQty)) }}
+                        >
+                          {p.stockQty}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -1282,6 +1325,42 @@ function ProductsSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Stock Adjustment Dialog */}
+      <Dialog open={!!stockAdjustProduct} onOpenChange={() => setStockAdjustProduct(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ajuster le stock</DialogTitle>
+            <DialogDescription>{stockAdjustProduct?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Quantité en stock</Label>
+              <Input
+                type="number"
+                value={stockAdjustQty}
+                onChange={(e) => setStockAdjustQty(e.target.value)}
+                min="0"
+              />
+            </div>
+            <div className="flex gap-2">
+              {["+10", "+50", "+100", "-10", "Reset"].map(btn => (
+                <Button key={btn} variant="outline" size="sm" onClick={() => {
+                  if (btn === 'Reset') setStockAdjustQty(String(stockAdjustProduct?.stockQty || 0))
+                  else setStockAdjustQty(String(Math.max(0, parseInt(stockAdjustQty || '0') + parseInt(btn))))
+                }}>{btn}</Button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockAdjustProduct(null)}>Annuler</Button>
+            <Button onClick={handleStockAdjust} disabled={stockAdjustLoading}>
+              {stockAdjustLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1476,12 +1555,20 @@ function OrdersSection() {
 
       {/* Order Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-printable>
           {orderDetail && (
             <>
               <DialogHeader>
-                <DialogTitle>Commande {orderDetail.orderNumber}</DialogTitle>
-                <DialogDescription>Créée le {formatDate(orderDetail.createdAt)}</DialogDescription>
+                <div className="flex items-center justify-between pr-6">
+                  <div>
+                    <DialogTitle>Commande {orderDetail.orderNumber}</DialogTitle>
+                    <DialogDescription>Créée le {formatDate(orderDetail.createdAt)}</DialogDescription>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+                    <Printer className="w-4 h-4" />
+                    Imprimer
+                  </Button>
+                </div>
               </DialogHeader>
               <div className="space-y-4">
                 {/* Customer info */}
@@ -2157,6 +2244,44 @@ function SettingsSection() {
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [creatingAdmin, setCreatingAdmin] = useState(false)
 
+  // Password change state
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [changingPw, setChangingPw] = useState(false)
+
+  const handleChangePassword = async () => {
+    if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
+      toast.error('Tous les champs sont requis')
+      return
+    }
+    if (pwForm.newPassword.length < 8) {
+      toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères')
+      return
+    }
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas')
+      return
+    }
+    setChangingPw(true)
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Mot de passe modifié avec succès')
+        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setChangingPw(false)
+    }
+  }
+
   const { data: settings } = useQuery({
     queryKey: ['site-settings'],
     queryFn: () => fetch('/api/site-settings').then(r => r.json()).then(d => d.data as Record<string, string>),
@@ -2359,6 +2484,53 @@ function SettingsSection() {
           </Card>
         </div>
       )}
+
+      {/* Password Change */}
+      <div className="max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>Changer le mot de passe</CardTitle>
+            <CardDescription>Modifiez votre mot de passe de connexion.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Mot de passe actuel</Label>
+                <Input
+                  type="password"
+                  value={pwForm.currentPassword}
+                  onChange={e => setPwForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nouveau mot de passe (min. 8 caractères)</Label>
+                <Input
+                  type="password"
+                  value={pwForm.newPassword}
+                  onChange={e => setPwForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  placeholder="Minimum 8 caractères"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Confirmer le nouveau mot de passe</Label>
+                <Input
+                  type="password"
+                  value={pwForm.confirmPassword}
+                  onChange={e => setPwForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Retapez le nouveau mot de passe"
+                />
+              </div>
+              <div className="pt-2">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleChangePassword} disabled={changingPw}>
+                  {changingPw ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Changer
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Add Admin Dialog */}
       <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
