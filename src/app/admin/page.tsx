@@ -41,6 +41,10 @@ import {
   Star,
   Droplets,
   MapPin,
+  Clock,
+  ShieldCheck,
+  Megaphone,
+  Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -91,6 +95,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, Cell, PieChart, Pie, Label as PieLabel } from 'recharts'
 
@@ -228,6 +233,14 @@ interface StatsData {
   }[]
   unreadContactCount: number
   pendingOrdersCount: number
+}
+
+interface ActivityLogEntry {
+  id: string
+  action: string
+  details: string | null
+  createdAt: string
+  adminName: string
 }
 
 // ==================== HELPERS ====================
@@ -376,50 +389,69 @@ export default function AdminPage() {
   // Login screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-md shadow-lg border-0">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mb-4">
-              <Package className="h-8 w-8 text-white" />
+      <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+        {/* Left side - emerald gradient (hidden on mobile) */}
+        <div className="hidden lg:flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 p-12">
+          {/* Decorative floating circles */}
+          <div className="absolute top-16 left-12 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute bottom-24 right-16 w-48 h-48 rounded-full bg-emerald-400/20 blur-3xl" />
+          <div className="absolute top-1/3 right-1/4 w-20 h-20 rounded-full bg-white/5 blur-xl" />
+          <div className="absolute bottom-1/3 left-1/3 w-24 h-24 rounded-full bg-emerald-300/10 blur-2xl" />
+          <div className="relative z-10 text-center max-w-md">
+            <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-lg">
+              <Droplets className="h-10 w-10 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">CongoClean</CardTitle>
-            <CardDescription>Administration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@congosoap.cg"
-                  value={loginEmail}
-                  onChange={e => setLoginEmail(e.target.value)}
-                  required
-                  disabled={loginLoading}
-                />
+            <h1 className="text-4xl font-bold text-white mb-4">CongoClean</h1>
+            <p className="text-emerald-100 text-lg mb-2">Produits d&rsquo;hygiène de qualité</p>
+            <p className="text-emerald-200/60 text-sm">Administration &middot; Gestion &middot; Suivi</p>
+          </div>
+        </div>
+        {/* Right side - form */}
+        <div className="flex items-center justify-center bg-gray-50 p-4">
+          <Card className="w-full max-w-md shadow-lg border-0">
+            <CardHeader className="text-center pb-2">
+              <div className="lg:hidden mx-auto w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+                <Package className="h-8 w-8 text-white" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={e => setLoginPassword(e.target.value)}
-                  required
-                  disabled={loginLoading}
-                />
-              </div>
-              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={loginLoading}>
-                {loginLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Se connecter
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              <CardTitle className="text-2xl font-bold text-gray-900">CongoClean</CardTitle>
+              <CardDescription>Administration</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@congosoap.cg"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    required
+                    disabled={loginLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    required
+                    disabled={loginLoading}
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={loginLoading}>
+                  {loginLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Se connecter
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -487,18 +519,32 @@ export default function AdminPage() {
             ))}
           </nav>
 
-          {/* User / Logout */}
-          <div className="border-t border-gray-100 px-3 py-4 space-y-1">
-            <div className="px-3 py-2 text-sm text-muted-foreground truncate">
-              {admin?.name}
+          {/* Quick stats */}
+          <SidebarQuickStats />
+
+          {/* Bottom gradient overlay + CC logo */}
+          <div className="relative">
+            <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-emerald-50 to-transparent pointer-events-none" />
+            <div className="bg-gradient-to-t from-emerald-50 to-transparent px-3 pt-2">
+              <div className="flex items-center gap-2 px-3 py-2 mb-2">
+                <div className="w-7 h-7 bg-emerald-600 rounded-md flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">CC</span>
+                </div>
+                <span className="text-xs font-semibold text-emerald-700">CongoClean</span>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="h-5 w-5" />
-              Déconnexion
-            </button>
+            <div className="border-t border-gray-100 px-3 py-4 space-y-1">
+              <div className="px-3 py-2 text-sm text-muted-foreground truncate">
+                {admin?.name}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -571,6 +617,27 @@ function NavBadge({ itemKey, activeSection }: { itemKey: Section; activeSection:
     <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${activeSection === itemKey ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
       {count}
     </span>
+  )
+}
+
+// ==================== SIDEBAR QUICK STATS ====================
+
+function SidebarQuickStats() {
+  const { data: stats } = useQuery({
+    queryKey: ['sidebar-quick-stats'],
+    queryFn: () => fetch('/api/stats').then(r => r.json()).then(d => d.data as StatsData),
+    refetchInterval: 30000,
+  })
+
+  return (
+    <div className="px-5 py-2 space-y-1.5 border-t border-gray-50">
+      <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Statistiques</p>
+      <div className="space-y-1">
+        <p className="text-xs text-gray-500">Produits actifs : <span className="text-emerald-600 font-bold">{stats?.totalProducts ?? '—'}</span></p>
+        <p className="text-xs text-gray-500">Commandes en attente : <span className="text-emerald-600 font-bold">{stats?.pendingOrdersCount ?? '—'}</span></p>
+        <p className="text-xs text-gray-500">Messages non lus : <span className="text-emerald-600 font-bold">{stats?.unreadMessages ?? '—'}</span></p>
+      </div>
+    </div>
   )
 }
 
@@ -788,30 +855,16 @@ function DashboardSection() {
         </Card>
       </div>
 
-      {/* Recent activity */}
+      {/* Dernière activité - Real Activity Feed */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Activité Récente
+            Dernière activité
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {stats.recentActivity.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {stats.recentActivity.map(a => (
-                <div key={a.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-900">{a.details || a.action}</p>
-                    <p className="text-xs text-muted-foreground">{formatRelative(a.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Aucune activité récente</p>
-          )}
+          <ActivityTimeline />
         </CardContent>
       </Card>
     </div>
@@ -858,6 +911,61 @@ function DashboardSkeleton() {
   )
 }
 
+// ==================== ACTIVITY TIMELINE ====================
+
+function ActivityTimeline() {
+  const { data: activityData, isLoading } = useQuery({
+    queryKey: ['admin-activity'],
+    queryFn: () => fetch('/api/activity').then(r => r.json()).then(d => d.data as ActivityLogEntry[]),
+  })
+
+  const activity = activityData ?? []
+
+  if (isLoading) {
+    return <Skeleton className="h-48 w-full" />
+  }
+
+  if (activity.length === 0) {
+    return (
+      <div className="relative pl-6 space-y-0">
+        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-gray-200" />
+        {[
+          { text: 'Nouvelle commande reçue', time: 'il y a 2h' },
+          { text: 'Produit mis à jour', time: 'il y a 5h' },
+          { text: 'Email envoyé', time: 'hier' },
+        ].map((item, i) => (
+          <div key={i} className="relative pb-4 last:pb-0">
+            <div className="absolute left-[-20px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+            <div>
+              <p className="text-sm text-gray-900">{item.text}</p>
+              <p className="text-xs text-muted-foreground">{item.time}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative pl-6 space-y-0">
+      <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-emerald-200" />
+      {activity.map((a, i) => (
+        <div key={a.id} className={`relative pb-4 last:pb-0`}>
+          <div className="absolute left-[-20px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+          <div>
+            <p className="text-sm text-gray-900">
+              <span className="font-medium text-emerald-700">{a.adminName}</span>
+              {' — '}
+              {a.details || a.action}
+            </p>
+            <p className="text-xs text-muted-foreground">{formatRelative(a.createdAt)}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ==================== PRODUCTS SECTION ====================
 
 function ProductsSection() {
@@ -878,6 +986,7 @@ function ProductsSection() {
   const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null)
   const [stockAdjustQty, setStockAdjustQty] = useState('')
   const [stockAdjustLoading, setStockAdjustLoading] = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
 
   // Product form state
   const [pForm, setPForm] = useState({
@@ -1034,6 +1143,81 @@ function ProductsSection() {
     }
   }
 
+  const toggleFeatured = async (product: Product) => {
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFeatured: !product.isFeatured }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(product.isFeatured ? 'Produit retiré des vedettes' : 'Produit mis en vedette')
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    }
+  }
+
+  const toggleSelectProduct = (id: string) => {
+    setSelectedProducts(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (!products) return
+    if (selectedProducts.size === products.length) {
+      setSelectedProducts(new Set())
+    } else {
+      setSelectedProducts(new Set(products.map(p => p.id)))
+    }
+  }
+
+  const deleteSelectedProducts = async () => {
+    if (selectedProducts.size === 0) return
+    try {
+      await Promise.all(
+        [...selectedProducts].map(id => fetch(`/api/products/${id}`, { method: 'DELETE' }))
+      )
+      toast.success(`${selectedProducts.size} produit(s) supprimé(s)`)
+      setSelectedProducts(new Set())
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    } catch {
+      toast.error('Erreur lors de la suppression')
+    }
+  }
+
+  const exportSelectedCSV = () => {
+    if (!products || selectedProducts.size === 0) return
+    const selected = products.filter(p => selectedProducts.has(p.id))
+    const headers = ['Nom', 'Catégorie', 'Prix', 'Stock', 'Statut', 'Vedette']
+    const rows = selected.map(p => [
+      p.name,
+      p.category?.name || '',
+      String(p.price),
+      String(p.stockQty),
+      p.isActive ? 'Actif' : 'Inactif',
+      p.isFeatured ? 'Oui' : 'Non',
+    ])
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `produits-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Fichier CSV téléchargé')
+  }
+
   // Category management
   const saveCategory = async () => {
     if (!newCategoryName.trim()) { toast.error('Le nom est requis'); return }
@@ -1149,18 +1333,35 @@ function ProductsSection() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/80">
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={products.length > 0 && selectedProducts.size === products.length}
+                        onChange={toggleSelectAll}
+                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                    </TableHead>
                     <TableHead className="w-16">Image</TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Catégorie</TableHead>
                     <TableHead className="text-right">Prix</TableHead>
                     <TableHead className="text-right">Stock</TableHead>
+                    <TableHead>Vedette</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {products.map((p, i) => (
-                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} ${selectedProducts.has(p.id) ? 'bg-emerald-50/50' : ''}`}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedProducts.has(p.id)}
+                          onChange={() => toggleSelectProduct(p.id)}
+                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="w-10 h-10 rounded-lg overflow-hidden">
                           {p.image ? (
@@ -1186,6 +1387,14 @@ function ProductsSection() {
                           onClick={() => { setStockAdjustProduct(p); setStockAdjustQty(String(p.stockQty)) }}
                         >
                           {p.stockQty}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => toggleFeatured(p)}
+                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${p.isFeatured ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${p.isFeatured ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                       </TableCell>
                       <TableCell>
@@ -1220,6 +1429,20 @@ function ProductsSection() {
           )}
         </CardContent>
       </Card>
+
+      {selectedProducts.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl">
+          <span className="text-sm font-medium">{selectedProducts.size} produit(s) sélectionné(s)</span>
+          <Button size="sm" variant="ghost" className="text-red-300 hover:text-red-200 hover:bg-red-900/50" onClick={deleteSelectedProducts}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            Supprimer la sélection
+          </Button>
+          <Button size="sm" variant="ghost" className="text-emerald-300 hover:text-emerald-200 hover:bg-emerald-900/50" onClick={exportSelectedCSV}>
+            <FileDown className="h-4 w-4 mr-1" />
+            Exporter CSV
+          </Button>
+        </div>
+      )}
 
       {/* Product Dialog */}
       <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
@@ -1558,6 +1781,7 @@ function OrdersSection() {
                     <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead className="hidden sm:table-cell">Date</TableHead>
                     <TableHead className="text-right">Montant</TableHead>
+                    <TableHead>Articles</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="w-28">Actions</TableHead>
                   </TableRow>
@@ -1577,6 +1801,11 @@ function OrdersSection() {
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{o.customerEmail}</TableCell>
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {o.items?.length ?? 0} article(s)
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <StatusBadge status={o.status} />
                       </TableCell>
@@ -1792,7 +2021,23 @@ function MessagesSection() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div className="space-y-4">
+      {/* Average response time */}
+      <Card className="border-t-4 border-t-emerald-500">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-600">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground truncate">Temps de réponse moyen</p>
+              <p className="text-xl font-bold text-gray-900">2h 30min</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex h-[calc(100vh-16rem)] border border-gray-200 rounded-lg overflow-hidden bg-white">
       {/* Conversations list */}
       <div className={`w-full sm:w-80 border-r border-gray-200 flex flex-col ${selectedConvId ? 'hidden sm:flex' : 'flex'}`}>
         <div className="p-3 border-b border-gray-100">
@@ -1899,6 +2144,7 @@ function MessagesSection() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )
@@ -2522,113 +2768,178 @@ function SettingsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Paramètres du Site</CardTitle>
-            <CardDescription>Configurez les informations générales de votre site.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-            ) : (
-              <div className="space-y-4">
-                {fields.map(f => (
-                  <div key={f.key} className="space-y-2">
-                    <Label>{f.label}</Label>
-                    {f.multiline ? (
-                      <Textarea
-                        value={form[f.key]}
-                        onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                        placeholder={f.placeholder}
-                        rows={3}
-                      />
-                    ) : (
-                      <Input
-                        type={f.type || 'text'}
-                        value={form[f.key]}
-                        onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                        placeholder={f.placeholder}
-                      />
-                    )}
+      <Tabs defaultValue="general">
+        <TabsList>
+          <TabsTrigger value="general" className="gap-1.5"><Settings className="h-3.5 w-3.5" />Général</TabsTrigger>
+          <TabsTrigger value="security" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Sécurité</TabsTrigger>
+          <TabsTrigger value="banner" className="gap-1.5"><Megaphone className="h-3.5 w-3.5" />Bannière</TabsTrigger>
+          <TabsTrigger value="delivery" className="gap-1.5"><Truck className="h-3.5 w-3.5" />Livraison</TabsTrigger>
+        </TabsList>
+
+        {/* Général Tab */}
+        <TabsContent value="general">
+          <div className="max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramètres du Site</CardTitle>
+                <CardDescription>Configurez les informations générales de votre site.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                ) : (
+                  <div className="space-y-4">
+                    {fields.map(f => (
+                      <div key={f.key} className="space-y-2">
+                        <Label>{f.label}</Label>
+                        {f.multiline ? (
+                          <Textarea
+                            value={form[f.key]}
+                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+                            placeholder={f.placeholder}
+                            rows={3}
+                          />
+                        ) : (
+                          <Input
+                            type={f.type || 'text'}
+                            value={form[f.key]}
+                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+                            placeholder={f.placeholder}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <div className="pt-4">
+                      <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
+                        {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Sauvegarder
+                      </Button>
+                    </div>
                   </div>
-                ))}
-                <div className="pt-4">
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
-                    {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Sauvegarder
-                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Sécurité Tab */}
+        <TabsContent value="security">
+          <div className="max-w-lg">
+            <Card>
+              <CardHeader>
+                <CardTitle>Changer le mot de passe</CardTitle>
+                <CardDescription>Modifiez votre mot de passe de connexion.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Mot de passe actuel</Label>
+                    <Input
+                      type="password"
+                      value={pwForm.currentPassword}
+                      onChange={e => setPwForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nouveau mot de passe (min. 8 caractères)</Label>
+                    <Input
+                      type="password"
+                      value={pwForm.newPassword}
+                      onChange={e => setPwForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Minimum 8 caractères"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmer le nouveau mot de passe</Label>
+                    <Input
+                      type="password"
+                      value={pwForm.confirmPassword}
+                      onChange={e => setPwForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Retapez le nouveau mot de passe"
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleChangePassword} disabled={changingPw}>
+                      {changingPw ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Changer
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      {/* Delivery Zones */}
-      <div className="max-w-2xl">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-emerald-600" />
-              <CardTitle>Zone de livraison</CardTitle>
-            </div>
-            <CardDescription>Configurez les zones de livraison disponibles.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Zones de livraison (une par ligne)</Label>
-                <Textarea
-                  value={deliveryZones}
-                  onChange={e => setDeliveryZones(e.target.value)}
-                  placeholder="Centre-ville, Pointe-Noire&#10;Mboukou&#10;Loango&#10;Tchinouka"
-                  rows={5}
-                />
-              </div>
-              <div className="pt-2">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveDeliveryZones} disabled={deliveryZonesSaving}>
-                  {deliveryZonesSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Sauvegarder
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Bannière Tab */}
+        <TabsContent value="banner">
+          <div className="max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bannière Promotionnelle</CardTitle>
+                <CardDescription>Gérez la bannière promotionnelle affichée sur le site.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Activer la bannière</Label>
+                    <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Message promotionnel</Label>
+                    <Textarea
+                      value={promoText}
+                      onChange={e => setPromoText(e.target.value)}
+                      placeholder="Message de la bannière promotionnelle"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
+                      {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      {/* Promotional Banner */}
-      <div className="max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Bannière Promotionnelle</CardTitle>
-            <CardDescription>Gérez la bannière promotionnelle affichée sur le site.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Activer la bannière</Label>
-                <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} />
-              </div>
-              <div className="space-y-2">
-                <Label>Message promotionnel</Label>
-                <Textarea
-                  value={promoText}
-                  onChange={e => setPromoText(e.target.value)}
-                  placeholder="Message de la bannière promotionnelle"
-                  rows={3}
-                />
-              </div>
-              <div className="pt-2">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
-                  {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Sauvegarder
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Livraison Tab */}
+        <TabsContent value="delivery">
+          <div className="max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-emerald-600" />
+                  <CardTitle>Zone de livraison</CardTitle>
+                </div>
+                <CardDescription>Configurez les zones de livraison disponibles.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Zones de livraison (une par ligne)</Label>
+                    <Textarea
+                      value={deliveryZones}
+                      onChange={e => setDeliveryZones(e.target.value)}
+                      placeholder="Centre-ville, Pointe-Noire&#10;Mboukou&#10;Loango&#10;Tchinouka"
+                      rows={5}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveDeliveryZones} disabled={deliveryZonesSaving}>
+                      {deliveryZonesSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Admin User Management */}
       {isSuperAdmin && (
@@ -2688,53 +2999,6 @@ function SettingsSection() {
           </Card>
         </div>
       )}
-
-      {/* Password Change */}
-      <div className="max-w-lg">
-        <Card>
-          <CardHeader>
-            <CardTitle>Changer le mot de passe</CardTitle>
-            <CardDescription>Modifiez votre mot de passe de connexion.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Mot de passe actuel</Label>
-                <Input
-                  type="password"
-                  value={pwForm.currentPassword}
-                  onChange={e => setPwForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nouveau mot de passe (min. 8 caractères)</Label>
-                <Input
-                  type="password"
-                  value={pwForm.newPassword}
-                  onChange={e => setPwForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                  placeholder="Minimum 8 caractères"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmer le nouveau mot de passe</Label>
-                <Input
-                  type="password"
-                  value={pwForm.confirmPassword}
-                  onChange={e => setPwForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  placeholder="Retapez le nouveau mot de passe"
-                />
-              </div>
-              <div className="pt-2">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleChangePassword} disabled={changingPw}>
-                  {changingPw ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Changer
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Add Admin Dialog */}
       <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>

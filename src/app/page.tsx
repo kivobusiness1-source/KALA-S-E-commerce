@@ -33,6 +33,8 @@ import {
   CheckCircle,
   Clock,
   ClipboardList,
+  Check,
+  Cookie,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -215,6 +217,51 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   return <span ref={ref}>{count}{suffix}</span>
 }
 
+// ==================== TYPING EFFECT ====================
+
+function TypingEffect({ phrases }: { phrases: string[] }) {
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0)
+  const [currentText, setCurrentText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    const phrase = phrases[currentPhraseIndex]
+    if (!isDeleting) {
+      if (currentText.length < phrase.length) {
+        const timeout = setTimeout(() => {
+          setCurrentText(phrase.slice(0, currentText.length + 1))
+        }, 50)
+        return () => clearTimeout(timeout)
+      } else {
+        const timeout = setTimeout(() => {
+          setIsDeleting(true)
+        }, 2000)
+        return () => clearTimeout(timeout)
+      }
+    } else {
+      if (currentText.length > 0) {
+        const timeout = setTimeout(() => {
+          setCurrentText(currentText.slice(0, -1))
+        }, 50)
+        return () => clearTimeout(timeout)
+      } else {
+        const timeout = setTimeout(() => {
+          setIsDeleting(false)
+          setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length)
+        }, 50)
+        return () => clearTimeout(timeout)
+      }
+    }
+  }, [currentText, isDeleting, currentPhraseIndex, phrases])
+
+  return (
+    <span className="text-emerald-300 font-bold text-xl">
+      {currentText}
+      <span className="animate-pulse">|</span>
+    </span>
+  )
+}
+
 // ==================== ANIMATED SECTION WRAPPER ====================
 
 function FadeInSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -249,6 +296,25 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null)
+
+  // Quick add feedback
+  const [quickAddedId, setQuickAddedId] = useState<string | null>(null)
+
+  // Testimonial auto-rotation
+  const [activeTestimonial, setActiveTestimonial] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Newsletter success
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false)
+
+  // Scroll progress
+  const [scrollProgress, setScrollProgress] = useState(0)
+
+  // Recently viewed
+  const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([])
+
+  // Cookie consent
+  const [cookieConsentVisible, setCookieConsentVisible] = useState(false)
 
   // Products state
   const [activeCategory, setActiveCategory] = useState('all')
@@ -309,9 +375,41 @@ export default function Home() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20)
       setShowBackToTop(window.scrollY > 400)
+      // Scroll progress
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (docHeight > 0) {
+        setScrollProgress(Math.min(window.scrollY / docHeight, 1))
+      }
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Mobile detection for testimonials
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Testimonial auto-rotation on mobile
+  useEffect(() => {
+    if (!isMobile) return
+    const interval = setInterval(() => {
+      setActiveTestimonial((prev) => (prev + 1) % 3)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [isMobile])
+
+  // Cookie consent check
+  useEffect(() => {
+    const consent = localStorage.getItem('congoclean_cookie_consent')
+    if (!consent) {
+      setCookieConsentVisible(true)
+    }
   }, [])
 
   // Fetch site settings for promo banner
@@ -404,6 +502,11 @@ export default function Home() {
       fetchReviews(selectedProduct.id)
       setShowReviewForm(false)
       setReviewForm({ customerName: '', rating: 5, comment: '' })
+      // Add to recently viewed
+      setRecentlyViewed((prev) => {
+        const filtered = prev.filter((p) => p.id !== selectedProduct.id)
+        return [selectedProduct, ...filtered].slice(0, 5)
+      })
     }
   }, [selectedProduct])
 
@@ -417,6 +520,13 @@ export default function Home() {
       volume: product.volume,
     })
     toast.success(`${product.name} ajouté au panier`)
+  }
+
+  // Quick add handler (click on card)
+  const handleQuickAdd = (product: ProductType) => {
+    handleAddToCart(product)
+    setQuickAddedId(product.id)
+    setTimeout(() => setQuickAddedId(null), 800)
   }
 
   // Contact form submit
@@ -461,8 +571,9 @@ export default function Home() {
         body: JSON.stringify({ email: newsletterEmail }),
       })
       if (res.ok) {
-        toast.success('Inscription réussie !')
+        setNewsletterSuccess(true)
         setNewsletterEmail('')
+        setTimeout(() => setNewsletterSuccess(false), 3000)
       } else {
         toast.error('Erreur lors de l\'inscription')
       }
@@ -708,15 +819,17 @@ export default function Home() {
 
       {/* Mobile Menu Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-72">
+        <SheetContent side="left" className="w-72 flex flex-col">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2 text-emerald-700">
-              <Droplets className="w-5 h-5" />
-              CongoClean
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+                <Droplets className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">CongoClean</span>
             </SheetTitle>
             <SheetDescription>Navigation</SheetDescription>
           </SheetHeader>
-          <div className="flex flex-col gap-1 mt-4">
+          <div className="flex flex-col gap-1 mt-4 flex-1">
             {[
               { label: 'Accueil', id: 'hero' },
               { label: 'Produits', id: 'products' },
@@ -731,6 +844,28 @@ export default function Home() {
                 {link.label}
               </button>
             ))}
+          </div>
+          {/* Social media icons */}
+          <div className="flex items-center gap-2 px-4 pt-4 border-t border-gray-100">
+            <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+            <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="#" aria-label="Twitter" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+          </div>
+          {/* Contacter button */}
+          <div className="px-4 pt-3">
+            <Button
+              onClick={() => scrollToSection('contact')}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              Contacter
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -761,10 +896,13 @@ export default function Home() {
             <Star className="w-3.5 h-3.5 mr-1.5" />
             Qualité Industrielle depuis Pointe-Noire
           </Badge>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
             Produits d&rsquo;Hygiène Fabriqués au{' '}
             <span className="text-emerald-300">Congo-Brazzaville</span>
           </h1>
+          <div className="mb-8 h-8">
+            <TypingEffect phrases={['Qualité Industrielle', 'Fabrication Locale', 'Livraison Rapide']} />
+          </div>
           <p className="text-lg sm:text-xl text-emerald-100/90 mb-8 leading-relaxed max-w-xl">
             Savon liquide, détergent et eau de Javel de qualité industrielle. Fabriqué avec fierté à Pointe-Noire.
           </p>
@@ -797,10 +935,10 @@ export default function Home() {
   // ==================== FEATURES BAR ====================
 
   const features = [
-    { icon: Shield, title: 'Qualité Garantie', desc: 'Normes industrielles strictes' },
-    { icon: MapPin, title: 'Fabrication Locale', desc: '100% fabriqué à Pointe-Noire' },
-    { icon: Truck, title: 'Livraison Rapide', desc: 'Sur toute la ville' },
-    { icon: Phone, title: 'Support 24/7', desc: 'Toujours à votre écoute' },
+    { icon: Shield, title: 'Qualité Garantie', desc: 'Normes industrielles strictes', target: 500, suffix: '+' },
+    { icon: MapPin, title: 'Fabrication Locale', desc: '100% fabriqué à Pointe-Noire', target: 3, suffix: '+' },
+    { icon: Truck, title: 'Livraison Rapide', desc: 'Sur toute la ville', target: 48, suffix: 'h' },
+    { icon: Phone, title: 'Support 24/7', desc: 'Toujours à votre écoute', target: 7, suffix: 'j/7' },
   ]
 
   const FeaturesBar = (
@@ -815,7 +953,10 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{f.title}</h3>
-                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5">{f.desc}</p>
+                  <p className="text-xl font-bold text-emerald-700 mt-0.5">
+                    <AnimatedCounter target={f.target} suffix={f.suffix} />
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5">{f.desc}</p>
                 </div>
               </div>
             </FadeInSection>
@@ -948,7 +1089,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
-                  <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer border-t-4 border-t-transparent hover:border-t-emerald-500">
+                  <Card className={`overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer border-t-4 border-t-transparent hover:border-t-emerald-500 ${quickAddedId === product.id ? 'ring-2 ring-emerald-400 ring-offset-2' : ''}`} onClick={() => handleQuickAdd(product)}>
                     {/* Product Image */}
                     <div className="relative h-48 bg-gray-100 overflow-hidden group/img">
                       {product.image ? (
@@ -964,7 +1105,7 @@ export default function Home() {
                       )}
                       <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors" />
                       <button
-                        onClick={() => setSelectedProduct(product)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
                         className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                         aria-label="Voir les détails"
                       >
@@ -1006,7 +1147,7 @@ export default function Home() {
                         </Badge>
                       )}
                       <h3
-                        onClick={() => setSelectedProduct(product)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
                         className="font-semibold text-gray-900 text-base mb-1 line-clamp-2 cursor-pointer hover:text-emerald-700 transition-colors"
                       >
                         {product.name}
@@ -1029,7 +1170,7 @@ export default function Home() {
                       </div>
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => setSelectedProduct(product)}
+                          onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
                           variant="outline"
                           size="icon"
                           className="shrink-0 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200"
@@ -1038,7 +1179,7 @@ export default function Home() {
                           <Eye className="w-4 h-4" />
                         </Button>
                         <Button
-                          onClick={() => handleAddToCart(product)}
+                          onClick={(e) => { e.stopPropagation(); handleAddToCart(product) }}
                           className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
                         >
                           <Plus className="w-4 h-4 mr-2" />
@@ -1163,7 +1304,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
             <FadeInSection key={i}>
-              <Card className="p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300 border-l-4 border-emerald-400">
+              <Card className={`p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300 border-l-4 border-emerald-400 ${isMobile && activeTestimonial !== i ? 'hidden' : ''}`}>
                 <CardContent className="p-0 flex flex-col flex-1">
                   <div className="mb-4">
                     <Quote className="w-8 h-8 text-emerald-200" />
@@ -1188,6 +1329,17 @@ export default function Home() {
                 </CardContent>
               </Card>
             </FadeInSection>
+          ))}
+        </div>
+        {/* Navigation dots (mobile) */}
+        <div className="flex justify-center gap-2 mt-6 md:hidden">
+          {testimonials.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveTestimonial(i)}
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeTestimonial === i ? 'bg-emerald-600 w-6' : 'bg-gray-300'}`}
+              aria-label={`Témoignage ${i + 1}`}
+            />
           ))}
         </div>
       </div>
@@ -1463,24 +1615,49 @@ export default function Home() {
               Inscrivez-vous pour recevoir nos offres spéciales et nouveautés
             </p>
             <div className="w-16 h-1 bg-gradient-to-r from-white/80 to-white/40 rounded-full mx-auto mt-4" />
-            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-8">
-              <Input
-                type="email"
-                placeholder="Votre adresse email"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                required
-                className="bg-white/10 border-white/20 text-white placeholder:text-emerald-200 focus:border-white focus:ring-white/20"
-              />
-              <Button
-                type="submit"
-                disabled={newsletterLoading}
-                className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8"
-              >
-                {newsletterLoading ? '...' : 'S\'abonner'}
-                <Send className="w-4 h-4 ml-2" />
-              </Button>
-            </form>
+            <AnimatePresence mode="wait">
+              {newsletterSuccess ? (
+                <motion.div
+                  key="success"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 180 }}
+                  transition={{ duration: 0.5, type: 'spring' }}
+                  className="flex flex-col items-center gap-4 mt-8"
+                >
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                    <Check className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <p className="text-white font-semibold text-lg">Merci pour votre inscription !</p>
+                </motion.div>
+              ) : (
+                <motion.form
+                  key="form"
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handleNewsletterSubmit}
+                  className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-8"
+                >
+                  <Input
+                    type="email"
+                    placeholder="Votre adresse email"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/20 text-white placeholder:text-emerald-200 focus:border-white focus:ring-white/20"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={newsletterLoading}
+                    className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8"
+                  >
+                    {newsletterLoading ? '...' : 'S\'abonner'}
+                    <Send className="w-4 h-4 ml-2" />
+                  </Button>
+                </motion.form>
+              )}
+            </AnimatePresence>
           </div>
         </FadeInSection>
       </div>
@@ -1789,6 +1966,25 @@ export default function Home() {
             </SheetTitle>
             <SheetDescription>Vos produits sélectionnés</SheetDescription>
           </SheetHeader>
+
+          {/* Free delivery progress bar */}
+          {cart.items.length > 0 && (
+            <div className="px-4 pb-2">
+              <div className="bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((cart.totalPrice() / 25000) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                {cart.totalPrice() >= 25000 ? (
+                  <span className="text-emerald-600 font-medium">Livraison gratuite !</span>
+                ) : (
+                  <>Plus que <span className="font-semibold text-emerald-700">{(25000 - cart.totalPrice()).toLocaleString('fr-FR')} FCFA</span> pour la livraison gratuite !</>
+                )}
+              </p>
+            </div>
+          )}
 
           {cart.items.length === 0 ? (
             <div className="flex-1 flex items-center justify-center p-6">
@@ -2120,6 +2316,42 @@ export default function Home() {
     </>
   )
 
+  // ==================== RECENTLY VIEWED ====================
+
+  const RecentlyViewedSection = recentlyViewed.length > 0 ? (
+    <section className="py-10 bg-white border-t border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Récemment consultés</h3>
+        <div className="flex gap-4 overflow-x-auto flex-nowrap pb-2">
+          {recentlyViewed.map((product) => {
+            const catSlug = product.category?.slug || ''
+            const gradient = getCategoryColor(catSlug)
+            const initial = getCategoryInitial(catSlug)
+            return (
+              <button
+                key={product.id}
+                onClick={() => setSelectedProduct(product)}
+                className="shrink-0 w-40 group"
+              >
+                <div className="h-24 rounded-lg overflow-hidden bg-gray-100 mb-2">
+                  {product.image ? (
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                  ) : (
+                    <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                      <span className="text-3xl font-bold text-white/30 select-none">{initial}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-gray-900 line-clamp-1 text-left group-hover:text-emerald-700 transition-colors">{product.name}</p>
+                <p className="text-sm text-emerald-700 font-semibold text-left">{formatPrice(product.price)}</p>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  ) : null
+
   // ==================== FOOTER =====================
 
   const Footer = (
@@ -2255,6 +2487,7 @@ export default function Home() {
         {NewsletterSection}
         {ContactSection}
       </main>
+      {RecentlyViewedSection}
       {Footer}
       {CartSheet}
 
@@ -2270,7 +2503,7 @@ export default function Home() {
         <MessageCircle className="w-6 h-6 relative z-10" />
       </a>
 
-      {/* Back to Top Button */}
+      {/* Back to Top Button with Scroll Progress */}
       <AnimatePresence>
         {showBackToTop && (
           <motion.div
@@ -2282,16 +2515,75 @@ export default function Home() {
           >
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="w-11 h-11 bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+              className="w-12 h-12 bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
               aria-label="Retour en haut"
             >
-              <ChevronUp className="w-5 h-5" />
+              <svg className="absolute inset-0 w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                <circle
+                  cx="24" cy="24" r="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-gray-200"
+                />
+                <circle
+                  cx="24" cy="24" r="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className="text-emerald-500"
+                  strokeDasharray={`${2 * Math.PI * 20}`}
+                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - scrollProgress)}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <ChevronUp className="w-5 h-5 relative z-10" />
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
       {ChatWidget}
+
+      {/* Cookie Consent Banner */}
+      <AnimatePresence>
+        {cookieConsentVisible && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.1)] border-t border-gray-200"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Cookie className="w-6 h-6 text-emerald-600 shrink-0" />
+                <p className="text-sm text-gray-700">Nous utilisons des cookies pour améliorer votre expérience.</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    localStorage.setItem('congoclean_cookie_consent', 'rejected')
+                    setCookieConsentVisible(false)
+                  }}
+                  className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 transition-colors"
+                >
+                  Refuser
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('congoclean_cookie_consent', 'accepted')
+                    setCookieConsentVisible(false)
+                  }}
+                  className="text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Accepter
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
