@@ -145,40 +145,33 @@ Stage Summary:
 
 ---
 
-## Current Project Status (Updated 2026-08-27 Round 2)
+## Current Project Status (Updated 2026-08-27 Round 3)
 
 ### Current Status Assessment
-The application is stable and fully functional. This round focused on QA testing, bug fixes, and significant feature additions. The codebase is clean (zero ESLint errors) and all features have been verified end-to-end with agent-browser testing.
+The application is highly polished and feature-rich. Round 3 focused on the #1 visual gap (product images), admin power features, and additional storefront sections. The site now has real AI-generated product photography, an image upload system, admin user management, animated counters, and a "How to Order" trust section. Codebase remains clean (zero ESLint errors).
 
 ### Completed This Round
-- **BUG FIX**: Category filtering was broken (tabs sent slug instead of category ID to API). Fixed by dynamically building category tabs from API response using category IDs.
-- **NEW**: Testimonials section with 3 customer reviews and gold star ratings
-- **NEW**: Product detail modal (click product name or Eye icon to see full description, stock status, pricing)
-- **NEW**: WhatsApp floating button (green circle, links to wa.me/242061234567)
-- **NEW**: Back-to-top button (animated, appears on scroll > 400px)
-- **NEW**: Footer social media links (Facebook, Instagram, Twitter)
-- **NEW**: Product card hover effects (lift animation, Eye icon overlay)
-- **NEW**: Admin Contact Submissions section (view, mark read, delete contact form submissions)
-- **NEW**: Admin dashboard PieChart for category distribution
-- **NEW**: Admin order CSV export
-- **NEW**: Admin sidebar notification badges (Messages, Contact, Orders pending counts)
-- **QA VERIFIED**: Full end-to-end order flow (add to cart → checkout → appears in admin)
-- **QA VERIFIED**: Category filtering, search, newsletter API, contact API
-- **QA VERIFIED**: Admin dashboard, orders management, contact submissions
+- **AI PRODUCT IMAGES**: Generated 9 professional product photos using z-ai image generation (savon 1L/5L/10L, detergent 500g/1L/5L, javel 1L/5L/20L)
+- **UPDATED DB**: All 9 products now have image paths pointing to /products/*.png
+- **REAL IMAGES**: Product cards and detail modal now show real photos with zoom-on-hover, falling back to gradient placeholders
+- **IMAGE UPLOAD API**: Created /api/upload (POST, admin auth, validates jpeg/png/webp, max 5MB, saves to /public/uploads/)
+- **ADMIN IMAGE UPLOAD**: Product create/edit dialogs now have file upload with preview
+- **ADMIN USER MANAGEMENT**: Settings section now shows admin users table + "Ajouter" dialog (super_admin only)
+- **ADMIN USERS API**: Created /api/admin/users (GET list, POST create, super_admin only)
+- **ANIMATED COUNTERS**: About section stats (500+ clients, 3+ categories, 100% Congolaise) now animate when scrolled into view
+- **HERO POLISH**: Added bottom gradient shimmer, 3 decorative floating blurred circles with staggered pulse animations, enhanced badge styling
+- **HOW TO ORDER SECTION**: New 3-step process section (Choisissez → Passez commande → Recevez livraison) with numbered circles and connecting line
+- **QA VERIFIED**: All features tested via agent-browser, upload API tested via curl
 
 ### What's Working
-- ✅ Public storefront: hero, features, products (filter/search), about, testimonials, newsletter, contact, chat widget
+- ✅ Public storefront (12 sections): hero, features, how-to-order, products (real images + filter/search + detail modal), about (animated counters), testimonials, newsletter, contact, chat widget
 - ✅ Shopping cart with checkout/order placement
-- ✅ Product detail modal with full descriptions
 - ✅ WhatsApp floating button + back-to-top button
 - ✅ Footer with social media links
-- ✅ Admin panel at /admin (login, dashboard, products, orders, messages, contact, emails, settings)
-- ✅ Admin contact submissions management
-- ✅ Admin dashboard with 2 charts (orders by status + category pie chart)
-- ✅ Admin order CSV export
-- ✅ Admin sidebar notification badges
-- ✅ 17 API routes with auth, validation, rate limiting
-- ✅ Database: 9 products, 3 categories, 1 test order, 1 contact submission, 4 email subscribers
+- ✅ Admin panel at /admin (9 sections): login, dashboard, products (with image upload), orders (with CSV export), messages, contact, emails, settings (with admin user management)
+- ✅ Admin dashboard with 2 charts + notification badges
+- ✅ 19 API routes with auth, validation, rate limiting
+- ✅ Database: 9 products with real images, 3 categories, test orders, contact submissions, email subscribers
 - ✅ Responsive design (mobile-first)
 - ✅ ESLint clean (zero errors)
 
@@ -188,38 +181,34 @@ The application is stable and fully functional. This round focused on QA testing
 - Password: Admin@2024!
 
 ### Known Issues / Risks
-1. **Product images**: Currently using colored gradient placeholders with initials. No real product photos uploaded yet.
-2. **Back-to-top button**: Present in code but only visible on scroll (confirmed working via code review).
-3. **WhatsApp/Chat overlap**: Both floating buttons are at bottom-right; they're positioned with different bottom offsets but could overlap on very small screens.
-4. **No email sending**: Contact form and newsletter only store data in DB - no actual email sending implemented.
-5. **Single admin user**: Only one admin seeded; no UI to create additional admins.
+1. **No email sending**: Contact form and newsletter only store data in DB - no actual email sending implemented.
+2. **WhatsApp/Chat overlap**: Both floating buttons at bottom-right could overlap on very small screens.
+3. **No payment integration**: Orders are placed without online payment (cash on delivery model).
+4. **Single admin password change**: No UI to change own password.
 
 ### Priority Recommendations for Next Phase
-1. **HIGH**: Add product image upload to admin (replace gradient placeholders with real photos)
-2. **HIGH**: Add AI-generated product images for better visual appeal
-3. **MEDIUM**: Implement real email notifications for orders and contact forms
-4. **MEDIUM**: Add multi-admin user management in admin settings
-5. **MEDIUM**: Add order print/PDF generation (beyond CSV export)
-6. **MEDIUM**: Add delivery zone management and delivery fee calculation
-7. **LOW**: Add multi-language support (French/Lingala)
-8. **LOW**: Add customer loyalty/discount program
-9. **LOW**: Add promotional banner management in admin
-10. **LOW**: Add inventory history/audit trail
+1. **MEDIUM**: Implement real email notifications for orders and contact forms
+2. **MEDIUM**: Add order print/PDF generation (beyond CSV export)
+3. **MEDIUM**: Add delivery zone management and delivery fee calculation
+4. **LOW**: Add multi-language support (French/Lingala)
+5. **LOW**: Add customer loyalty/discount program
+6. **LOW**: Add promotional banner management in admin
+7. **LOW**: Add inventory history/audit trail
 
 ---
 ## Original Potential Improvements (Tracking)
-1. ~~Add product image upload~~ (still needed - uses placeholders)
-2. ~~Add WhatsApp integration~~ ✅ DONE
+1. ~~Add product image upload~~ ✅ DONE (Round 3)
+2. ~~Add WhatsApp integration~~ ✅ DONE (Round 2)
 3. Implement order status email notifications
-4. ~~Add a product detail modal/page with full description~~ ✅ DONE
+4. ~~Add a product detail modal/page with full description~~ ✅ DONE (Round 2)
 5. Add delivery tracking system
 6. Add payment integration
 7. Add multi-language support (French/Lingala)
 8. Add product reviews/ratings
 9. Add customer loyalty program
-10. ~~Add analytics dashboard with charts~~ ✅ DONE (basic)
-11. Improve product images with AI-generated product visuals
-12. ~~Add order export to CSV/PDF~~ ✅ CSV DONE
+10. ~~Add analytics dashboard with charts~~ ✅ DONE (Round 2)
+11. ~~Improve product images with AI-generated product visuals~~ ✅ DONE (Round 3)
+12. ~~Add order export to CSV/PDF~~ ✅ CSV DONE (Round 2)
 13. Add inventory history tracking
 14. Add customer segmentation
 15. Add promotional banner management in admin
@@ -266,3 +255,47 @@ Stage Summary:
 - 4 new admin features added
 - Admin page grew to ~2200 lines
 - All existing sections still work, zero lint errors
+
+---
+Task ID: r3-storefront
+Agent: storefront-polish
+Task: Update product cards to use real images, add animated counters, improve hero
+
+Work Log:
+- Updated product card image area: replaced static gradient placeholder with conditional rendering (real `<img>` if `product.image` exists, gradient fallback otherwise)
+- Added `group/img` naming for image-specific hover effects (scale on hover for real images, subtle dark overlay)
+- Updated product detail modal image area with same real-image/fallback pattern
+- Added `AnimatedCounter` component before main Home component: uses `useState`, `useRef`, `useInView` (framer-motion), animates from 0 to target over 2s
+- Updated About section stats array: changed from string values (`'+500'`, `'+3'`, `'Qualité'`, `'100%'`) to numeric values with suffix and optional textValue
+- Updated stats rendering to use `<AnimatedCounter>` for values > 0, textValue for non-numeric stats
+- Added bottom gradient shimmer overlay to hero section (`bg-gradient-to-t from-emerald-950/50`)
+- Added 3 decorative floating bubbles/circles in hero (emerald/teal with blur, pulse animation, staggered delays)
+- Made hero badge more prominent: `bg-emerald-500/25 backdrop-blur-sm`
+- Ran ESLint: zero errors
+
+Stage Summary:
+- Product cards and detail modal now support real images with gradient fallback
+- About section stats animate when scrolled into view
+- Hero section has enhanced visual depth with gradient overlay and decorative elements
+- All existing functionality preserved, zero lint errors
+
+---
+Task ID: r3-admin
+Agent: admin-features
+Task: Add image upload, product image management, admin user management
+
+Work Log:
+- Created /public/uploads/ directory for uploaded images
+- Created /src/app/api/upload/route.ts: POST endpoint for image upload (admin auth, validates jpeg/png/webp, max 5MB, saves to public/uploads with unique filename)
+- Added image upload field to admin product create/edit dialog: file input with preview, X button to remove, uploading state indicator
+- Added `image: editingProduct?.image || null` to product save body so image is persisted on create/update
+- Created /src/app/api/admin/users/route.ts: GET lists all admins (excludes password), POST creates new admin (super_admin only, Zod validated)
+- Expanded SettingsSection with admin user management: table of admins (Email, Nom, Rôle, Date), "Ajouter" dialog with name/email/password/confirm, only visible to super_admin
+- Product table image column already had conditional rendering from r3-storefront task
+- Ran ESLint: zero errors
+
+Stage Summary:
+- 3 new features: image upload API, product image upload in admin, admin user management
+- Admin page grew from ~2200 to ~2418 lines
+- 2 new API routes (/api/upload, /api/admin/users)
+- All existing functionality preserved, zero lint errors

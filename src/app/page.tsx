@@ -125,6 +125,33 @@ function getCategoryInitial(slug: string): string {
   }
 }
 
+// ==================== ANIMATED COUNTER ====================
+
+function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0)
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true })
+
+  useEffect(() => {
+    if (!isInView) return
+    let start = 0
+    const duration = 2000
+    const step = target / (duration / 16)
+    const timer = setInterval(() => {
+      start += step
+      if (start >= target) {
+        setCount(target)
+        clearInterval(timer)
+      } else {
+        setCount(Math.floor(start))
+      }
+    }, 16)
+    return () => clearInterval(timer)
+  }, [isInView, target])
+
+  return <span ref={ref}>{count}{suffix}</span>
+}
+
 // ==================== ANIMATED SECTION WRAPPER ====================
 
 function FadeInSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -519,7 +546,12 @@ export default function Home() {
       <div className="absolute inset-0">
         <img src="/hero-banner.png" alt="CongoClean" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/85 via-emerald-800/70 to-emerald-700/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/50 via-transparent to-transparent" />
       </div>
+      {/* Decorative elements */}
+      <div className="absolute top-20 right-20 w-32 h-32 bg-emerald-400/10 rounded-full blur-2xl animate-pulse" />
+      <div className="absolute bottom-20 right-40 w-48 h-48 bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-40 left-1/3 w-24 h-24 bg-emerald-300/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -527,7 +559,7 @@ export default function Home() {
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <Badge className="mb-6 bg-emerald-500/20 text-emerald-200 border-emerald-400/30 px-4 py-1.5 text-sm font-medium">
+          <Badge className="mb-6 bg-emerald-500/25 backdrop-blur-sm text-emerald-200 border-emerald-400/30 px-4 py-1.5 text-sm font-medium">
             <Star className="w-3.5 h-3.5 mr-1.5" />
             Qualité Industrielle depuis Pointe-Noire
           </Badge>
@@ -585,6 +617,44 @@ export default function Home() {
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{f.title}</h3>
                   <p className="text-gray-500 text-xs sm:text-sm mt-0.5">{f.desc}</p>
                 </div>
+              </div>
+            </FadeInSection>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+
+  // ==================== HOW TO ORDER SECTION ====================
+
+  const steps = [
+    { step: '01', title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaités à votre panier.' },
+    { step: '02', title: 'Passez votre commande', desc: 'Remplissez vos informations de livraison et confirmez votre commande.' },
+    { step: '03', title: 'Recevez votre livraison', desc: 'Notre équipe vous livre rapidement à Pointe-Noire et environs.' },
+  ]
+
+  const HowToOrderSection = (
+    <section className="py-16 sm:py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <FadeInSection>
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Comment Commander</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              En 3 étapes simples, recevez vos produits chez vous
+            </p>
+          </div>
+        </FadeInSection>
+        <div className="grid md:grid-cols-3 gap-8 relative">
+          {/* Connecting line */}
+          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-emerald-200 via-emerald-400 to-emerald-200" />
+          {steps.map((s, i) => (
+            <FadeInSection key={i}>
+              <div className="relative text-center">
+                <div className="w-24 h-24 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200 relative z-10">
+                  <span className="text-2xl font-bold">{s.step}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{s.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
               </div>
             </FadeInSection>
           ))}
@@ -675,10 +745,20 @@ export default function Home() {
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
                   <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer">
-                    {/* Product Image Placeholder */}
-                    <div className={`relative h-48 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
-                      <span className="text-5xl font-bold text-white/30 select-none">{initial}</span>
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    {/* Product Image */}
+                    <div className="relative h-48 bg-gray-100 overflow-hidden group/img">
+                      {product.image ? (
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" 
+                        />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                          <span className="text-5xl font-bold text-white/30 select-none">{initial}</span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors" />
                       <button
                         onClick={() => setSelectedProduct(product)}
                         className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -778,10 +858,10 @@ export default function Home() {
   // ==================== ABOUT SECTION ====================
 
   const stats = [
-    { icon: Users, value: '+500', label: 'Clients Satisfaits' },
-    { icon: Package, value: '+3', label: 'Catégories' },
-    { icon: Award, value: 'Qualité', label: 'Industrielle' },
-    { icon: MapPin, value: '100%', label: 'Congolaise' },
+    { icon: Users, value: 500, suffix: '+', label: 'Clients Satisfaits' },
+    { icon: Package, value: 3, suffix: '+', label: 'Catégories' },
+    { icon: Award, value: 0, suffix: '', textValue: 'Qualité', label: 'Industrielle' },
+    { icon: MapPin, value: 100, suffix: '%', label: 'Congolaise' },
   ]
 
   const AboutSection = (
@@ -825,7 +905,9 @@ export default function Home() {
                       <stat.icon className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900 text-sm">{stat.value}</p>
+                      <p className="font-bold text-gray-900 text-sm">
+                        {stat.value > 0 ? <AnimatedCounter target={stat.value} suffix={stat.suffix || ''} /> : stat.textValue}
+                      </p>
                       <p className="text-gray-500 text-xs">{stat.label}</p>
                     </div>
                   </div>
@@ -1365,8 +1447,18 @@ export default function Home() {
             <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className={`h-40 rounded-xl bg-gradient-to-br ${selectedProduct ? getCategoryColor(selectedProduct.category?.slug || '') : ''} flex items-center justify-center`}>
-              <span className="text-6xl font-bold text-white/30">{selectedProduct ? getCategoryInitial(selectedProduct.category?.slug || '') : ''}</span>
+            <div className="h-40 rounded-xl bg-gray-100 overflow-hidden">
+              {selectedProduct?.image ? (
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className={`w-full h-full bg-gradient-to-br ${selectedProduct ? getCategoryColor(selectedProduct.category?.slug || '') : ''} flex items-center justify-center`}>
+                  <span className="text-6xl font-bold text-white/30">{selectedProduct ? getCategoryInitial(selectedProduct.category?.slug || '') : ''}</span>
+                </div>
+              )}
             </div>
             <p className="text-gray-600 leading-relaxed">{selectedProduct?.longDescription || selectedProduct?.description || ''}</p>
             <div className="flex items-baseline gap-3">
@@ -1483,6 +1575,7 @@ export default function Home() {
       <main>
         {HeroSection}
         {FeaturesBar}
+        {HowToOrderSection}
         {ProductsSection}
         {AboutSection}
         {TestimonialsSection}

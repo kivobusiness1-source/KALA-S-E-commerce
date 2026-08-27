@@ -812,6 +812,7 @@ function ProductsSection() {
     volume: '', stockQty: '', minStockAlert: '', isFeatured: false, isActive: true,
   })
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products', search, categoryFilter],
@@ -870,6 +871,7 @@ function ProductsSection() {
         minStockAlert: parseInt(pForm.minStockAlert) || 10,
         isFeatured: pForm.isFeatured,
         isActive: pForm.isActive,
+        image: editingProduct?.image || null,
       }
 
       let res: Response
@@ -1122,6 +1124,48 @@ function ProductsSection() {
             <DialogDescription>Remplissez les informations du produit</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Image du produit</Label>
+              <div className="relative group">
+                {editingProduct?.image && (
+                  <div className="mb-3 relative w-full h-40 rounded-lg overflow-hidden bg-gray-100">
+                    <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProduct(prev => prev ? { ...prev, image: null } : prev)
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setUploadingImage(true)
+                    try {
+                      const formData = new FormData()
+                      formData.append('image', file)
+                      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                      if (!res.ok) throw new Error('Upload failed')
+                      const data = await res.json()
+                      setEditingProduct(prev => prev ? { ...prev, image: data.data.url } : prev)
+                    } catch {
+                      toast.error('Erreur lors du téléchargement')
+                    } finally {
+                      setUploadingImage(false)
+                    }
+                  }}
+                  disabled={uploadingImage}
+                />
+                {uploadingImage && <p className="text-xs text-gray-500 mt-1">Téléchargement en cours...</p>}
+              </div>
+            </div>
             <div className="sm:col-span-2 space-y-2">
               <Label>Nom *</Label>
               <Input value={pForm.name} onChange={e => setPForm({ ...pForm, name: e.target.value })} placeholder="Nom du produit" />
@@ -2086,7 +2130,20 @@ function EmailsSection() {
 
 // ==================== SETTINGS SECTION ====================
 
+interface AdminUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  createdAt: string
+}
+
 function SettingsSection() {
+  const queryClient = useQueryClient()
+  const { admin: currentAdmin } = useAdminStore()
+  const isSuperAdmin = currentAdmin?.role === 'super_admin'
+
+  // Site settings state
   const [form, setForm] = useState<Record<string, string>>({
     site_name: '', site_tagline: '', site_description: '',
     contact_phone: '', contact_email: '', contact_address: '',
@@ -2095,9 +2152,20 @@ function SettingsSection() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Admin users state
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false)
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [creatingAdmin, setCreatingAdmin] = useState(false)
+
   const { data: settings } = useQuery({
     queryKey: ['site-settings'],
     queryFn: () => fetch('/api/site-settings').then(r => r.json()).then(d => d.data as Record<string, string>),
+  })
+
+  const { data: admins, isLoading: adminsLoading } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: () => fetch('/api/admin/users').then(r => r.json()).then(d => d.data as AdminUser[]),
+    enabled: isSuperAdmin,
   })
 
   useEffect(() => {
@@ -2140,6 +2208,42 @@ function SettingsSection() {
     }
   }
 
+  const createAdmin = async () => {
+    if (!newAdmin.name || !newAdmin.email || !newAdmin.password) {
+      toast.error('Tous les champs sont requis')
+      return
+    }
+    if (newAdmin.password !== newAdmin.confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas')
+      return
+    }
+    if (newAdmin.password.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères')
+      return
+    }
+    setCreatingAdmin(true)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newAdmin.email, name: newAdmin.name, password: newAdmin.password }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Administrateur créé')
+        setAdminDialogOpen(false)
+        setNewAdmin({ name: '', email: '', password: '', confirmPassword: '' })
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setCreatingAdmin(false)
+    }
+  }
+
   const fields = [
     { key: 'site_name', label: 'Nom du site', placeholder: 'CongoClean' },
     { key: 'site_tagline', label: 'Slogan', placeholder: 'Produits d\'hygiène de qualité' },
@@ -2153,47 +2257,162 @@ function SettingsSection() {
   ]
 
   return (
-    <div className="max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Paramètres du Site</CardTitle>
-          <CardDescription>Configurez les informations générales de votre site.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : (
-            <div className="space-y-4">
-              {fields.map(f => (
-                <div key={f.key} className="space-y-2">
-                  <Label>{f.label}</Label>
-                  {f.multiline ? (
-                    <Textarea
-                      value={form[f.key]}
-                      onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                      placeholder={f.placeholder}
-                      rows={3}
-                    />
-                  ) : (
-                    <Input
-                      type={f.type || 'text'}
-                      value={form[f.key]}
-                      onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                      placeholder={f.placeholder}
-                    />
-                  )}
+    <div className="space-y-6">
+      <div className="max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>Paramètres du Site</CardTitle>
+            <CardDescription>Configurez les informations générales de votre site.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : (
+              <div className="space-y-4">
+                {fields.map(f => (
+                  <div key={f.key} className="space-y-2">
+                    <Label>{f.label}</Label>
+                    {f.multiline ? (
+                      <Textarea
+                        value={form[f.key]}
+                        onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+                        placeholder={f.placeholder}
+                        rows={3}
+                      />
+                    ) : (
+                      <Input
+                        type={f.type || 'text'}
+                        value={form[f.key]}
+                        onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+                        placeholder={f.placeholder}
+                      />
+                    )}
+                  </div>
+                ))}
+                <div className="pt-4">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
+                    {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Sauvegarder
+                  </Button>
                 </div>
-              ))}
-              <div className="pt-4">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
-                  {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Sauvegarder
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Admin User Management */}
+      {isSuperAdmin && (
+        <div className="max-w-3xl">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Gestion des Administrateurs</CardTitle>
+                  <CardDescription>Gérez les comptes administrateurs du site.</CardDescription>
+                </div>
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setAdminDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" />Ajouter
                 </Button>
               </div>
+            </CardHeader>
+            <CardContent>
+              {adminsLoading ? (
+                <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+              ) : admins && admins.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Nom</TableHead>
+                        <TableHead>Rôle</TableHead>
+                        <TableHead className="hidden sm:table-cell">Date de création</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {admins.map(a => (
+                        <TableRow key={a.id}>
+                          <TableCell className="text-sm font-medium">{a.email}</TableCell>
+                          <TableCell className="text-sm">{a.name}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={a.role === 'super_admin' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200'}
+                            >
+                              {a.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(a.createdAt)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm text-muted-foreground">Aucun administrateur trouvé</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Add Admin Dialog */}
+      <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un Administrateur</DialogTitle>
+            <DialogDescription>Créez un nouveau compte administrateur.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nom *</Label>
+              <Input
+                value={newAdmin.name}
+                onChange={e => setNewAdmin(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nom complet"
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={newAdmin.email}
+                onChange={e => setNewAdmin(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="admin@congosoap.cg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Mot de passe *</Label>
+              <Input
+                type="password"
+                value={newAdmin.password}
+                onChange={e => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Minimum 8 caractères"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmer le mot de passe *</Label>
+              <Input
+                type="password"
+                value={newAdmin.confirmPassword}
+                onChange={e => setNewAdmin(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Retapez le mot de passe"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdminDialogOpen(false)}>Annuler</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={createAdmin} disabled={creatingAdmin}>
+              {creatingAdmin ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+              Créer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
