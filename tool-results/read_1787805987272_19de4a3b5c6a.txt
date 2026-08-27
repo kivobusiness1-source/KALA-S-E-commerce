@@ -1,0 +1,902 @@
+  2538→// ==================== SETTINGS SECTION ====================
+  2539→
+  2540→interface AdminUser {
+  2541→  id: string
+  2542→  email: string
+  2543→  name: string
+  2544→  role: string
+  2545→  createdAt: string
+  2546→}
+  2547→
+  2548→function SettingsSection() {
+  2549→  const queryClient = useQueryClient()
+  2550→  const { admin: currentAdmin } = useAdminStore()
+  2551→  const isSuperAdmin = currentAdmin?.role === 'super_admin'
+  2552→
+  2553→  // Site settings state
+  2554→  const [form, setForm] = useState<Record<string, string>>({
+  2555→    site_name: '', site_tagline: '', site_description: '',
+  2556→    contact_phone: '', contact_email: '', contact_address: '',
+  2557→    whatsapp_number: '', currency: '', free_shipping_threshold: '',
+  2558→  })
+  2559→  const [loading, setLoading] = useState(true)
+  2560→  const [saving, setSaving] = useState(false)
+  2561→
+  2562→  // Admin users state
+  2563→  const [adminDialogOpen, setAdminDialogOpen] = useState(false)
+  2564→  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  2565→  const [creatingAdmin, setCreatingAdmin] = useState(false)
+  2566→
+  2567→  // Password change state
+  2568→  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  2569→  const [changingPw, setChangingPw] = useState(false)
+  2570→
+  2571→  // Promo banner state
+  2572→  const [promoEnabled, setPromoEnabled] = useState(false)
+  2573→  const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+  2574→  const [promoSaving, setPromoSaving] = useState(false)
+  2575→
+  2576→  // Delivery zones state
+  2577→  const [deliveryZones, setDeliveryZones] = useState('Centre-ville, Pointe-Noire\nMboukou\nLoango\nTchinouka')
+  2578→  const [deliveryZonesSaving, setDeliveryZonesSaving] = useState(false)
+  2579→
+  2580→  const saveDeliveryZones = async () => {
+  2581→    setDeliveryZonesSaving(true)
+  2582→    try {
+  2583→      const res = await fetch('/api/site-settings', {
+  2584→        method: 'PUT',
+  2585→        headers: { 'Content-Type': 'application/json' },
+  2586→        body: JSON.stringify({
+  2587→          settings: [
+  2588→            { key: 'delivery_zones', value: deliveryZones },
+  2589→          ],
+  2590→        }),
+  2591→      })
+  2592→      const data = await res.json()
+  2593→      if (data.success) {
+  2594→        toast.success('Zones de livraison sauvegardées')
+  2595→        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+  2596→      } else {
+  2597→        toast.error(data.error || 'Erreur')
+  2598→      }
+  2599→    } catch {
+  2600→      toast.error('Erreur serveur')
+  2601→    } finally {
+  2602→      setDeliveryZonesSaving(false)
+  2603→    }
+  2604→  }
+  2605→
+  2606→  const handleChangePassword = async () => {
+  2607→    if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
+  2608→      toast.error('Tous les champs sont requis')
+  2609→      return
+  2610→    }
+  2611→    if (pwForm.newPassword.length < 8) {
+  2612→      toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères')
+  2613→      return
+  2614→    }
+  2615→    if (pwForm.newPassword !== pwForm.confirmPassword) {
+  2616→      toast.error('Les mots de passe ne correspondent pas')
+  2617→      return
+  2618→    }
+  2619→    setChangingPw(true)
+  2620→    try {
+  2621→      const res = await fetch('/api/admin/change-password', {
+  2622→        method: 'POST',
+  2623→        headers: { 'Content-Type': 'application/json' },
+  2624→        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+  2625→      })
+  2626→      const data = await res.json()
+  2627→      if (data.success) {
+  2628→        toast.success('Mot de passe modifié avec succès')
+  2629→        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  2630→      } else {
+  2631→        toast.error(data.error || 'Erreur')
+  2632→      }
+  2633→    } catch {
+  2634→      toast.error('Erreur serveur')
+  2635→    } finally {
+  2636→      setChangingPw(false)
+  2637→    }
+  2638→  }
+  2639→
+  2640→  const { data: settings } = useQuery({
+  2641→    queryKey: ['site-settings'],
+  2642→    queryFn: () => fetch('/api/site-settings').then(r => r.json()).then(d => d.data as Record<string, string>),
+  2643→  })
+  2644→
+  2645→  const { data: admins, isLoading: adminsLoading } = useQuery({
+  2646→    queryKey: ['admin-users'],
+  2647→    queryFn: () => fetch('/api/admin/users').then(r => r.json()).then(d => d.data as AdminUser[]),
+  2648→    enabled: isSuperAdmin,
+  2649→  })
+  2650→
+  2651→  useEffect(() => {
+  2652→    if (settings) {
+  2653→      setForm(prev => ({
+  2654→        ...prev,
+  2655→        site_name: settings.site_name || '',
+  2656→        site_tagline: settings.site_tagline || '',
+  2657→        site_description: settings.site_description || '',
+  2658→        contact_phone: settings.contact_phone || '',
+  2659→        contact_email: settings.contact_email || '',
+  2660→        contact_address: settings.contact_address || '',
+  2661→        whatsapp_number: settings.whatsapp_number || '',
+  2662→        currency: settings.currency || 'FCFA',
+  2663→        free_shipping_threshold: settings.free_shipping_threshold || '',
+  2664→      }))
+  2665→      setPromoEnabled(settings.promo_banner_enabled === 'true')
+  2666→      setPromoText(settings.promo_banner_text || 'Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+  2667→      if (settings.delivery_zones) setDeliveryZones(settings.delivery_zones)
+  2668→      setLoading(false)
+  2669→    }
+  2670→  }, [settings])
+  2671→
+  2672→  const saveSettings = async () => {
+  2673→    setSaving(true)
+  2674→    try {
+  2675→      const settingsArray = Object.entries(form).map(([key, value]) => ({ key, value }))
+  2676→      const res = await fetch('/api/site-settings', {
+  2677→        method: 'PUT',
+  2678→        headers: { 'Content-Type': 'application/json' },
+  2679→        body: JSON.stringify({ settings: settingsArray }),
+  2680→      })
+  2681→      const data = await res.json()
+  2682→      if (data.success) {
+  2683→        toast.success('Paramètres sauvegardés')
+  2684→      } else {
+  2685→        toast.error(data.error || 'Erreur')
+  2686→      }
+  2687→    } catch {
+  2688→      toast.error('Erreur serveur')
+  2689→    } finally {
+  2690→      setSaving(false)
+  2691→    }
+  2692→  }
+  2693→
+  2694→  const createAdmin = async () => {
+  2695→    if (!newAdmin.name || !newAdmin.email || !newAdmin.password) {
+  2696→      toast.error('Tous les champs sont requis')
+  2697→      return
+  2698→    }
+  2699→    if (newAdmin.password !== newAdmin.confirmPassword) {
+  2700→      toast.error('Les mots de passe ne correspondent pas')
+  2701→      return
+  2702→    }
+  2703→    if (newAdmin.password.length < 8) {
+  2704→      toast.error('Le mot de passe doit contenir au moins 8 caractères')
+  2705→      return
+  2706→    }
+  2707→    setCreatingAdmin(true)
+  2708→    try {
+  2709→      const res = await fetch('/api/admin/users', {
+  2710→        method: 'POST',
+  2711→        headers: { 'Content-Type': 'application/json' },
+  2712→        body: JSON.stringify({ email: newAdmin.email, name: newAdmin.name, password: newAdmin.password }),
+  2713→      })
+  2714→      const data = await res.json()
+  2715→      if (data.success) {
+  2716→        toast.success('Administrateur créé')
+  2717→        setAdminDialogOpen(false)
+  2718→        setNewAdmin({ name: '', email: '', password: '', confirmPassword: '' })
+  2719→        queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+  2720→      } else {
+  2721→        toast.error(data.error || 'Erreur')
+  2722→      }
+  2723→    } catch {
+  2724→      toast.error('Erreur serveur')
+  2725→    } finally {
+  2726→      setCreatingAdmin(false)
+  2727→    }
+  2728→  }
+  2729→
+  2730→  const savePromoBanner = async () => {
+  2731→    setPromoSaving(true)
+  2732→    try {
+  2733→      const res = await fetch('/api/site-settings', {
+  2734→        method: 'PUT',
+  2735→        headers: { 'Content-Type': 'application/json' },
+  2736→        body: JSON.stringify({
+  2737→          settings: [
+  2738→            { key: 'promo_banner_enabled', value: promoEnabled ? 'true' : 'false' },
+  2739→            { key: 'promo_banner_text', value: promoText },
+  2740→          ],
+  2741→        }),
+  2742→      })
+  2743→      const data = await res.json()
+  2744→      if (data.success) {
+  2745→        toast.success('Bannière promotionnelle sauvegardée')
+  2746→        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+  2747→      } else {
+  2748→        toast.error(data.error || 'Erreur')
+  2749→      }
+  2750→    } catch {
+  2751→      toast.error('Erreur serveur')
+  2752→    } finally {
+  2753→      setPromoSaving(false)
+  2754→    }
+  2755→  }
+  2756→
+  2757→  const fields = [
+  2758→    { key: 'site_name', label: 'Nom du site', placeholder: 'CongoClean' },
+  2759→    { key: 'site_tagline', label: 'Slogan', placeholder: 'Produits d\'hygiène de qualité' },
+  2760→    { key: 'site_description', label: 'Description', placeholder: 'Description du site', multiline: true },
+  2761→    { key: 'contact_phone', label: 'Téléphone', placeholder: '+242 06 123 4567' },
+  2762→    { key: 'contact_email', label: 'Email', placeholder: 'contact@congosoap.cg' },
+  2763→    { key: 'contact_address', label: 'Adresse', placeholder: 'Pointe-Noire, Congo-Brazzaville' },
+  2764→    { key: 'whatsapp_number', label: 'WhatsApp', placeholder: '+242 06 123 4567' },
+  2765→    { key: 'currency', label: 'Devise', placeholder: 'FCFA' },
+  2766→    { key: 'free_shipping_threshold', label: 'Seuil livraison gratuite', placeholder: '50000', type: 'number' },
+  2767→  ]
+  2768→
+  2769→  return (
+  2770→    <div className="space-y-6">
+  2771→      <Tabs defaultValue="general">
+  2772→        <TabsList>
+  2773→          <TabsTrigger value="general" className="gap-1.5"><Settings className="h-3.5 w-3.5" />Général</TabsTrigger>
+  2774→          <TabsTrigger value="security" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Sécurité</TabsTrigger>
+  2775→          <TabsTrigger value="banner" className="gap-1.5"><Megaphone className="h-3.5 w-3.5" />Bannière</TabsTrigger>
+  2776→          <TabsTrigger value="delivery" className="gap-1.5"><Truck className="h-3.5 w-3.5" />Livraison</TabsTrigger>
+  2777→        </TabsList>
+  2778→
+  2779→        {/* Général Tab */}
+  2780→        <TabsContent value="general">
+  2781→          <div className="max-w-2xl">
+  2782→            <Card>
+  2783→              <CardHeader>
+  2784→                <CardTitle>Paramètres du Site</CardTitle>
+  2785→                <CardDescription>Configurez les informations générales de votre site.</CardDescription>
+  2786→              </CardHeader>
+  2787→              <CardContent>
+  2788→                {loading ? (
+  2789→                  <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+  2790→                ) : (
+  2791→                  <div className="space-y-4">
+  2792→                    {fields.map(f => (
+  2793→                      <div key={f.key} className="space-y-2">
+  2794→                        <Label>{f.label}</Label>
+  2795→                        {f.multiline ? (
+  2796→                          <Textarea
+  2797→                            value={form[f.key]}
+  2798→                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+  2799→                            placeholder={f.placeholder}
+  2800→                            rows={3}
+  2801→                          />
+  2802→                        ) : (
+  2803→                          <Input
+  2804→                            type={f.type || 'text'}
+  2805→                            value={form[f.key]}
+  2806→                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+  2807→                            placeholder={f.placeholder}
+  2808→                          />
+  2809→                        )}
+  2810→                      </div>
+  2811→                    ))}
+  2812→                    <div className="pt-4">
+  2813→                      <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
+  2814→                        {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  2815→                        Sauvegarder
+  2816→                      </Button>
+  2817→                    </div>
+  2818→                  </div>
+  2819→                )}
+  2820→              </CardContent>
+  2821→            </Card>
+  2822→          </div>
+  2823→        </TabsContent>
+  2824→
+  2825→        {/* Sécurité Tab */}
+  2826→        <TabsContent value="security">
+  2827→          <div className="max-w-lg">
+  2828→            <Card>
+  2829→              <CardHeader>
+  2830→                <CardTitle>Changer le mot de passe</CardTitle>
+  2831→                <CardDescription>Modifiez votre mot de passe de connexion.</CardDescription>
+  2832→              </CardHeader>
+  2833→              <CardContent>
+  2834→                <div className="space-y-4">
+  2835→                  <div className="space-y-2">
+  2836→                    <Label>Mot de passe actuel</Label>
+  2837→                    <Input
+  2838→                      type="password"
+  2839→                      value={pwForm.currentPassword}
+  2840→                      onChange={e => setPwForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+  2841→                      placeholder="••••••••"
+  2842→                    />
+  2843→                  </div>
+  2844→                  <div className="space-y-2">
+  2845→                    <Label>Nouveau mot de passe (min. 8 caractères)</Label>
+  2846→                    <Input
+  2847→                      type="password"
+  2848→                      value={pwForm.newPassword}
+  2849→                      onChange={e => setPwForm(prev => ({ ...prev, newPassword: e.target.value }))}
+  2850→                      placeholder="Minimum 8 caractères"
+  2851→                    />
+  2852→                  </div>
+  2853→                  <div className="space-y-2">
+  2854→                    <Label>Confirmer le nouveau mot de passe</Label>
+  2855→                    <Input
+  2856→                      type="password"
+  2857→                      value={pwForm.confirmPassword}
+  2858→                      onChange={e => setPwForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+  2859→                      placeholder="Retapez le nouveau mot de passe"
+  2860→                    />
+  2861→                  </div>
+  2862→                  <div className="pt-2">
+  2863→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleChangePassword} disabled={changingPw}>
+  2864→                      {changingPw ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  2865→                      Changer
+  2866→                    </Button>
+  2867→                  </div>
+  2868→                </div>
+  2869→              </CardContent>
+  2870→            </Card>
+  2871→          </div>
+  2872→        </TabsContent>
+  2873→
+  2874→        {/* Bannière Tab */}
+  2875→        <TabsContent value="banner">
+  2876→          <div className="max-w-2xl">
+  2877→            <Card>
+  2878→              <CardHeader>
+  2879→                <CardTitle>Bannière Promotionnelle</CardTitle>
+  2880→                <CardDescription>Gérez la bannière promotionnelle affichée sur le site.</CardDescription>
+  2881→              </CardHeader>
+  2882→              <CardContent>
+  2883→                <div className="space-y-4">
+  2884→                  <div className="flex items-center justify-between">
+  2885→                    <Label>Activer la bannière</Label>
+  2886→                    <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} />
+  2887→                  </div>
+  2888→                  <div className="space-y-2">
+  2889→                    <Label>Message promotionnel</Label>
+  2890→                    <Textarea
+  2891→                      value={promoText}
+  2892→                      onChange={e => setPromoText(e.target.value)}
+  2893→                      placeholder="Message de la bannière promotionnelle"
+  2894→                      rows={3}
+  2895→                    />
+  2896→                  </div>
+  2897→                  <div className="pt-2">
+  2898→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
+  2899→                      {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  2900→                      Sauvegarder
+  2901→                    </Button>
+  2902→                  </div>
+  2903→                </div>
+  2904→              </CardContent>
+  2905→            </Card>
+  2906→          </div>
+  2907→        </TabsContent>
+  2908→
+  2909→        {/* Livraison Tab */}
+  2910→        <TabsContent value="delivery">
+  2911→          <div className="max-w-2xl">
+  2912→            <Card>
+  2913→              <CardHeader>
+  2914→                <div className="flex items-center gap-2">
+  2915→                  <MapPin className="h-5 w-5 text-emerald-600" />
+  2916→                  <CardTitle>Zone de livraison</CardTitle>
+  2917→                </div>
+  2918→                <CardDescription>Configurez les zones de livraison disponibles.</CardDescription>
+  2919→              </CardHeader>
+  2920→              <CardContent>
+  2921→                <div className="space-y-4">
+  2922→                  <div className="space-y-2">
+  2923→                    <Label>Zones de livraison (une par ligne)</Label>
+  2924→                    <Textarea
+  2925→                      value={deliveryZones}
+  2926→                      onChange={e => setDeliveryZones(e.target.value)}
+  2927→                      placeholder="Centre-ville, Pointe-Noire&#10;Mboukou&#10;Loango&#10;Tchinouka"
+  2928→                      rows={5}
+  2929→                    />
+  2930→                  </div>
+  2931→                  <div className="pt-2">
+  2932→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveDeliveryZones} disabled={deliveryZonesSaving}>
+  2933→                      {deliveryZonesSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  2934→                      Sauvegarder
+  2935→                    </Button>
+  2936→                  </div>
+  2937→                </div>
+  2938→              </CardContent>
+  2939→            </Card>
+  2940→          </div>
+  2941→        </TabsContent>
+  2942→      </Tabs>
+  2943→
+  2944→      {/* Admin User Management */}
+  2945→      {isSuperAdmin && (
+  2946→        <div className="max-w-3xl">
+  2947→          <Card>
+  2948→            <CardHeader>
+  2949→              <div className="flex items-center justify-between">
+  2950→                <div>
+  2951→                  <CardTitle>Gestion des Administrateurs</CardTitle>
+  2952→                  <CardDescription>Gérez les comptes administrateurs du site.</CardDescription>
+  2953→                </div>
+  2954→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setAdminDialogOpen(true)}>
+  2955→                  <Plus className="h-4 w-4 mr-1" />Ajouter
+  2956→                </Button>
+  2957→              </div>
+  2958→            </CardHeader>
+  2959→            <CardContent>
+  2960→              {adminsLoading ? (
+  2961→                <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+  2962→              ) : admins && admins.length > 0 ? (
+  2963→                <div className="overflow-x-auto">
+  2964→                  <Table>
+  2965→                    <TableHeader>
+  2966→                      <TableRow>
+  2967→                        <TableHead>Email</TableHead>
+  2968→                        <TableHead>Nom</TableHead>
+  2969→                        <TableHead>Rôle</TableHead>
+  2970→                        <TableHead className="hidden sm:table-cell">Date de création</TableHead>
+  2971→                      </TableRow>
+  2972→                    </TableHeader>
+  2973→                    <TableBody>
+  2974→                      {admins.map(a => (
+  2975→                        <TableRow key={a.id}>
+  2976→                          <TableCell className="text-sm font-medium">{a.email}</TableCell>
+  2977→                          <TableCell className="text-sm">{a.name}</TableCell>
+  2978→                          <TableCell>
+  2979→                            <Badge
+  2980→                              variant="outline"
+  2981→                              className={a.role === 'super_admin' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200'}
+  2982→                            >
+  2983→                              {a.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+  2984→                            </Badge>
+  2985→                          </TableCell>
+  2986→                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(a.createdAt)}</TableCell>
+  2987→                        </TableRow>
+  2988→                      ))}
+  2989→                    </TableBody>
+  2990→                  </Table>
+  2991→                </div>
+  2992→              ) : (
+  2993→                <div className="p-8 text-center">
+  2994→                  <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+  2995→                  <p className="text-sm text-muted-foreground">Aucun administrateur trouvé</p>
+  2996→                </div>
+  2997→              )}
+  2998→            </CardContent>
+  2999→          </Card>
+  3000→        </div>
+  3001→      )}
+  3002→
+  3003→      {/* Add Admin Dialog */}
+  3004→      <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+  3005→        <DialogContent>
+  3006→          <DialogHeader>
+  3007→            <DialogTitle>Ajouter un Administrateur</DialogTitle>
+  3008→            <DialogDescription>Créez un nouveau compte administrateur.</DialogDescription>
+  3009→          </DialogHeader>
+  3010→          <div className="space-y-4 py-4">
+  3011→            <div className="space-y-2">
+  3012→              <Label>Nom *</Label>
+  3013→              <Input
+  3014→                value={newAdmin.name}
+  3015→                onChange={e => setNewAdmin(prev => ({ ...prev, name: e.target.value }))}
+  3016→                placeholder="Nom complet"
+  3017→              />
+  3018→            </div>
+  3019→            <div className="space-y-2">
+  3020→              <Label>Email *</Label>
+  3021→              <Input
+  3022→                type="email"
+  3023→                value={newAdmin.email}
+  3024→                onChange={e => setNewAdmin(prev => ({ ...prev, email: e.target.value }))}
+  3025→                placeholder="admin@congosoap.cg"
+  3026→              />
+  3027→            </div>
+  3028→            <div className="space-y-2">
+  3029→              <Label>Mot de passe *</Label>
+  3030→              <Input
+  3031→                type="password"
+  3032→                value={newAdmin.password}
+  3033→                onChange={e => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+  3034→                placeholder="Minimum 8 caractères"
+  3035→              />
+  3036→            </div>
+  3037→            <div className="space-y-2">
+  3038→              <Label>Confirmer le mot de passe *</Label>
+  3039→              <Input
+  3040→                type="password"
+  3041→                value={newAdmin.confirmPassword}
+  3042→                onChange={e => setNewAdmin(prev => ({ ...prev, confirmPassword: e.target.value }))}
+  3043→                placeholder="Retapez le mot de passe"
+  3044→              />
+  3045→            </div>
+  3046→          </div>
+  3047→          <DialogFooter>
+  3048→            <Button variant="outline" onClick={() => setAdminDialogOpen(false)}>Annuler</Button>
+  3049→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={createAdmin} disabled={creatingAdmin}>
+  3050→              {creatingAdmin ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  3051→              Créer
+  3052→            </Button>
+  3053→          </DialogFooter>
+  3054→        </DialogContent>
+  3055→      </Dialog>
+  3056→    </div>
+  3057→  )
+  3058→}
+  3059→
+  3060→// ==================== STOCK HISTORY SECTION ====================
+  3061→
+  3062→interface StockHistoryEntry {
+  3063→  id: string
+  3064→  productId: string
+  3065→  previousQty: number
+  3066→  newQty: number
+  3067→  changeReason: string | null
+  3068→  adminId: string | null
+  3069→  createdAt: string
+  3070→  product: { name: string } | null
+  3071→  admin: { name: string; email: string } | null
+  3072→}
+  3073→
+  3074→function StockHistorySection() {
+  3075→  const [page, setPage] = useState(1)
+  3076→  const [productFilter, setProductFilter] = useState('all')
+  3077→  const limit = 20
+  3078→
+  3079→  const { data: products } = useQuery({
+  3080→    queryKey: ['stock-history-products'],
+  3081→    queryFn: () => fetch('/api/products?all=true').then(r => r.json()).then(d => d.data as Product[]),
+  3082→  })
+  3083→
+  3084→  const { data: historyData, isLoading } = useQuery({
+  3085→    queryKey: ['stock-history', page, productFilter],
+  3086→    queryFn: () => {
+  3087→      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  3088→      if (productFilter !== 'all') params.set('productId', productFilter)
+  3089→      return fetch(`/api/stock-history?${params}`).then(r => r.json())
+  3090→    },
+  3091→  })
+  3092→
+  3093→  const entries: StockHistoryEntry[] = historyData?.data ?? []
+  3094→  const totalPages = historyData?.pagination?.pages ?? 1
+  3095→
+  3096→  return (
+  3097→    <div className="space-y-4">
+  3098→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+  3099→        <h3 className="text-xl font-semibold text-gray-900">Historique du Stock</h3>
+  3100→        <div className="flex-1" />
+  3101→        <div className="flex items-center gap-2 w-full sm:w-auto">
+  3102→          <Select value={productFilter} onValueChange={v => { setProductFilter(v); setPage(1) }}>
+  3103→            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Tous les produits" /></SelectTrigger>
+  3104→            <SelectContent>
+  3105→              <SelectItem value="all">Tous les produits</SelectItem>
+  3106→              {products?.map(p => (
+  3107→                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+  3108→              ))}
+  3109→            </SelectContent>
+  3110→          </Select>
+  3111→        </div>
+  3112→      </div>
+  3113→
+  3114→      <Card>
+  3115→        <CardContent className="p-0">
+  3116→          {isLoading ? (
+  3117→            <div className="p-6 space-y-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+  3118→          ) : entries.length > 0 ? (
+  3119→            <div className="overflow-x-auto">
+  3120→              <Table>
+  3121→                <TableHeader>
+  3122→                  <TableRow className="bg-gray-50/80">
+  3123→                    <TableHead>Date</TableHead>
+  3124→                    <TableHead>Produit</TableHead>
+  3125→                    <TableHead className="text-right">Avant</TableHead>
+  3126→                    <TableHead className="text-right">Après</TableHead>
+  3127→                    <TableHead className="text-right">Variation</TableHead>
+  3128→                    <TableHead>Raison</TableHead>
+  3129→                    <TableHead>Admin</TableHead>
+  3130→                  </TableRow>
+  3131→                </TableHeader>
+  3132→                <TableBody>
+  3133→                  {entries.map((entry, i) => {
+  3134→                    const diff = entry.newQty - entry.previousQty
+  3135→                    return (
+  3136→                      <TableRow key={entry.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+  3137→                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(entry.createdAt)}</TableCell>
+  3138→                        <TableCell className="text-sm font-medium">{entry.product?.name || entry.productId}</TableCell>
+  3139→                        <TableCell className="text-right text-sm">{entry.previousQty}</TableCell>
+  3140→                        <TableCell className="text-right text-sm">{entry.newQty}</TableCell>
+  3141→                        <TableCell className="text-right">
+  3142→                          <span className={`text-sm font-semibold ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+  3143→                            {diff > 0 ? `+${diff}` : String(diff)}
+  3144→                          </span>
+  3145→                        </TableCell>
+  3146→                        <TableCell className="text-sm text-muted-foreground">{entry.changeReason || '—'}</TableCell>
+  3147→                        <TableCell className="text-sm">{entry.admin?.name || 'Système'}</TableCell>
+  3148→                      </TableRow>
+  3149→                    )
+  3150→                  })}
+  3151→                </TableBody>
+  3152→              </Table>
+  3153→            </div>
+  3154→          ) : (
+  3155→            <div className="p-12 text-center">
+  3156→              <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  3157→              <p className="text-muted-foreground">Aucun historique de stock</p>
+  3158→            </div>
+  3159→          )}
+  3160→        </CardContent>
+  3161→      </Card>
+  3162→
+  3163→      {/* Pagination */}
+  3164→      {totalPages > 1 && (
+  3165→        <div className="flex items-center justify-center gap-2">
+  3166→          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+  3167→            <ChevronLeft className="h-4 w-4" />
+  3168→          </Button>
+  3169→          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+  3170→            <Button
+  3171→              key={p}
+  3172→              variant={page === p ? 'default' : 'outline'}
+  3173→              size="sm"
+  3174→              className={page === p ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+  3175→              onClick={() => setPage(p)}
+  3176→            >
+  3177→              {p}
+  3178→            </Button>
+  3179→          ))}
+  3180→          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+  3181→            <ChevronRight className="h-4 w-4" />
+  3182→          </Button>
+  3183→        </div>
+  3184→      )}
+  3185→    </div>
+  3186→  )
+  3187→}
+  3188→
+  3189→// ==================== REVIEWS SECTION ====================
+  3190→
+  3191→interface Review {
+  3192→  id: string
+  3193→  productId: string
+  3194→  customerName: string
+  3195→  rating: number
+  3196→  comment: string | null
+  3197→  isApproved: boolean
+  3198→  createdAt: string
+  3199→  product: { name: string }
+  3200→}
+  3201→
+  3202→type ReviewFilter = 'all' | 'pending' | 'approved' | 'rejected'
+  3203→
+  3204→function StarDisplay({ rating }: { rating: number }) {
+  3205→  return (
+  3206→    <div className="flex items-center gap-0.5">
+  3207→      {[1, 2, 3, 4, 5].map(i => (
+  3208→        <Star
+  3209→          key={i}
+  3210→          className={`h-3.5 w-3.5 ${i <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+  3211→        />
+  3212→      ))}
+  3213→    </div>
+  3214→  )
+  3215→}
+  3216→
+  3217→function ReviewsSection() {
+  3218→  const queryClient = useQueryClient()
+  3219→  const [filter, setFilter] = useState<ReviewFilter>('all')
+  3220→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  3221→  const [deletingReview, setDeletingReview] = useState<Review | null>(null)
+  3222→
+  3223→  const { data: reviews, isLoading } = useQuery({
+  3224→    queryKey: ['admin-reviews'],
+  3225→    queryFn: () => fetch('/api/reviews').then(r => r.json()).then(d => d.data as Review[]),
+  3226→  })
+  3227→
+  3228→  const filtered = (reviews ?? []).filter(r => {
+  3229→    if (filter === 'all') return true
+  3230→    if (filter === 'pending') return !r.isApproved
+  3231→    if (filter === 'approved') return r.isApproved
+  3232→    if (filter === 'rejected') return false
+  3233→    return true
+  3234→  })
+  3235→
+  3236→  const totalReviews = reviews?.length ?? 0
+  3237→  const approvedCount = reviews?.filter(r => r.isApproved).length ?? 0
+  3238→  const pendingCount = reviews?.filter(r => !r.isApproved).length ?? 0
+  3239→  const avgRating = totalReviews > 0
+  3240→    ? (reviews!.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
+  3241→    : '0.0'
+  3242→
+  3243→  const approveReview = async (reviewId: string, isApproved: boolean) => {
+  3244→    try {
+  3245→      const res = await fetch(`/api/reviews/${reviewId}`, {
+  3246→        method: 'PUT',
+  3247→        headers: { 'Content-Type': 'application/json' },
+  3248→        body: JSON.stringify({ isApproved }),
+  3249→      })
+  3250→      const data = await res.json()
+  3251→      if (data.success) {
+  3252→        toast.success(isApproved ? 'Avis approuvé' : 'Avis rejeté')
+  3253→        queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
+  3254→        queryClient.invalidateQueries({ queryKey: ['admin-reviews-badge'] })
+  3255→      } else {
+  3256→        toast.error(data.error || 'Erreur')
+  3257→      }
+  3258→    } catch {
+  3259→      toast.error('Erreur serveur')
+  3260→    }
+  3261→  }
+  3262→
+  3263→  const deleteReview = async () => {
+  3264→    if (!deletingReview) return
+  3265→    try {
+  3266→      const res = await fetch(`/api/reviews/${deletingReview.id}`, { method: 'DELETE' })
+  3267→      const data = await res.json()
+  3268→      if (data.success) {
+  3269→        toast.success('Avis supprimé')
+  3270→        queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
+  3271→        queryClient.invalidateQueries({ queryKey: ['admin-reviews-badge'] })
+  3272→      } else {
+  3273→        toast.error(data.error || 'Erreur')
+  3274→      }
+  3275→    } catch {
+  3276→      toast.error('Erreur serveur')
+  3277→    } finally {
+  3278→      setDeleteDialogOpen(false)
+  3279→      setDeletingReview(null)
+  3280→    }
+  3281→  }
+  3282→
+  3283→  const filterTabs: { key: ReviewFilter; label: string }[] = [
+  3284→    { key: 'all', label: 'Tous' },
+  3285→    { key: 'pending', label: 'En attente' },
+  3286→    { key: 'approved', label: 'Approuvés' },
+  3287→    { key: 'rejected', label: 'Rejetés' },
+  3288→  ]
+  3289→
+  3290→  return (
+  3291→    <div className="space-y-6">
+  3292→      {/* Stats */}
+  3293→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  3294→        <Card>
+  3295→          <CardContent className="p-4">
+  3296→            <p className="text-sm text-muted-foreground">Total avis</p>
+  3297→            <p className="text-2xl font-bold text-gray-900">{totalReviews}</p>
+  3298→          </CardContent>
+  3299→        </Card>
+  3300→        <Card>
+  3301→          <CardContent className="p-4">
+  3302→            <p className="text-sm text-muted-foreground">Note moyenne</p>
+  3303→            <div className="flex items-center gap-2">
+  3304→              <p className="text-2xl font-bold text-gray-900">{avgRating}</p>
+  3305→              <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+  3306→            </div>
+  3307→          </CardContent>
+  3308→        </Card>
+  3309→        <Card>
+  3310→          <CardContent className="p-4">
+  3311→            <p className="text-sm text-muted-foreground">Approuvés</p>
+  3312→            <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+  3313→          </CardContent>
+  3314→        </Card>
+  3315→        <Card>
+  3316→          <CardContent className="p-4">
+  3317→            <p className="text-sm text-muted-foreground">En attente</p>
+  3318→            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+  3319→          </CardContent>
+  3320→        </Card>
+  3321→      </div>
+  3322→
+  3323→      {/* Filter tabs */}
+  3324→      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+  3325→        {filterTabs.map(tab => (
+  3326→          <Button
+  3327→            key={tab.key}
+  3328→            variant={filter === tab.key ? 'default' : 'outline'}
+  3329→            size="sm"
+  3330→            className={`shrink-0 ${filter === tab.key ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  3331→            onClick={() => setFilter(tab.key)}
+  3332→          >
+  3333→            {tab.label}
+  3334→          </Button>
+  3335→        ))}
+  3336→      </div>
+  3337→
+  3338→      {/* Reviews table */}
+  3339→      <Card>
+  3340→        <CardContent className="p-0">
+  3341→          {isLoading ? (
+  3342→            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+  3343→          ) : filtered.length > 0 ? (
+  3344→            <div className="overflow-x-auto">
+  3345→              <Table>
+  3346→                <TableHeader>
+  3347→                  <TableRow className="bg-gray-50/80">
+  3348→                    <TableHead>Produit</TableHead>
+  3349→                    <TableHead>Client</TableHead>
+  3350→                    <TableHead>Note</TableHead>
+  3351→                    <TableHead className="hidden lg:table-cell">Commentaire</TableHead>
+  3352→                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+  3353→                    <TableHead>Statut</TableHead>
+  3354→                    <TableHead className="w-28">Actions</TableHead>
+  3355→                  </TableRow>
+  3356→                </TableHeader>
+  3357→                <TableBody>
+  3358→                  {filtered.map((r, i) => (
+  3359→                    <TableRow key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+  3360→                      <TableCell className="text-sm font-medium">{r.product?.name || '—'}</TableCell>
+  3361→                      <TableCell className="text-sm">{r.customerName}</TableCell>
+  3362→                      <TableCell><StarDisplay rating={r.rating} /></TableCell>
+  3363→                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{r.comment || '—'}</TableCell>
+  3364→                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
+  3365→                      <TableCell>
+  3366→                        <Badge
+  3367→                          variant="outline"
+  3368→                          className={r.isApproved
+  3369→                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  3370→                            : 'bg-amber-50 text-amber-700 border-amber-200'
+  3371→                          }
+  3372→                        >
+  3373→                          {r.isApproved ? 'Approuvé' : 'En attente'}
+  3374→                        </Badge>
+  3375→                      </TableCell>
+  3376→                      <TableCell>
+  3377→                        <div className="flex items-center gap-1">
+  3378→                          {!r.isApproved && (
+  3379→                            <Button
+  3380→                              variant="ghost"
+  3381→                              size="icon"
+  3382→                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
+  3383→                              onClick={() => approveReview(r.id, true)}
+  3384→                              title="Approuver"
+  3385→                            >
+  3386→                              <Check className="h-4 w-4" />
+  3387→                            </Button>
+  3388→                          )}
+  3389→                          {r.isApproved && (
+  3390→                            <Button
+  3391→                              variant="ghost"
+  3392→                              size="icon"
+  3393→                              className="h-8 w-8 text-amber-600 hover:text-amber-700"
+  3394→                              onClick={() => approveReview(r.id, false)}
+  3395→                              title="Rejeter"
+  3396→                            >
+  3397→                              <X className="h-4 w-4" />
+  3398→                            </Button>
+  3399→                          )}
+  3400→                          <Button
+  3401→                            variant="ghost"
+  3402→                            size="icon"
+  3403→                            className="h-8 w-8 text-red-500 hover:text-red-700"
+  3404→                            onClick={() => { setDeletingReview(r); setDeleteDialogOpen(true) }}
+  3405→                            title="Supprimer"
+  3406→                          >
+  3407→                            <Trash2 className="h-4 w-4" />
+  3408→                          </Button>
+  3409→                        </div>
+  3410→                      </TableCell>
+  3411→                    </TableRow>
+  3412→                  ))}
+  3413→                </TableBody>
+  3414→              </Table>
+  3415→            </div>
+  3416→          ) : (
+  3417→            <div className="p-12 text-center">
+  3418→              <Star className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  3419→              <p className="text-muted-foreground">Aucun avis trouvé</p>
+  3420→            </div>
+  3421→          )}
+  3422→        </CardContent>
+  3423→      </Card>
+  3424→
+  3425→      {/* Delete Dialog */}
+  3426→      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  3427→        <AlertDialogContent>
+  3428→          <AlertDialogHeader>
+  3429→            <AlertDialogTitle>Supprimer cet avis ?</AlertDialogTitle>
+  3430→            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+  3431→          </AlertDialogHeader>
+  3432→          <AlertDialogFooter>
+  3433→            <AlertDialogCancel>Annuler</AlertDialogCancel>
+  3434→            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={deleteReview}>Supprimer</AlertDialogAction>
+  3435→          </AlertDialogFooter>
+  3436→        </AlertDialogContent>
+  3437→      </AlertDialog>
+
+[showing lines 2538-3437 of 3441; use offset=3438 with limit to continue reading]

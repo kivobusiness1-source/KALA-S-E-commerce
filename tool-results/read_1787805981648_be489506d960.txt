@@ -1,0 +1,702 @@
+  1653→// ==================== ORDERS SECTION ====================
+  1654→
+  1655→function OrdersSection() {
+  1656→  const queryClient = useQueryClient()
+  1657→  const [statusFilter, setStatusFilter] = useState('all')
+  1658→  const [search, setSearch] = useState('')
+  1659→  const [page, setPage] = useState(1)
+  1660→  const [orderDetail, setOrderDetail] = useState<Order | null>(null)
+  1661→  const [detailOpen, setDetailOpen] = useState(false)
+  1662→  const limit = 20
+  1663→
+  1664→  const { data: ordersData, isLoading } = useQuery({
+  1665→    queryKey: ['admin-orders', statusFilter, search, page],
+  1666→    queryFn: () => {
+  1667→      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  1668→      if (statusFilter !== 'all') params.set('status', statusFilter)
+  1669→      if (search) params.set('search', search)
+  1670→      return fetch(`/api/orders?${params}`).then(r => r.json()).then(d => d.data)
+  1671→    },
+  1672→  })
+  1673→
+  1674→  const orders = ordersData?.orders ?? []
+  1675→  const totalPages = ordersData?.totalPages ?? 1
+  1676→
+  1677→  const openDetail = async (orderId: string) => {
+  1678→    try {
+  1679→      const res = await fetch(`/api/orders/${orderId}`)
+  1680→      const data = await res.json()
+  1681→      if (data.success) {
+  1682→        setOrderDetail(data.data)
+  1683→        setDetailOpen(true)
+  1684→      }
+  1685→    } catch {
+  1686→      toast.error('Erreur de chargement')
+  1687→    }
+  1688→  }
+  1689→
+  1690→  const updateStatus = async (orderId: string, status: string) => {
+  1691→    try {
+  1692→      const res = await fetch(`/api/orders/${orderId}`, {
+  1693→        method: 'PUT',
+  1694→        headers: { 'Content-Type': 'application/json' },
+  1695→        body: JSON.stringify({ status }),
+  1696→      })
+  1697→      const data = await res.json()
+  1698→      if (data.success) {
+  1699→        toast.success('Statut mis à jour')
+  1700→        queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+  1701→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1702→        if (orderDetail?.id === orderId) {
+  1703→          setOrderDetail({ ...orderDetail, status })
+  1704→        }
+  1705→      } else {
+  1706→        toast.error(data.error || 'Erreur')
+  1707→      }
+  1708→    } catch {
+  1709→      toast.error('Erreur serveur')
+  1710→    }
+  1711→  }
+  1712→
+  1713→  const statusTabs = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const
+  1714→
+  1715→  const exportOrdersCSV = async () => {
+  1716→    try {
+  1717→      const res = await fetch('/api/orders?limit=1000')
+  1718→      const data = await res.json()
+  1719→      const allOrders: Order[] = data.data?.orders ?? []
+  1720→      if (allOrders.length === 0) { toast.error('Aucune commande à exporter'); return }
+  1721→      const headers = ['N°', 'Client', 'Email', 'Téléphone', 'Adresse', 'Montant', 'Statut', 'Date']
+  1722→      const rows = allOrders.map(o => [
+  1723→        o.orderNumber,
+  1724→        o.customerName,
+  1725→        o.customerEmail,
+  1726→        o.customerPhone || '',
+  1727→        `${o.address}, ${o.city}`,
+  1728→        String(o.totalAmount),
+  1729→        statusLabels[o.status] || o.status,
+  1730→        format(new Date(o.createdAt), 'yyyy-MM-dd HH:mm'),
+  1731→      ])
+  1732→      const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  1733→      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  1734→      const url = URL.createObjectURL(blob)
+  1735→      const a = document.createElement('a')
+  1736→      a.href = url
+  1737→      a.download = `commandes-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+  1738→      a.click()
+  1739→      URL.revokeObjectURL(url)
+  1740→      toast.success('Fichier CSV téléchargé')
+  1741→    } catch {
+  1742→      toast.error('Erreur lors de l\'export')
+  1743→    }
+  1744→  }
+  1745→
+  1746→  return (
+  1747→    <div className="space-y-4">
+  1748→      {/* Filters */}
+  1749→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+  1750→        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+  1751→          {statusTabs.map(s => (
+  1752→            <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" className={`shrink-0 ${statusFilter === s ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`} onClick={() => { setStatusFilter(s); setPage(1) }}>
+  1753→              {s === 'all' ? 'Tous' : statusLabels[s]}
+  1754→            </Button>
+  1755→          ))}
+  1756→        </div>
+  1757→        <div className="flex-1" />
+  1758→        <div className="flex items-center gap-2 w-full sm:w-auto">
+  1759→          <div className="relative flex-1 sm:w-64">
+  1760→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1761→            <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+  1762→          </div>
+  1763→          <Button variant="outline" size="sm" onClick={exportOrdersCSV}>
+  1764→            <FileDown className="h-4 w-4 mr-1" />Exporter CSV
+  1765→          </Button>
+  1766→        </div>
+  1767→      </div>
+  1768→
+  1769→      {/* Table */}
+  1770→      <Card>
+  1771→        <CardContent className="p-0">
+  1772→          {isLoading ? (
+  1773→            <div className="p-6 space-y-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+  1774→          ) : orders.length > 0 ? (
+  1775→            <div className="overflow-x-auto">
+  1776→              <Table>
+  1777→                <TableHeader>
+  1778→                  <TableRow>
+  1779→                    <TableHead>N° Commande</TableHead>
+  1780→                    <TableHead>Client</TableHead>
+  1781→                    <TableHead className="hidden md:table-cell">Email</TableHead>
+  1782→                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+  1783→                    <TableHead className="text-right">Montant</TableHead>
+  1784→                    <TableHead>Articles</TableHead>
+  1785→                    <TableHead>Statut</TableHead>
+  1786→                    <TableHead className="w-28">Actions</TableHead>
+  1787→                  </TableRow>
+  1788→                </TableHeader>
+  1789→                <TableBody>
+  1790→                  {orders.map((o: Order) => (
+  1791→                    <TableRow key={o.id}>
+  1792→                      <TableCell className="font-mono text-xs font-medium">{o.orderNumber}</TableCell>
+  1793→                      <TableCell className="text-sm font-medium">
+  1794→                        <div className="flex items-center gap-2">
+  1795→                          <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold shrink-0">
+  1796→                            {getInitials(o.customerName)}
+  1797→                          </div>
+  1798→                          {o.customerName}
+  1799→                        </div>
+  1800→                      </TableCell>
+  1801→                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{o.customerEmail}</TableCell>
+  1802→                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
+  1803→                      <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
+  1804→                      <TableCell>
+  1805→                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+  1806→                          {o.items?.length ?? 0} article(s)
+  1807→                        </Badge>
+  1808→                      </TableCell>
+  1809→                      <TableCell>
+  1810→                        <StatusBadge status={o.status} />
+  1811→                      </TableCell>
+  1812→                      <TableCell>
+  1813→                        <div className="flex items-center gap-1">
+  1814→                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(o.id)}><Eye className="h-4 w-4" /></Button>
+  1815→                          <DropdownMenu>
+  1816→                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+  1817→                            <DropdownMenuContent align="end">
+  1818→                              {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]).map(s => (
+  1819→                                <DropdownMenuItem key={s} onClick={() => updateStatus(o.id, s)} disabled={o.status === s}>
+  1820→                                  {statusLabels[s]}
+  1821→                                </DropdownMenuItem>
+  1822→                              ))}
+  1823→                            </DropdownMenuContent>
+  1824→                          </DropdownMenu>
+  1825→                        </div>
+  1826→                      </TableCell>
+  1827→                    </TableRow>
+  1828→                  ))}
+  1829→                </TableBody>
+  1830→              </Table>
+  1831→            </div>
+  1832→          ) : (
+  1833→            <div className="p-12 text-center">
+  1834→              <ShoppingCart className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  1835→              <p className="text-muted-foreground">Aucune commande trouvée</p>
+  1836→            </div>
+  1837→          )}
+  1838→        </CardContent>
+  1839→      </Card>
+  1840→
+  1841→      {/* Pagination */}
+  1842→      {totalPages > 1 && (
+  1843→        <div className="flex items-center justify-center gap-2">
+  1844→          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+  1845→            <ChevronLeft className="h-4 w-4" />
+  1846→          </Button>
+  1847→          <span className="text-sm text-muted-foreground">Page {page} / {totalPages}</span>
+  1848→          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+  1849→            <ChevronRight className="h-4 w-4" />
+  1850→          </Button>
+  1851→        </div>
+  1852→      )}
+  1853→
+  1854→      {/* Order Detail Dialog */}
+  1855→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+  1856→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-printable>
+  1857→          {orderDetail && (
+  1858→            <>
+  1859→              <DialogHeader>
+  1860→                <div className="flex items-center justify-between pr-6">
+  1861→                  <div>
+  1862→                    <DialogTitle>Commande {orderDetail.orderNumber}</DialogTitle>
+  1863→                    <DialogDescription>Créée le {formatDate(orderDetail.createdAt)}</DialogDescription>
+  1864→                  </div>
+  1865→                  <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+  1866→                    <Printer className="w-4 h-4" />
+  1867→                    Imprimer
+  1868→                  </Button>
+  1869→                </div>
+  1870→              </DialogHeader>
+  1871→              <div className="space-y-4">
+  1872→                {/* Customer info */}
+  1873→                <Card>
+  1874→                  <CardHeader className="pb-3"><CardTitle className="text-sm">Informations Client</CardTitle></CardHeader>
+  1875→                  <CardContent className="text-sm space-y-1">
+  1876→                    <p><span className="text-muted-foreground">Nom:</span> <span className="font-medium">{orderDetail.customerName}</span></p>
+  1877→                    <p><span className="text-muted-foreground">Email:</span> {orderDetail.customerEmail}</p>
+  1878→                    {orderDetail.customerPhone && <p><span className="text-muted-foreground">Téléphone:</span> {orderDetail.customerPhone}</p>}
+  1879→                    <p><span className="text-muted-foreground">Adresse:</span> {orderDetail.address}, {orderDetail.city}</p>
+  1880→                  </CardContent>
+  1881→                </Card>
+  1882→
+  1883→                {/* Status */}
+  1884→                <div className="flex items-center justify-between">
+  1885→                  <div className="flex items-center gap-2">
+  1886→                    <span className="text-sm text-muted-foreground">Statut:</span>
+  1887→                    <StatusBadge status={orderDetail.status} />
+  1888→                  </div>
+  1889→                  <Select value={orderDetail.status} onValueChange={v => updateStatus(orderDetail.id, v)}>
+  1890→                    <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+  1891→                    <SelectContent>
+  1892→                      {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]).map(s => (
+  1893→                        <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
+  1894→                      ))}
+  1895→                    </SelectContent>
+  1896→                  </Select>
+  1897→                </div>
+  1898→
+  1899→                {/* Items */}
+  1900→                <Card>
+  1901→                  <CardHeader className="pb-3"><CardTitle className="text-sm">Articles</CardTitle></CardHeader>
+  1902→                  <CardContent>
+  1903→                    <Table>
+  1904→                      <TableHeader>
+  1905→                        <TableRow>
+  1906→                          <TableHead>Produit</TableHead>
+  1907→                          <TableHead className="text-right">Qté</TableHead>
+  1908→                          <TableHead className="text-right">Prix Unit.</TableHead>
+  1909→                          <TableHead className="text-right">Total</TableHead>
+  1910→                        </TableRow>
+  1911→                      </TableHeader>
+  1912→                      <TableBody>
+  1913→                        {orderDetail.items.map(item => (
+  1914→                          <TableRow key={item.id}>
+  1915→                            <TableCell className="text-sm font-medium">{item.productName}{item.product?.volume ? ` (${item.product.volume})` : ''}</TableCell>
+  1916→                            <TableCell className="text-right text-sm">{item.quantity}</TableCell>
+  1917→                            <TableCell className="text-right text-sm">{formatPrice(item.unitPrice)}</TableCell>
+  1918→                            <TableCell className="text-right text-sm font-medium">{formatPrice(item.totalPrice)}</TableCell>
+  1919→                          </TableRow>
+  1920→                        ))}
+  1921→                      </TableBody>
+  1922→                    </Table>
+  1923→                    <Separator className="my-3" />
+  1924→                    <div className="flex justify-end">
+  1925→                      <div className="text-right">
+  1926→                        <p className="text-sm text-muted-foreground">Total</p>
+  1927→                        <p className="text-xl font-bold text-emerald-700">{formatPrice(orderDetail.totalAmount)}</p>
+  1928→                      </div>
+  1929→                    </div>
+  1930→                  </CardContent>
+  1931→                </Card>
+  1932→
+  1933→                {orderDetail.notes && (
+  1934→                  <Card>
+  1935→                    <CardHeader className="pb-3"><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
+  1936→                    <CardContent><p className="text-sm text-muted-foreground">{orderDetail.notes}</p></CardContent>
+  1937→                  </Card>
+  1938→                )}
+  1939→              </div>
+  1940→            </>
+  1941→          )}
+  1942→        </DialogContent>
+  1943→      </Dialog>
+  1944→    </div>
+  1945→  )
+  1946→}
+  1947→
+  1948→// ==================== MESSAGES SECTION ====================
+  1949→
+  1950→function MessagesSection() {
+  1951→  const queryClient = useQueryClient()
+  1952→  const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
+  1953→  const [replyText, setReplyText] = useState('')
+  1954→  const [sending, setSending] = useState(false)
+  1955→  const messagesEndRef = useRef<HTMLDivElement>(null)
+  1956→
+  1957→  const { data: conversations, isLoading: convsLoading } = useQuery({
+  1958→    queryKey: ['conversations'],
+  1959→    queryFn: () => fetch('/api/messages').then(r => r.json()).then(d => d.data as Conversation[]),
+  1960→    refetchInterval: 5000,
+  1961→  })
+  1962→
+  1963→  const { data: convDetail, isLoading: detailLoading } = useQuery({
+  1964→    queryKey: ['conversation', selectedConvId],
+  1965→    queryFn: () => fetch(`/api/messages/${selectedConvId}`).then(r => r.json()).then(d => d.data as ConversationDetail),
+  1966→    enabled: !!selectedConvId,
+  1967→  })
+  1968→
+  1969→  // Scroll to bottom on new messages
+  1970→  useEffect(() => {
+  1971→    if (convDetail?.messages?.length) {
+  1972→      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  1973→    }
+  1974→  }, [convDetail?.messages?.length])
+  1975→
+  1976→  const selectConversation = (id: string) => {
+  1977→    setSelectedConvId(id)
+  1978→    setReplyText('')
+  1979→  }
+  1980→
+  1981→  const sendReply = async () => {
+  1982→    if (!replyText.trim() || !selectedConvId) return
+  1983→    setSending(true)
+  1984→    try {
+  1985→      const res = await fetch(`/api/messages/${selectedConvId}`, {
+  1986→        method: 'PUT',
+  1987→        headers: { 'Content-Type': 'application/json' },
+  1988→        body: JSON.stringify({ content: replyText.trim() }),
+  1989→      })
+  1990→      const data = await res.json()
+  1991→      if (data.success) {
+  1992→        setReplyText('')
+  1993→        queryClient.invalidateQueries({ queryKey: ['conversation', selectedConvId] })
+  1994→        queryClient.invalidateQueries({ queryKey: ['conversations'] })
+  1995→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1996→      } else {
+  1997→        toast.error(data.error || 'Erreur')
+  1998→      }
+  1999→    } catch {
+  2000→      toast.error('Erreur serveur')
+  2001→    } finally {
+  2002→      setSending(false)
+  2003→    }
+  2004→  }
+  2005→
+  2006→  const deleteConversation = async (id: string) => {
+  2007→    try {
+  2008→      const res = await fetch(`/api/messages/${id}`, { method: 'DELETE' })
+  2009→      const data = await res.json()
+  2010→      if (data.success) {
+  2011→        toast.success('Conversation supprimée')
+  2012→        if (selectedConvId === id) setSelectedConvId(null)
+  2013→        queryClient.invalidateQueries({ queryKey: ['conversations'] })
+  2014→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  2015→      } else {
+  2016→        toast.error(data.error || 'Erreur')
+  2017→      }
+  2018→    } catch {
+  2019→      toast.error('Erreur serveur')
+  2020→    }
+  2021→  }
+  2022→
+  2023→  return (
+  2024→    <div className="space-y-4">
+  2025→      {/* Average response time */}
+  2026→      <Card className="border-t-4 border-t-emerald-500">
+  2027→        <CardContent className="p-4 sm:p-6">
+  2028→          <div className="flex items-center gap-4">
+  2029→            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-600">
+  2030→              <Clock className="h-5 w-5" />
+  2031→            </div>
+  2032→            <div className="min-w-0">
+  2033→              <p className="text-sm text-muted-foreground truncate">Temps de réponse moyen</p>
+  2034→              <p className="text-xl font-bold text-gray-900">2h 30min</p>
+  2035→            </div>
+  2036→          </div>
+  2037→        </CardContent>
+  2038→      </Card>
+  2039→
+  2040→      <div className="flex h-[calc(100vh-16rem)] border border-gray-200 rounded-lg overflow-hidden bg-white">
+  2041→      {/* Conversations list */}
+  2042→      <div className={`w-full sm:w-80 border-r border-gray-200 flex flex-col ${selectedConvId ? 'hidden sm:flex' : 'flex'}`}>
+  2043→        <div className="p-3 border-b border-gray-100">
+  2044→          <h3 className="font-semibold text-sm">Conversations</h3>
+  2045→          <p className="text-xs text-muted-foreground">{conversations?.length ?? 0} conversation(s)</p>
+  2046→        </div>
+  2047→        <div className="flex-1 overflow-y-auto">
+  2048→          {convsLoading ? (
+  2049→            <div className="p-3 space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+  2050→          ) : conversations && conversations.length > 0 ? (
+  2051→            conversations.map(conv => (
+  2052→              <button
+  2053→                key={conv.id}
+  2054→                onClick={() => selectConversation(conv.id)}
+  2055→                className={`w-full text-left p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${selectedConvId === conv.id ? 'bg-emerald-50 border-l-2 border-l-emerald-500' : ''}`}
+  2056→              >
+  2057→                <div className="flex items-center justify-between mb-1">
+  2058→                  <span className={`text-sm font-medium truncate ${!conv.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+  2059→                    {conv.customerName || conv.customerEmail || 'Anonyme'}
+  2060→                  </span>
+  2061→                  <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatRelative(conv.updatedAt)}</span>
+  2062→                </div>
+  2063→                <p className="text-xs text-muted-foreground truncate">{conv.latestMessage?.content || 'Aucun message'}</p>
+  2064→                {conv.unreadCount > 0 && (
+  2065→                  <span className="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-bold">
+  2066→                    {conv.unreadCount} nouveau(x)
+  2067→                  </span>
+  2068→                )}
+  2069→              </button>
+  2070→            ))
+  2071→          ) : (
+  2072→            <div className="p-6 text-center">
+  2073→              <MessageSquare className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+  2074→              <p className="text-sm text-muted-foreground">Aucune conversation</p>
+  2075→            </div>
+  2076→          )}
+  2077→        </div>
+  2078→      </div>
+  2079→
+  2080→      {/* Messages panel */}
+  2081→      <div className={`flex-1 flex flex-col ${!selectedConvId ? 'hidden sm:flex' : 'flex'}`}>
+  2082→        {selectedConvId && convDetail ? (
+  2083→          <>
+  2084→            {/* Header */}
+  2085→            <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+  2086→              <div>
+  2087→                <p className="font-semibold text-sm">{convDetail.customerName || convDetail.customerEmail || 'Anonyme'}</p>
+  2088→                <p className="text-xs text-muted-foreground">{convDetail.customerEmail}</p>
+  2089→              </div>
+  2090→              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => deleteConversation(selectedConvId)}>
+  2091→                <Trash2 className="h-4 w-4" />
+  2092→              </Button>
+  2093→            </div>
+  2094→
+  2095→            {/* Messages */}
+  2096→            <ScrollArea className="flex-1 p-4">
+  2097→              {detailLoading ? (
+  2098→                <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className={`h-12 w-3/4 ${i % 2 === 0 ? 'ml-auto' : ''}`} />)}</div>
+  2099→              ) : convDetail.messages.length > 0 ? (
+  2100→                <div className="space-y-3">
+  2101→                  {convDetail.messages.map(msg => (
+  2102→                    <div key={msg.id} className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
+  2103→                      <div className={`max-w-[75%] ${msg.senderType === 'admin' ? 'border-l-2 border-emerald-400' : ''}`}>
+  2104→                        <p className={`text-xs mb-1 ${msg.senderType === 'admin' ? 'text-right' : ''} text-gray-400`}>
+  2105→                          {msg.senderType === 'admin' ? 'Vous' : 'Client'}
+  2106→                        </p>
+  2107→                        <div className={`rounded-2xl px-4 py-2.5 text-sm ${msg.senderType === 'admin' ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}>
+  2108→                          <p>{msg.content}</p>
+  2109→                          <p className={`text-xs mt-1 ${msg.senderType === 'admin' ? 'text-emerald-100' : 'text-gray-400'}`}>
+  2110→                            {format(new Date(msg.createdAt), 'HH:mm', { locale: fr })}
+  2111→                          </p>
+  2112→                        </div>
+  2113→                      </div>
+  2114→                    </div>
+  2115→                  ))}
+  2116→                  <div ref={messagesEndRef} />
+  2117→                </div>
+  2118→              ) : (
+  2119→                <p className="text-sm text-muted-foreground text-center py-8">Aucun message</p>
+  2120→              )}
+  2121→            </ScrollArea>
+  2122→
+  2123→            {/* Reply input */}
+  2124→            <div className="p-3 border-t border-gray-100">
+  2125→              <div className="flex gap-2">
+  2126→                <Input
+  2127→                  placeholder="Écrire une réponse..."
+  2128→                  value={replyText}
+  2129→                  onChange={e => setReplyText(e.target.value)}
+  2130→                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+  2131→                  disabled={sending}
+  2132→                />
+  2133→                <Button size="icon" className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={sendReply} disabled={sending || !replyText.trim()}>
+  2134→                  <Send className="h-4 w-4" />
+  2135→                </Button>
+  2136→              </div>
+  2137→            </div>
+  2138→          </>
+  2139→        ) : (
+  2140→          <div className="flex-1 flex items-center justify-center">
+  2141→            <div className="text-center">
+  2142→              <MessageSquare className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  2143→              <p className="text-muted-foreground">Sélectionnez une conversation</p>
+  2144→            </div>
+  2145→          </div>
+  2146→        )}
+  2147→      </div>
+  2148→      </div>
+  2149→    </div>
+  2150→  )
+  2151→}
+  2152→
+  2153→// ==================== CONTACT SECTION ====================
+  2154→
+  2155→function ContactSection() {
+  2156→  const queryClient = useQueryClient()
+  2157→  const [search, setSearch] = useState('')
+  2158→  const [page, setPage] = useState(1)
+  2159→  const [detailOpen, setDetailOpen] = useState(false)
+  2160→  const [selectedContact, setSelectedContact] = useState<ContactSubmission | null>(null)
+  2161→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  2162→  const [deletingId, setDeletingId] = useState<string | null>(null)
+  2163→  const [markingRead, setMarkingRead] = useState<string | null>(null)
+  2164→  const limit = 20
+  2165→
+  2166→  const { data: contactData, isLoading } = useQuery({
+  2167→    queryKey: ['contact-submissions', search, page],
+  2168→    queryFn: () => {
+  2169→      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  2170→      if (search) params.set('search', search)
+  2171→      return fetch(`/api/contact?${params}`).then(r => r.json()).then(d => d.data)
+  2172→    },
+  2173→  })
+  2174→
+  2175→  const submissions = contactData?.submissions ?? []
+  2176→  const totalPages = contactData?.totalPages ?? 1
+  2177→
+  2178→  const openDetail = (submission: ContactSubmission) => {
+  2179→    setSelectedContact(submission)
+  2180→    setDetailOpen(true)
+  2181→    if (!submission.isRead) {
+  2182→      markAsRead(submission.id)
+  2183→    }
+  2184→  }
+  2185→
+  2186→  const markAsRead = async (id: string) => {
+  2187→    setMarkingRead(id)
+  2188→    try {
+  2189→      await fetch('/api/contact', {
+  2190→        method: 'PUT',
+  2191→        headers: { 'Content-Type': 'application/json' },
+  2192→        body: JSON.stringify({ id, isRead: true }),
+  2193→      })
+  2194→      queryClient.invalidateQueries({ queryKey: ['contact-submissions'] })
+  2195→      queryClient.invalidateQueries({ queryKey: ['stats'] })
+  2196→      if (selectedContact?.id === id) {
+  2197→        setSelectedContact({ ...selectedContact, isRead: true })
+  2198→      }
+  2199→    } catch {
+  2200→      toast.error('Erreur serveur')
+  2201→    } finally {
+  2202→      setMarkingRead(null)
+  2203→    }
+  2204→  }
+  2205→
+  2206→  const deleteContact = async () => {
+  2207→    if (!deletingId) return
+  2208→    try {
+  2209→      const res = await fetch(`/api/contact?id=${deletingId}`, { method: 'DELETE' })
+  2210→      const data = await res.json()
+  2211→      if (data.success) {
+  2212→        toast.success('Soumission supprimée')
+  2213→        queryClient.invalidateQueries({ queryKey: ['contact-submissions'] })
+  2214→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  2215→      } else {
+  2216→        toast.error(data.error || 'Erreur')
+  2217→      }
+  2218→    } catch {
+  2219→      toast.error('Erreur serveur')
+  2220→    } finally {
+  2221→      setDeleteDialogOpen(false)
+  2222→      setDeletingId(null)
+  2223→    }
+  2224→  }
+  2225→
+  2226→  return (
+  2227→    <div className="space-y-4">
+  2228→      {/* Top bar */}
+  2229→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+  2230→        <div className="flex items-center gap-3">
+  2231→          <h3 className="text-xl font-semibold text-gray-900">Soumissions de Contact</h3>
+  2232→          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+  2233→            {contactData?.total ?? 0} soumission(s)
+  2234→          </Badge>
+  2235→        </div>
+  2236→        <div className="flex-1" />
+  2237→        <div className="relative w-full sm:w-64">
+  2238→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  2239→          <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+  2240→        </div>
+  2241→      </div>
+  2242→
+  2243→      {/* Table */}
+  2244→      <Card>
+  2245→        <CardContent className="p-0">
+  2246→          {isLoading ? (
+  2247→            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+  2248→          ) : submissions.length > 0 ? (
+  2249→            <div className="overflow-x-auto">
+  2250→              <Table>
+  2251→                <TableHeader>
+  2252→                  <TableRow>
+  2253→                    <TableHead>Nom</TableHead>
+  2254→                    <TableHead>Email</TableHead>
+  2255→                    <TableHead className="hidden md:table-cell">Sujet</TableHead>
+  2256→                    <TableHead className="hidden lg:table-cell">Message</TableHead>
+  2257→                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+  2258→                    <TableHead>Lu</TableHead>
+  2259→                    <TableHead className="w-24">Actions</TableHead>
+  2260→                  </TableRow>
+  2261→                </TableHeader>
+  2262→                <TableBody>
+  2263→                  {submissions.map((s: ContactSubmission) => (
+  2264→                    <TableRow
+  2265→                      key={s.id}
+  2266→                      className={`cursor-pointer hover:bg-gray-50 ${!s.isRead ? 'bg-emerald-50/50' : ''}`}
+  2267→                      onClick={() => openDetail(s)}
+  2268→                    >
+  2269→                      <TableCell className="text-sm font-medium">{s.name}</TableCell>
+  2270→                      <TableCell className="text-sm text-muted-foreground">{s.email}</TableCell>
+  2271→                      <TableCell className="hidden md:table-cell text-sm">{s.subject || '—'}</TableCell>
+  2272→                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{s.message}</TableCell>
+  2273→                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(s.createdAt)}</TableCell>
+  2274→                      <TableCell>
+  2275→                        <Badge variant="outline" className={s.isRead ? 'bg-gray-50 text-gray-500 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}>
+  2276→                          {s.isRead ? 'Lu' : 'Non lu'}
+  2277→                        </Badge>
+  2278→                      </TableCell>
+  2279→                      <TableCell>
+  2280→                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+  2281→                          {!s.isRead && (
+  2282→                            <Button
+  2283→                              variant="ghost"
+  2284→                              size="icon"
+  2285→                              className="h-8 w-8"
+  2286→                              onClick={() => markAsRead(s.id)}
+  2287→                              disabled={markingRead === s.id}
+  2288→                            >
+  2289→                              <Check className="h-4 w-4" />
+  2290→                            </Button>
+  2291→                          )}
+  2292→                          <Button
+  2293→                            variant="ghost"
+  2294→                            size="icon"
+  2295→                            className="h-8 w-8 text-red-500 hover:text-red-700"
+  2296→                            onClick={() => { setDeletingId(s.id); setDeleteDialogOpen(true) }}
+  2297→                          >
+  2298→                            <Trash2 className="h-4 w-4" />
+  2299→                          </Button>
+  2300→                        </div>
+  2301→                      </TableCell>
+  2302→                    </TableRow>
+  2303→                  ))}
+  2304→                </TableBody>
+  2305→              </Table>
+  2306→            </div>
+  2307→          ) : (
+  2308→            <div className="p-12 text-center">
+  2309→              <Inbox className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  2310→              <p className="text-muted-foreground">Aucune soumission de contact</p>
+  2311→            </div>
+  2312→          )}
+  2313→        </CardContent>
+  2314→      </Card>
+  2315→
+  2316→      {/* Pagination */}
+  2317→      {totalPages > 1 && (
+  2318→        <div className="flex items-center justify-center gap-2">
+  2319→          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+  2320→            <ChevronLeft className="h-4 w-4" />
+  2321→          </Button>
+  2322→          <span className="text-sm text-muted-foreground">Page {page} / {totalPages}</span>
+  2323→          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+  2324→            <ChevronRight className="h-4 w-4" />
+  2325→          </Button>
+  2326→        </div>
+  2327→      )}
+  2328→
+  2329→      {/* Detail Dialog */}
+  2330→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+  2331→        <DialogContent className="max-w-lg">
+  2332→          {selectedContact && (
+  2333→            <>
+  2334→              <DialogHeader>
+  2335→                <DialogTitle>{selectedContact.subject || 'Soumission de Contact'}</DialogTitle>
+  2336→                <DialogDescription>De {selectedContact.name} ({selectedContact.email})</DialogDescription>
+  2337→              </DialogHeader>
+  2338→              <div className="space-y-3 text-sm">
+  2339→                {selectedContact.phone && (
+  2340→                  <p><span className="text-muted-foreground">Téléphone:</span> {selectedContact.phone}</p>
+  2341→                )}
+  2342→                <Separator />
+  2343→                <p className="whitespace-pre-wrap leading-relaxed">{selectedContact.message}</p>
+  2344→                <Separator />
+  2345→                <p className="text-xs text-muted-foreground">Reçu le {formatDate(selectedContact.createdAt)}</p>
+  2346→              </div>
+  2347→              <DialogFooter>
+  2348→                {!selectedContact.isRead && (
+  2349→                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => markAsRead(selectedContact.id)} disabled={markingRead === selectedContact.id}>
+  2350→                    <Check className="h-4 w-4 mr-1" />Marquer comme lu
+  2351→                  </Button>
+  2352→                )}
+
+[showing lines 1653-2352 of 3441; use offset=2353 with limit to continue reading]

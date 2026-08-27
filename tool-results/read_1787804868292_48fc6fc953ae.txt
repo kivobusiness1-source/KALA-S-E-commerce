@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react'
+     4→import { useQuery } from '@tanstack/react-query'
+     5→import { motion, AnimatePresence, useInView } from 'framer-motion'
+     6→import { toast } from 'sonner'
+     7→import {
+     8→  ShoppingCart,
+     9→  Plus,
+    10→  Minus,
+    11→  Trash2,
+    12→  Star,
+    13→  Phone,
+    14→  Mail,
+    15→  MapPin,
+    16→  Send,
+    17→  MessageCircle,
+    18→  Menu,
+    19→  X,
+    20→  Package,
+    21→  Truck,
+    22→  Shield,
+    23→  Award,
+    24→  Users,
+    25→  ArrowRight,
+    26→  Search,
+    27→  ChevronRight,
+    28→  ChevronUp,
+    29→  ChevronDown,
+    30→  Droplets,
+    31→  Eye,
+    32→  Quote,
+    33→  CheckCircle,
+    34→  Clock,
+    35→  ClipboardList,
+    36→  Check,
+    37→  Cookie,
+    38→} from 'lucide-react'
+    39→
+    40→import { Button } from '@/components/ui/button'
+    41→import { Card, CardContent } from '@/components/ui/card'
+    42→import { Badge } from '@/components/ui/badge'
+    43→import { Input } from '@/components/ui/input'
+    44→import { Textarea } from '@/components/ui/textarea'
+    45→import { Label } from '@/components/ui/label'
+    46→import { Separator } from '@/components/ui/separator'
+    47→import { Skeleton } from '@/components/ui/skeleton'
+    48→import { ScrollArea } from '@/components/ui/scroll-area'
+    49→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    50→import {
+    51→  Sheet,
+    52→  SheetContent,
+    53→  SheetHeader,
+    54→  SheetTitle,
+    55→  SheetDescription,
+    56→  SheetFooter,
+    57→} from '@/components/ui/sheet'
+    58→import {
+    59→  Dialog,
+    60→  DialogContent,
+    61→  DialogFooter,
+    62→  DialogHeader,
+    63→  DialogTitle,
+    64→  DialogDescription,
+    65→} from '@/components/ui/dialog'
+    66→import { useCartStore } from '@/stores/cart-store'
+    67→
+    68→// ==================== TYPES ====================
+    69→
+    70→interface ProductType {
+    71→  id: string
+    72→  name: string
+    73→  slug: string
+    74→  description: string | null
+    75→  price: number
+    76→  comparePrice: number | null
+    77→  categoryId: string
+    78→  image: string | null
+    79→  volume: string | null
+    80→  isFeatured: boolean
+    81→  inStock: boolean
+    82→  stockQty: number
+    83→  longDescription?: string | null
+    84→  category?: { id: string; name: string; slug: string }
+    85→  createdAt?: string | null
+    86→}
+    87→
+    88→interface CategoryType {
+    89→  id: string
+    90→  name: string
+    91→  slug: string
+    92→  description: string | null
+    93→  _count?: { products: number }
+    94→}
+    95→
+    96→interface ChatMessageType {
+    97→  id: string
+    98→  content: string
+    99→  senderType: 'customer' | 'admin'
+   100→  createdAt: string
+   101→}
+   102→
+   103→interface ReviewType {
+   104→  id: string
+   105→  customerName: string
+   106→  rating: number
+   107→  comment: string | null
+   108→  createdAt: string
+   109→}
+   110→
+   111→interface TrackedOrder {
+   112→  id: string
+   113→  orderNumber: string
+   114→  status: string
+   115→  totalAmount: number
+   116→  createdAt: string
+   117→  items: { productName: string; quantity: number; unitPrice: number; totalPrice: number }[]
+   118→}
+   119→
+   120→// ==================== HELPERS ====================
+   121→
+   122→function formatPrice(price: number): string {
+   123→  return price.toLocaleString('fr-FR') + ' FCFA'
+   124→}
+   125→
+   126→function getCategoryColor(slug: string): string {
+   127→  switch (slug) {
+   128→    case 'savon-liquide':
+   129→      return 'from-emerald-400 to-teal-500'
+   130→    case 'detergent':
+   131→      return 'from-amber-400 to-orange-500'
+   132→    case 'eau-de-javel':
+   133→      return 'from-cyan-400 to-sky-500'
+   134→    default:
+   135→      return 'from-emerald-400 to-emerald-600'
+   136→  }
+   137→}
+   138→
+   139→function getCategoryInitial(slug: string): string {
+   140→  switch (slug) {
+   141→    case 'savon-liquide':
+   142→      return 'SL'
+   143→    case 'detergent':
+   144→      return 'DT'
+   145→    case 'eau-de-javel':
+   146→      return 'EJ'
+   147→    default:
+   148→      return 'CC'
+   149→  }
+   150→}
+   151→
+   152→function getStatusColor(status: string): string {
+   153→  switch (status) {
+   154→    case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200'
+   155→    case 'confirmed': return 'bg-blue-100 text-blue-700 border-blue-200'
+   156→    case 'processing': return 'bg-purple-100 text-purple-700 border-purple-200'
+   157→    case 'shipped': return 'bg-cyan-100 text-cyan-700 border-cyan-200'
+   158→    case 'delivered': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+   159→    case 'cancelled': return 'bg-red-100 text-red-700 border-red-200'
+   160→    default: return 'bg-gray-100 text-gray-700 border-gray-200'
+   161→  }
+   162→}
+   163→
+   164→function getStatusLabel(status: string): string {
+   165→  switch (status) {
+   166→    case 'pending': return 'En attente'
+   167→    case 'confirmed': return 'Confirmée'
+   168→    case 'processing': return 'En traitement'
+   169→    case 'shipped': return 'Expédiée'
+   170→    case 'delivered': return 'Livrée'
+   171→    case 'cancelled': return 'Annulée'
+   172→    default: return status
+   173→  }
+   174→}
+   175→
+   176→function isNewProduct(createdAt: string | null | undefined): boolean {
+   177→  if (!createdAt) return false
+   178→  const created = new Date(createdAt)
+   179→  const thirtyDaysAgo = new Date()
+   180→  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+   181→  return created >= thirtyDaysAgo
+   182→}
+   183→
+   184→function getInitials(name: string): string {
+   185→  return name
+   186→    .split(' ')
+   187→    .map((n) => n[0])
+   188→    .join('')
+   189→    .toUpperCase()
+   190→    .slice(0, 2)
+   191→}
+   192→
+   193→// ==================== ANIMATED COUNTER ====================
+   194→
+   195→function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
+   196→  const [count, setCount] = useState(0)
+   197→  const ref = useRef(null)
+   198→  const isInView = useInView(ref, { once: true })
+   199→
+   200→  useEffect(() => {
+   201→    if (!isInView) return
+   202→    let start = 0
+   203→    const duration = 2000
+   204→    const step = target / (duration / 16)
+   205→    const timer = setInterval(() => {
+   206→      start += step
+   207→      if (start >= target) {
+   208→        setCount(target)
+   209→        clearInterval(timer)
+   210→      } else {
+   211→        setCount(Math.floor(start))
+   212→      }
+   213→    }, 16)
+   214→    return () => clearInterval(timer)
+   215→  }, [isInView, target])
+   216→
+   217→  return <span ref={ref}>{count}{suffix}</span>
+   218→}
+   219→
+   220→// ==================== TYPING EFFECT ====================
+   221→
+   222→function TypingEffect({ phrases }: { phrases: string[] }) {
+   223→  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0)
+   224→  const [currentText, setCurrentText] = useState('')
+   225→  const [isDeleting, setIsDeleting] = useState(false)
+   226→
+   227→  useEffect(() => {
+   228→    const phrase = phrases[currentPhraseIndex]
+   229→    if (!isDeleting) {
+   230→      if (currentText.length < phrase.length) {
+   231→        const timeout = setTimeout(() => {
+   232→          setCurrentText(phrase.slice(0, currentText.length + 1))
+   233→        }, 50)
+   234→        return () => clearTimeout(timeout)
+   235→      } else {
+   236→        const timeout = setTimeout(() => {
+   237→          setIsDeleting(true)
+   238→        }, 2000)
+   239→        return () => clearTimeout(timeout)
+   240→      }
+   241→    } else {
+   242→      if (currentText.length > 0) {
+   243→        const timeout = setTimeout(() => {
+   244→          setCurrentText(currentText.slice(0, -1))
+   245→        }, 50)
+   246→        return () => clearTimeout(timeout)
+   247→      } else {
+   248→        const timeout = setTimeout(() => {
+   249→          setIsDeleting(false)
+   250→          setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length)
+   251→        }, 50)
+   252→        return () => clearTimeout(timeout)
+   253→      }
+   254→    }
+   255→  }, [currentText, isDeleting, currentPhraseIndex, phrases])
+   256→
+   257→  return (
+   258→    <span className="text-emerald-300 font-bold text-xl">
+   259→      {currentText}
+   260→      <span className="animate-pulse">|</span>
+   261→    </span>
+   262→  )
+   263→}
+   264→
+   265→// ==================== ANIMATED SECTION WRAPPER ====================
+   266→
+   267→function FadeInSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+   268→  const ref = useRef(null)
+   269→  const isInView = useInView(ref, { once: true, margin: '-80px' })
+   270→
+   271→  return (
+   272→    <motion.div
+   273→      ref={ref}
+   274→      initial={{ opacity: 0, y: 40 }}
+   275→      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+   276→      transition={{ duration: 0.6, ease: 'easeOut' }}
+   277→      className={className}
+   278→    >
+   279→      {children}
+   280→    </motion.div>
+   281→  )
+   282→}
+   283→
+   284→// ==================== MAIN PAGE ====================
+   285→
+   286→export default function Home() {
+   287→  // Promo bar state
+   288→  const [promoText, setPromoText] = useState('🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉')
+   289→  const [promoBarVisible, setPromoBarVisible] = useState(true)
+   290→
+   291→  // FAQ state
+   292→  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+   293→
+   294→  // Navigation scroll state
+   295→  const [scrolled, setScrolled] = useState(false)
+   296→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+   297→  const [showBackToTop, setShowBackToTop] = useState(false)
+   298→  const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null)
+   299→
+   300→  // Quick add feedback
+   301→  const [quickAddedId, setQuickAddedId] = useState<string | null>(null)
+   302→
+   303→  // Testimonial auto-rotation
+   304→  const [activeTestimonial, setActiveTestimonial] = useState(0)
+   305→  const [isMobile, setIsMobile] = useState(false)
+   306→
+   307→  // Newsletter success
+   308→  const [newsletterSuccess, setNewsletterSuccess] = useState(false)
+   309→
+   310→  // Scroll progress
+   311→  const [scrollProgress, setScrollProgress] = useState(0)
+   312→
+   313→  // Recently viewed
+   314→  const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([])
+   315→
+   316→  // Cookie consent
+   317→  const [cookieConsentVisible, setCookieConsentVisible] = useState(false)
+   318→
+   319→  // Products state
+   320→  const [activeCategory, setActiveCategory] = useState('all')
+   321→  const [searchQuery, setSearchQuery] = useState('')
+   322→
+   323→  // Contact form state
+   324→  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' })
+   325→  const [contactLoading, setContactLoading] = useState(false)
+   326→
+   327→  // Newsletter state
+   328→  const [newsletterEmail, setNewsletterEmail] = useState('')
+   329→  const [newsletterLoading, setNewsletterLoading] = useState(false)
+   330→
+   331→  // Chat state
+   332→  const [chatOpen, setChatOpen] = useState(false)
+   333→  const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([])
+   334→  const [chatInput, setChatInput] = useState('')
+   335→  const [chatLoading, setChatLoading] = useState(false)
+   336→  const [chatName, setChatName] = useState('')
+   337→  const [chatEmail, setChatEmail] = useState('')
+   338→  const [chatRegistered, setChatRegistered] = useState(false)
+   339→  const [sessionId] = useState(() => {
+   340→    if (typeof window !== 'undefined') {
+   341→      const stored = localStorage.getItem('congoclean_session_id')
+   342→      if (stored) return stored
+   343→      const newId = crypto.randomUUID()
+   344→      localStorage.setItem('congoclean_session_id', newId)
+   345→      return newId
+   346→    }
+   347→    return ''
+   348→  })
+   349→  const chatEndRef = useRef<HTMLDivElement>(null)
+   350→
+   351→  // Order dialog state
+   352→  const [orderDialogOpen, setOrderDialogOpen] = useState(false)
+   353→  const [orderForm, setOrderForm] = useState({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
+   354→  const [orderLoading, setOrderLoading] = useState(false)
+   355→
+   356→  // Order tracking state
+   357→  const [trackEmail, setTrackEmail] = useState('')
+   358→  const [trackLoading, setTrackLoading] = useState(false)
+   359→  const [trackedOrders, setTrackedOrders] = useState<TrackedOrder[]>([])
+   360→  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+   361→
+   362→  // Reviews state
+   363→  const [reviewForm, setReviewForm] = useState({ customerName: '', rating: 5, comment: '' })
+   364→  const [reviewLoading, setReviewLoading] = useState(false)
+   365→  const [reviews, setReviews] = useState<ReviewType[]>([])
+   366→  const [avgRating, setAvgRating] = useState(0)
+   367→  const [totalReviews, setTotalReviews] = useState(0)
+   368→  const [showReviewForm, setShowReviewForm] = useState(false)
+   369→
+   370→  // Cart store
+   371→  const cart = useCartStore()
+   372→
+   373→  // Scroll detection
+   374→  useEffect(() => {
+   375→    const handleScroll = () => {
+   376→      setScrolled(window.scrollY > 20)
+   377→      setShowBackToTop(window.scrollY > 400)
+   378→      // Scroll progress
+   379→      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+   380→      if (docHeight > 0) {
+   381→        setScrollProgress(Math.min(window.scrollY / docHeight, 1))
+   382→      }
+   383→    }
+   384→    window.addEventListener('scroll', handleScroll)
+   385→    return () => window.removeEventListener('scroll', handleScroll)
+   386→  }, [])
+   387→
+   388→  // Mobile detection for testimonials
+   389→  useEffect(() => {
+   390→    const checkMobile = () => {
+   391→      setIsMobile(window.innerWidth < 768)
+   392→    }
+   393→    checkMobile()
+   394→    window.addEventListener('resize', checkMobile)
+   395→    return () => window.removeEventListener('resize', checkMobile)
+   396→  }, [])
+   397→
+   398→  // Testimonial auto-rotation on mobile
+   399→  useEffect(() => {
+   400→    if (!isMobile) return
+   401→    const interval = setInterval(() => {
+   402→      setActiveTestimonial((prev) => (prev + 1) % 3)
+   403→    }, 5000)
+   404→    return () => clearInterval(interval)
+   405→  }, [isMobile])
+   406→
+   407→  // Cookie consent check
+   408→  useEffect(() => {
+   409→    const consent = localStorage.getItem('congoclean_cookie_consent')
+   410→    if (!consent) {
+   411→      setCookieConsentVisible(true)
+   412→    }
+   413→  }, [])
+   414→
+   415→  // Fetch site settings for promo banner
+   416→  useEffect(() => {
+   417→    const fetchSettings = async () => {
+   418→      try {
+   419→        const res = await fetch('/api/site-settings')
+   420→        if (res.ok) {
+   421→          const data = await res.json()
+   422→          const settings = data.data || data.settings || data
+   423→          if (settings.promo_banner_text) {
+   424→            setPromoText(settings.promo_banner_text)
+   425→          }
+   426→          if (typeof settings.promo_banner_enabled === 'boolean') {
+   427→            setPromoBarVisible(settings.promo_banner_enabled)
+   428→          }
+   429→        }
+   430→      } catch {
+   431→        // Use default values on error
+   432→      }
+   433→    }
+   434→    fetchSettings()
+   435→  }, [])
+   436→
+   437→  // Smooth scroll helper
+   438→  const scrollToSection = useCallback((id: string) => {
+   439→    setMobileMenuOpen(false)
+   440→    const el = document.getElementById(id)
+   441→    if (el) {
+   442→      el.scrollIntoView({ behavior: 'smooth' })
+   443→    }
+   444→  }, [])
+   445→
+   446→  // Fetch categories
+   447→  const { data: categories } = useQuery<CategoryType[]>({
+   448→    queryKey: ['categories'],
+   449→    queryFn: async () => {
+   450→      const res = await fetch('/api/categories')
+   451→      if (!res.ok) throw new Error('Failed to fetch categories')
+   452→      const data = await res.json()
+   453→      return data.data || data.categories || data
+   454→    },
+   455→  })
+   456→
+   457→  // Fetch products
+   458→  const { data: products, isLoading: productsLoading } = useQuery<ProductType[]>({
+   459→    queryKey: ['products', activeCategory, searchQuery],
+   460→    queryFn: async () => {
+   461→      const params = new URLSearchParams()
+   462→      if (activeCategory !== 'all' && activeCategory) params.set('categoryId', activeCategory)
+   463→      if (searchQuery) params.set('search', searchQuery)
+   464→      const res = await fetch(`/api/products?${params.toString()}`)
+   465→      if (!res.ok) throw new Error('Failed to fetch products')
+   466→      const data = await res.json()
+   467→      return data.data || data.products || data
+   468→    },
+   469→  })
+   470→
+   471→  // Fetch chat messages
+   472→  const loadChatMessages = useCallback(async () => {
+   473→    if (!sessionId) return
+   474→    try {
+   475→      const res = await fetch(`/api/chat?sessionId=${sessionId}`)
+   476→      if (res.ok) {
+   477→        const data = await res.json()
+   478→        const msgs = data.data?.messages || data.messages
+   479→        if (msgs && msgs.length > 0) {
+   480→          setChatMessages(msgs)
+   481→          setChatRegistered(true)
+   482→        }
+   483→      }
+   484→    } catch {
+   485→      // silently fail
+   486→    }
+   487→  }, [sessionId])
+   488→
+   489→  useEffect(() => {
+   490→    if (chatOpen && !chatRegistered) {
+   491→      loadChatMessages()
+   492→    }
+   493→  }, [chatOpen, chatRegistered, loadChatMessages])
+   494→
+   495→  useEffect(() => {
+   496→    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+   497→  }, [chatMessages])
+   498→
+   499→  // Fetch reviews when product is selected
+   500→  useEffect(() => {
+   501→    if (selectedProduct) {
+   502→      fetchReviews(selectedProduct.id)
+   503→      setShowReviewForm(false)
+   504→      setReviewForm({ customerName: '', rating: 5, comment: '' })
+   505→      // Add to recently viewed
+   506→      setRecentlyViewed((prev) => {
+   507→        const filtered = prev.filter((p) => p.id !== selectedProduct.id)
+   508→        return [selectedProduct, ...filtered].slice(0, 5)
+   509→      })
+   510→    }
+   511→  }, [selectedProduct])
+   512→
+   513→  // Add to cart handler
+   514→  const handleAddToCart = (product: ProductType) => {
+   515→    cart.addItem({
+   516→      id: product.id,
+   517→      name: product.name,
+   518→      price: product.price,
+   519→      image: product.image,
+   520→      volume: product.volume,
+   521→    })
+   522→    toast.success(`${product.name} ajouté au panier`)
+   523→  }
+   524→
+   525→  // Quick add handler (click on card)
+   526→  const handleQuickAdd = (product: ProductType) => {
+   527→    handleAddToCart(product)
+   528→    setQuickAddedId(product.id)
+   529→    setTimeout(() => setQuickAddedId(null), 800)
+   530→  }
+   531→
+   532→  // Contact form submit
+   533→  const handleContactSubmit = async (e: React.FormEvent) => {
+   534→    e.preventDefault()
+   535→    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+   536→      toast.error('Veuillez remplir tous les champs obligatoires')
+   537→      return
+   538→    }
+   539→    setContactLoading(true)
+   540→    try {
+   541→      const res = await fetch('/api/contact', {
+   542→        method: 'POST',
+   543→        headers: { 'Content-Type': 'application/json' },
+   544→        body: JSON.stringify(contactForm),
+   545→      })
+   546→      if (res.ok) {
+   547→        toast.success('Message envoyé avec succès !')
+   548→        setContactForm({ name: '', email: '', phone: '', subject: '', message: '' })
+   549→      } else {
+   550→        toast.error('Erreur lors de l\'envoi du message')
+   551→      }
+   552→    } catch {
+   553→      toast.error('Erreur de connexion')
+   554→    } finally {
+   555→      setContactLoading(false)
+   556→    }
+   557→  }
+   558→
+   559→  // Newsletter submit
+   560→  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+   561→    e.preventDefault()
+   562→    if (!newsletterEmail) {
+   563→      toast.error('Veuillez entrer votre email')
+   564→      return
+   565→    }
+   566→    setNewsletterLoading(true)
+   567→    try {
+   568→      const res = await fetch('/api/newsletter', {
+   569→        method: 'POST',
+   570→        headers: { 'Content-Type': 'application/json' },
+   571→        body: JSON.stringify({ email: newsletterEmail }),
+   572→      })
+   573→      if (res.ok) {
+   574→        setNewsletterSuccess(true)
+   575→        setNewsletterEmail('')
+   576→        setTimeout(() => setNewsletterSuccess(false), 3000)
+   577→      } else {
+   578→        toast.error('Erreur lors de l\'inscription')
+   579→      }
+   580→    } catch {
+   581→      toast.error('Erreur de connexion')
+   582→    } finally {
+   583→      setNewsletterLoading(false)
+   584→    }
+   585→  }
+   586→
+   587→  // Chat register
+   588→  const handleChatRegister = async () => {
+   589→    if (!chatName) {
+   590→      toast.error('Veuillez entrer votre nom')
+   591→      return
+   592→    }
+   593→    setChatLoading(true)
+   594→    try {
+   595→      const res = await fetch('/api/chat', {
+   596→        method: 'POST',
+   597→        headers: { 'Content-Type': 'application/json' },
+   598→        body: JSON.stringify({ sessionId, customerName: chatName, customerEmail: chatEmail || undefined, content: 'Bonjour !' }),
+   599→      })
+   600→      if (res.ok) {
+   601→        setChatRegistered(true)
+   602→        await loadChatMessages()
+   603→      }
+   604→    } catch {
+   605→      toast.error('Erreur de connexion')
+   606→    } finally {
+   607→      setChatLoading(false)
+   608→    }
+   609→  }
+   610→
+   611→  // Chat send message
+   612→  const handleChatSend = async () => {
+   613→    if (!chatInput.trim()) return
+   614→    const content = chatInput.trim()
+   615→    setChatInput('')
+   616→    setChatMessages((prev) => [
+   617→      ...prev,
+   618→      { id: `temp-${Date.now()}`, content, senderType: 'customer', createdAt: new Date().toISOString() },
+   619→    ])
+   620→    setChatLoading(true)
+   621→    try {
+   622→      const res = await fetch('/api/chat', {
+   623→        method: 'POST',
+   624→        headers: { 'Content-Type': 'application/json' },
+   625→        body: JSON.stringify({ sessionId, content }),
+   626→      })
+   627→      if (res.ok) {
+   628→        await loadChatMessages()
+   629→      }
+   630→    } catch {
+   631→      toast.error('Erreur d\'envoi')
+   632→    } finally {
+   633→      setChatLoading(false)
+   634→    }
+   635→  }
+   636→
+   637→  // Order submit
+   638→  const handleOrderSubmit = async (e: React.FormEvent) => {
+   639→    e.preventDefault()
+   640→    if (!orderForm.customerName || !orderForm.customerEmail || !orderForm.customerPhone || !orderForm.address) {
+   641→      toast.error('Veuillez remplir tous les champs')
+   642→      return
+   643→    }
+   644→    setOrderLoading(true)
+   645→    try {
+   646→      const res = await fetch('/api/orders', {
+   647→        method: 'POST',
+   648→        headers: { 'Content-Type': 'application/json' },
+   649→        body: JSON.stringify({
+   650→          ...orderForm,
+   651→          items: cart.items.map((item) => ({
+   652→            productId: item.id,
+   653→            name: item.name,
+   654→            quantity: item.quantity,
+   655→            unitPrice: item.price,
+   656→          })),
+   657→        }),
+   658→      })
+   659→      if (res.ok) {
+   660→        toast.success('Commande passée avec succès !')
+   661→        cart.clearCart()
+   662→        cart.setCartOpen(false)
+   663→        setOrderDialogOpen(false)
+   664→        setOrderForm({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
+   665→      } else {
+   666→        const err = await res.json()
+   667→        toast.error(err.error || 'Erreur lors de la commande')
+   668→      }
+   669→    } catch {
+   670→      toast.error('Erreur de connexion')
+   671→    } finally {
+   672→      setOrderLoading(false)
+   673→    }
+   674→  }
+   675→
+   676→  // Order tracking submit
+   677→  const handleTrackOrder = async (e: React.FormEvent) => {
+   678→    e.preventDefault()
+   679→    if (!trackEmail) {
+   680→      toast.error('Veuillez entrer votre email')
+   681→      return
+   682→    }
+   683→    setTrackLoading(true)
+   684→    setTrackedOrders([])
+   685→    setExpandedOrder(null)
+   686→    try {
+   687→      const res = await fetch('/api/orders/track', {
+   688→        method: 'POST',
+   689→        headers: { 'Content-Type': 'application/json' },
+   690→        body: JSON.stringify({ email: trackEmail }),
+   691→      })
+   692→      if (res.ok) {
+   693→        const data = await res.json()
+   694→        const orders = data.data || data.orders || []
+   695→        setTrackedOrders(orders)
+   696→        if (orders.length === 0) {
+   697→          toast.info('Aucune commande trouvée pour cet email')
+   698→        }
+   699→      } else {
+   700→        toast.error('Erreur lors de la recherche')
+   701→      }
+   702→    } catch {
+   703→      toast.error('Erreur de connexion')
+   704→    } finally {
+   705→      setTrackLoading(false)
+   706→    }
+   707→  }
+   708→
+   709→  // Fetch reviews for a product
+   710→  const fetchReviews = async (productId: string) => {
+   711→    try {
+   712→      const res = await fetch(`/api/products/${productId}/reviews`)
+   713→      if (res.ok) {
+   714→        const data = await res.json()
+   715→        const reviewData = data.data || data
+   716→        setReviews(reviewData.reviews || [])
+   717→        setAvgRating(reviewData.averageRating || 0)
+   718→        setTotalReviews(reviewData.totalReviews || 0)
+   719→      }
+   720→    } catch {
+   721→      // silently fail
+   722→    }
+   723→  }
+   724→
+   725→  // Submit review
+   726→  const handleReviewSubmit = async (e: React.FormEvent) => {
+   727→    e.preventDefault()
+   728→    if (!selectedProduct || !reviewForm.customerName) {
+   729→      toast.error('Veuillez entrer votre nom')
+   730→      return
+   731→    }
+   732→    setReviewLoading(true)
+   733→    try {
+   734→      const res = await fetch(`/api/products/${selectedProduct.id}/reviews`, {
+   735→        method: 'POST',
+   736→        headers: { 'Content-Type': 'application/json' },
+   737→        body: JSON.stringify({
+   738→          customerName: reviewForm.customerName,
+   739→          rating: reviewForm.rating,
+   740→          comment: reviewForm.comment || undefined,
+   741→        }),
+   742→      })
+   743→      if (res.ok) {
+   744→        toast.success('Avis ajouté avec succès !')
+   745→        setReviewForm({ customerName: '', rating: 5, comment: '' })
+   746→        setShowReviewForm(false)
+   747→        await fetchReviews(selectedProduct.id)
+   748→      } else {
+   749→        const err = await res.json()
+   750→        toast.error(err.error || 'Erreur lors de l\'ajout de l\'avis')
+   751→      }
+   752→    } catch {
+   753→      toast.error('Erreur de connexion')
+   754→    } finally {
+   755→      setReviewLoading(false)
+   756→    }
+   757→  }
+   758→
+   759→  // ==================== NAV BAR ====================
+   760→
+   761→  const NavBar = (
+   762→    <header
+   763→      className={`sticky top-0 z-50 transition-all duration-300 ${
+   764→        scrolled ? 'bg-white/95 backdrop-blur-md shadow-md' : 'bg-white'
+   765→      }`}
+   766→    >
+   767→      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   768→        <div className="flex items-center justify-between h-16">
+   769→          {/* Logo */}
+   770→          <button onClick={() => scrollToSection('hero')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+   771→            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+   772→              <Droplets className="w-5 h-5 text-white" />
+   773→            </div>
+   774→            <span className="text-xl font-bold text-emerald-700 tracking-tight">CongoClean</span>
+   775→          </button>
+   776→
+   777→          {/* Desktop Nav Links */}
+   778→          <div className="hidden md:flex items-center gap-8">
+   779→            {[
+   780→              { label: 'Accueil', id: 'hero' },
+   781→              { label: 'Produits', id: 'products' },
+   782→              { label: 'À Propos', id: 'about' },
+   783→              { label: 'Contact', id: 'contact' },
+   784→            ].map((link) => (
+   785→              <button
+   786→                key={link.id}
+   787→                onClick={() => scrollToSection(link.id)}
+   788→                className="text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors"
+   789→              >
+   790→                {link.label}
+   791→              </button>
+   792→            ))}
+   793→          </div>
+   794→
+   795→          {/* Cart + Mobile Menu */}
+   796→          <div className="flex items-center gap-3">
+   797→            <button
+   798→              onClick={() => cart.setCartOpen(true)}
+   799→              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+   800→              aria-label="Panier"
+   801→            >
+   802→              <ShoppingCart className="w-5 h-5 text-gray-700" />
+   803→              {cart.totalItems() > 0 && (
+   804→                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+   805→                  {cart.totalItems()}
+   806→                </span>
+   807→              )}
+   808→            </button>
+   809→            <button
+   810→              onClick={() => setMobileMenuOpen(true)}
+   811→              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+   812→              aria-label="Menu"
+   813→            >
+   814→              <Menu className="w-5 h-5 text-gray-700" />
+   815→            </button>
+   816→          </div>
+   817→        </div>
+   818→      </nav>
+   819→
+   820→      {/* Mobile Menu Sheet */}
+   821→      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+   822→        <SheetContent side="left" className="w-72 flex flex-col">
+   823→          <SheetHeader>
+   824→            <SheetTitle className="flex items-center gap-2 text-emerald-700">
+   825→              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+   826→                <Droplets className="w-4 h-4 text-white" />
+   827→              </div>
+   828→              <span className="text-xl font-bold tracking-tight">CongoClean</span>
+   829→            </SheetTitle>
+   830→            <SheetDescription>Navigation</SheetDescription>
+   831→          </SheetHeader>
+   832→          <div className="flex flex-col gap-1 mt-4 flex-1">
+   833→            {[
+   834→              { label: 'Accueil', id: 'hero' },
+   835→              { label: 'Produits', id: 'products' },
+   836→              { label: 'À Propos', id: 'about' },
+   837→              { label: 'Contact', id: 'contact' },
+   838→            ].map((link) => (
+   839→              <button
+   840→                key={link.id}
+   841→                onClick={() => scrollToSection(link.id)}
+   842→                className="text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors font-medium"
+   843→              >
+   844→                {link.label}
+   845→              </button>
+   846→            ))}
+   847→          </div>
+   848→          {/* Social media icons */}
+   849→          <div className="flex items-center gap-2 px-4 pt-4 border-t border-gray-100">
+   850→            <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+   851→              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+   852→            </a>
+   853→            <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+   854→              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+   855→            </a>
+   856→            <a href="#" aria-label="Twitter" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+   857→              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-600 hover:text-emerald-700"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+   858→            </a>
+   859→          </div>
+   860→          {/* Contacter button */}
+   861→          <div className="px-4 pt-3">
+   862→            <Button
+   863→              onClick={() => scrollToSection('contact')}
+   864→              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+   865→            >
+   866→              <Phone className="w-4 h-4 mr-2" />
+   867→              Contacter
+   868→            </Button>
+   869→          </div>
+   870→        </SheetContent>
+   871→      </Sheet>
+   872→    </header>
+   873→  )
+   874→
+   875→  // ==================== HERO SECTION ====================
+   876→
+   877→  const HeroSection = (
+   878→    <section id="hero" className="relative w-full min-h-[600px] lg:min-h-[700px] flex items-center overflow-hidden">
+   879→      <div className="absolute inset-0">
+   880→        <img src="/hero-banner.png" alt="CongoClean" className="w-full h-full object-cover" />
+   881→        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/85 via-emerald-800/70 to-emerald-700/50" />
+   882→        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/50 via-transparent to-transparent" />
+   883→      </div>
+   884→      {/* Decorative elements */}
+   885→      <div className="absolute top-20 right-20 w-32 h-32 bg-emerald-400/10 rounded-full blur-2xl animate-pulse" />
+   886→      <div className="absolute bottom-20 right-40 w-48 h-48 bg-teal-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+   887→      <div className="absolute top-40 left-1/3 w-24 h-24 bg-emerald-300/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
+   888→      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+   889→        <motion.div
+   890→          initial={{ opacity: 0, y: 30 }}
+   891→          animate={{ opacity: 1, y: 0 }}
+   892→          transition={{ duration: 0.8, ease: 'easeOut' }}
+   893→          className="max-w-2xl"
+   894→        >
+   895→          <Badge className="mb-6 bg-emerald-500/25 backdrop-blur-sm text-emerald-200 border-emerald-400/30 px-4 py-1.5 text-sm font-medium">
+   896→            <Star className="w-3.5 h-3.5 mr-1.5" />
+   897→            Qualité Industrielle depuis Pointe-Noire
+   898→          </Badge>
+   899→          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
+   900→            Produits d&rsquo;Hygiène Fabriqués au{' '}
+   901→            <span className="text-emerald-300">Congo-Brazzaville</span>
+   902→          </h1>
+   903→          <div className="mb-8 h-8">
+   904→            <TypingEffect phrases={['Qualité Industrielle', 'Fabrication Locale', 'Livraison Rapide']} />
+   905→          </div>
+   906→          <p className="text-lg sm:text-xl text-emerald-100/90 mb-8 leading-relaxed max-w-xl">
+   907→            Savon liquide, détergent et eau de Javel de qualité industrielle. Fabriqué avec fierté à Pointe-Noire.
+   908→          </p>
+   909→          <div className="flex flex-col sm:flex-row gap-4">
+   910→            <Button
+   911→              size="lg"
+   912→              onClick={() => scrollToSection('products')}
+   913→              className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold text-base px-8 py-6 shadow-lg"
+   914→            >
+   915→              Voir nos Produits
+   916→              <ArrowRight className="w-4 h-4 ml-2" />
+   917→            </Button>
+   918→            <Button
+   919→              size="lg"
+   920→              variant="outline"
+   921→              onClick={() => scrollToSection('contact')}
+   922→              className="border-white/40 text-white hover:bg-white/10 font-semibold text-base px-8 py-6"
+   923→            >
+   924→              Nous Contacter
+   925→              <Phone className="w-4 h-4 ml-2" />
+   926→            </Button>
+   927→          </div>
+   928→        </motion.div>
+   929→      </div>
+   930→      {/* Animated gradient border */}
+   931→      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400" style={{ backgroundSize: '200% 100%', animation: 'shimmer 3s ease-in-out infinite' }} />
+   932→    </section>
+   933→  )
+   934→
+   935→  // ==================== FEATURES BAR ====================
+   936→
+   937→  const features = [
+   938→    { icon: Shield, title: 'Qualité Garantie', desc: 'Normes industrielles strictes', target: 500, suffix: '+' },
+   939→    { icon: MapPin, title: 'Fabrication Locale', desc: '100% fabriqué à Pointe-Noire', target: 3, suffix: '+' },
+   940→    { icon: Truck, title: 'Livraison Rapide', desc: 'Sur toute la ville', target: 48, suffix: 'h' },
+   941→    { icon: Phone, title: 'Support 24/7', desc: 'Toujours à votre écoute', target: 7, suffix: 'j/7' },
+   942→  ]
+   943→
+   944→  const FeaturesBar = (
+   945→    <section className="bg-white py-10 border-b border-gray-100 shadow-sm">
+   946→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   947→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+   948→          {features.map((f, i) => (
+   949→            <FadeInSection key={i}>
+   950→              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 text-center sm:text-left p-4 rounded-xl hover:bg-emerald-50/50 transition-colors">
+   951→                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+   952→                  <f.icon className="w-6 h-6 text-emerald-600" />
+   953→                </div>
+   954→                <div>
+   955→                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{f.title}</h3>
+   956→                  <p className="text-xl font-bold text-emerald-700 mt-0.5">
+   957→                    <AnimatedCounter target={f.target} suffix={f.suffix} />
+   958→                  </p>
+   959→                  <p className="text-gray-500 text-xs mt-0.5">{f.desc}</p>
+   960→                </div>
+   961→              </div>
+   962→            </FadeInSection>
+   963→          ))}
+   964→        </div>
+   965→      </div>
+   966→      <div className="h-0.5 bg-gradient-to-r from-transparent via-emerald-300 to-transparent" />
+   967→    </section>
+   968→  )
+   969→
+   970→  // ==================== HOW TO ORDER SECTION ====================
+   971→
+   972→  const steps = [
+   973→    { step: '01', icon: ShoppingCart, title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaités à votre panier.' },
+   974→    { step: '02', icon: ClipboardList, title: 'Passez votre commande', desc: 'Remplissez vos informations de livraison et confirmez votre commande.' },
+   975→    { step: '03', icon: Truck, title: 'Recevez votre livraison', desc: 'Notre équipe vous livre rapidement à Pointe-Noire et environs.' },
+   976→  ]
+   977→
+   978→  const HowToOrderSection = (
+   979→    <section className="py-16 sm:py-20 bg-white">
+   980→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   981→        <FadeInSection>
+   982→          <div className="text-center mb-14">
+   983→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Comment Commander</h2>
+   984→            <p className="text-gray-500 max-w-2xl mx-auto">
+   985→              En 3 étapes simples, recevez vos produits chez vous
+   986→            </p>
+   987→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+   988→          </div>
+   989→        </FadeInSection>
+   990→        <div className="grid md:grid-cols-3 gap-8 relative">
+   991→          {/* Connecting line */}
+   992→          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-emerald-200 via-emerald-400 to-emerald-200" />
+   993→          {steps.map((s, i) => (
+   994→            <FadeInSection key={i}>
+   995→              <div className="relative text-center">
+   996→                <div className="w-24 h-24 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200 relative z-10">
+   997→                  <s.icon className="w-7 h-7" />
+   998→                </div>
+   999→                <p className="text-xs text-emerald-600 font-medium mb-2">Étape {s.step}</p>
+  1000→                <h3 className="text-lg font-semibold text-gray-900 mb-2">{s.title}</h3>
+  1001→                <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+  1002→              </div>
+  1003→            </FadeInSection>
+  1004→          ))}
+  1005→        </div>
+  1006→      </div>
+  1007→    </section>
+  1008→  )
+  1009→
+  1010→  // ==================== PRODUCTS SECTION ====================
+  1011→
+  1012→  const categoryTabs = [
+  1013→    { label: 'Tous', value: 'all' },
+  1014→    ...(categories || []).map((c) => ({ label: c.name, value: c.id })),
+  1015→  ]
+  1016→
+  1017→  const ProductsSection = (
+  1018→    <section id="products" className="py-16 sm:py-20 bg-gray-50">
+  1019→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1020→        <FadeInSection>
+  1021→          <div className="text-center mb-12">
+  1022→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Nos Produits</h2>
+  1023→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1024→              Découvrez notre gamme de produits d&rsquo;hygiène de qualité industrielle, fabriqués avec soin au Congo-Brazzaville.
+  1025→            </p>
+  1026→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1027→          </div>
+  1028→        </FadeInSection>
+  1029→
+  1030→        <FadeInSection>
+  1031→          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+  1032→            {/* Category Tabs */}
+  1033→            <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full sm:w-auto">
+  1034→              <TabsList className="bg-white border border-gray-200 shadow-sm w-full sm:w-auto flex flex-wrap">
+  1035→                {categoryTabs.map((tab) => (
+  1036→                  <TabsTrigger
+  1037→                    key={tab.value}
+  1038→                    value={tab.value}
+  1039→                    className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-xs sm:text-sm"
+  1040→                  >
+  1041→                    {tab.label}
+  1042→                  </TabsTrigger>
+  1043→                ))}
+  1044→              </TabsList>
+  1045→            </Tabs>
+  1046→
+  1047→            {/* Search */}
+  1048→            <div className="relative w-full sm:w-72">
+  1049→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+  1050→              <Input
+  1051→                placeholder="Rechercher un produit..."
+  1052→                value={searchQuery}
+  1053→                onChange={(e) => setSearchQuery(e.target.value)}
+  1054→                className="pl-10 bg-white border-gray-200"
+  1055→              />
+  1056→            </div>
+  1057→          </div>
+  1058→        </FadeInSection>
+  1059→
+  1060→        {/* Products Grid */}
+  1061→        {productsLoading ? (
+  1062→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  1063→            {Array.from({ length: 6 }).map((_, i) => (
+  1064→              <Card key={i} className="overflow-hidden animate-pulse">
+  1065→                <Skeleton className="w-full h-48" />
+  1066→                <CardContent className="p-4 space-y-3">
+  1067→                  <Skeleton className="h-4 w-1/3" />
+  1068→                  <Skeleton className="h-6 w-3/4" />
+  1069→                  <Skeleton className="h-4 w-1/4" />
+  1070→                  <Skeleton className="h-10 w-full" />
+  1071→                </CardContent>
+  1072→              </Card>
+  1073→            ))}
+  1074→          </div>
+  1075→        ) : products && products.length > 0 ? (
+  1076→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  1077→            {products.map((product, index) => {
+  1078→              const discount = product.comparePrice && product.comparePrice > product.price
+  1079→                ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
+  1080→                : 0
+  1081→              const catSlug = product.category?.slug || ''
+  1082→              const gradient = getCategoryColor(catSlug)
+  1083→              const initial = getCategoryInitial(catSlug)
+  1084→
+  1085→              return (
+  1086→                <motion.div
+  1087→                  key={product.id}
+  1088→                  initial={{ opacity: 0, y: 20 }}
+  1089→                  animate={{ opacity: 1, y: 0 }}
+  1090→                  transition={{ duration: 0.4, delay: index * 0.05 }}
+  1091→                >
+  1092→                  <Card className={`overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer border-t-4 border-t-transparent hover:border-t-emerald-500 ${quickAddedId === product.id ? 'ring-2 ring-emerald-400 ring-offset-2' : ''}`} onClick={() => handleQuickAdd(product)}>
+  1093→                    {/* Product Image */}
+  1094→                    <div className="relative h-48 bg-gray-100 overflow-hidden group/img">
+  1095→                      {product.image ? (
+  1096→                        <img 
+  1097→                          src={product.image} 
+  1098→                          alt={product.name} 
+  1099→                          className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" 
+  1100→                        />
+  1101→                      ) : (
+  1102→                        <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+  1103→                          <span className="text-5xl font-bold text-white/30 select-none">{initial}</span>
+  1104→                        </div>
+  1105→                      )}
+  1106→                      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors" />
+  1107→                      <button
+  1108→                        onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
+  1109→                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+  1110→                        aria-label="Voir les détails"
+  1111→                      >
+  1112→                        <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
+  1113→                          <Eye className="w-5 h-5 text-emerald-700" />
+  1114→                        </div>
+  1115→                      </button>
+  1116→                      {/* Badges */}
+  1117→                      <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+  1118→                        {product.isFeatured && (
+  1119→                          <Badge className="bg-amber-500 text-white text-xs px-2 py-0.5">
+  1120→                            <Star className="w-3 h-3 mr-1" />
+  1121→                            Vedette
+  1122→                          </Badge>
+  1123→                        )}
+  1124→                        {discount > 0 && (
+  1125→                          <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
+  1126→                            -{discount}%
+  1127→                          </Badge>
+  1128→                        )}
+  1129→                        {isNewProduct(product.createdAt) && (
+  1130→                          <Badge className="bg-emerald-500 text-white text-xs px-2 py-0.5">
+  1131→                            Nouveau
+  1132→                          </Badge>
+  1133→                        )}
+  1134→                      </div>
+  1135→                      {product.volume && (
+  1136→                        <div className="absolute bottom-3 right-3">
+  1137→                          <Badge variant="secondary" className="bg-white/90 text-gray-800 text-xs">
+  1138→                            {product.volume}
+  1139→                          </Badge>
+  1140→                        </div>
+  1141→                      )}
+  1142→                    </div>
+  1143→                    <CardContent className="p-4 flex flex-col flex-1">
+  1144→                      {product.category && (
+  1145→                        <Badge variant="outline" className="w-fit text-xs mb-2 text-emerald-700 border-emerald-200 bg-emerald-50">
+  1146→                          {product.category.name}
+  1147→                        </Badge>
+  1148→                      )}
+  1149→                      <h3
+  1150→                        onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
+  1151→                        className="font-semibold text-gray-900 text-base mb-1 line-clamp-2 cursor-pointer hover:text-emerald-700 transition-colors"
+  1152→                      >
+  1153→                        {product.name}
+  1154→                      </h3>
+  1155→                      {product.description && (
+  1156→                        <p className="text-gray-500 text-sm mb-3 line-clamp-2 flex-1">{product.description}</p>
+  1157→                      )}
+  1158→                      {product.inStock
+  1159→                        ? (product.stockQty > 10
+  1160→                          ? <span className="text-xs text-emerald-600 mb-1">En stock</span>
+  1161→                          : <span className="text-xs text-amber-600 mb-1">Plus que {product.stockQty} en stock</span>
+  1162→                        )
+  1163→                        : <span className="text-xs text-red-500 mb-1">Rupture de stock</span>
+  1164→                      }
+  1165→                      <div className="flex items-baseline gap-2 mb-4">
+  1166→                        <span className="text-lg font-bold text-emerald-700">{formatPrice(product.price)}</span>
+  1167→                        {product.comparePrice && product.comparePrice > product.price && (
+  1168→                          <span className="text-sm text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
+  1169→                        )}
+  1170→                      </div>
+  1171→                      <div className="flex gap-2">
+  1172→                        <Button
+  1173→                          onClick={(e) => { e.stopPropagation(); setSelectedProduct(product) }}
+  1174→                          variant="outline"
+  1175→                          size="icon"
+  1176→                          className="shrink-0 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200"
+  1177→                          aria-label="Voir les détails"
+  1178→                        >
+  1179→                          <Eye className="w-4 h-4" />
+  1180→                        </Button>
+  1181→                        <Button
+  1182→                          onClick={(e) => { e.stopPropagation(); handleAddToCart(product) }}
+  1183→                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+  1184→                        >
+  1185→                          <Plus className="w-4 h-4 mr-2" />
+  1186→                          Ajouter au panier
+  1187→                        </Button>
+  1188→                      </div>
+  1189→                    </CardContent>
+  1190→                  </Card>
+  1191→                </motion.div>
+  1192→              )
+  1193→            })}
+  1194→          </div>
+  1195→        ) : (
+  1196→          <div className="text-center py-16">
+  1197→            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+  1198→            <p className="text-gray-500 text-lg">Aucun produit trouvé</p>
+  1199→            <Button
+  1200→              variant="outline"
+  1201→              onClick={() => {
+  1202→                setActiveCategory('all')
+  1203→                setSearchQuery('')
+  1204→              }}
+  1205→              className="mt-4"
+  1206→            >
+  1207→              Réinitialiser les filtres
+  1208→            </Button>
+  1209→          </div>
+  1210→        )}
+  1211→      </div>
+  1212→    </section>
+  1213→  )
+  1214→
+  1215→  // ==================== ABOUT SECTION ====================
+  1216→
+  1217→  const stats = [
+  1218→    { icon: Users, value: 500, suffix: '+', label: 'Clients Satisfaits' },
+  1219→    { icon: Package, value: 3, suffix: '+', label: 'Catégories' },
+  1220→    { icon: Award, value: 0, suffix: '', textValue: 'Qualité', label: 'Industrielle' },
+  1221→    { icon: MapPin, value: 100, suffix: '%', label: 'Congolaise' },
+  1222→  ]
+  1223→
+  1224→  const AboutSection = (
+  1225→    <section id="about" className="py-16 sm:py-20 bg-white">
+  1226→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1227→        <FadeInSection>
+  1228→          <div className="text-center mb-14">
+  1229→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+  1230→              À Propos de <span className="text-emerald-600">CongoClean</span>
+  1231→            </h2>
+  1232→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1233→              Notre engagement pour la qualité et le développement local
+  1234→            </p>
+  1235→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1236→          </div>
+  1237→        </FadeInSection>
+  1238→        <FadeInSection>
+  1239→          <div className="grid lg:grid-cols-2 gap-12 items-center">
+  1240→            {/* Image side */}
+  1241→            <div className="relative">
+  1242→              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
+  1243→                <img src="/about-factory.png" alt="Usine CongoClean à Pointe-Noire" className="w-full h-full object-cover" />
+  1244→              </div>
+  1245→              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-amber-400 rounded-2xl -z-10" />
+  1246→              <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-200 rounded-2xl -z-10" />
+  1247→            </div>
+  1248→
+  1249→            {/* Text side */}
+  1250→            <div>
+  1251→              <p className="text-gray-600 mb-4 leading-relaxed">
+  1252→                CongoClean est une entreprise de fabrication de produits d&rsquo;hygiène basée à Pointe-Noire, au cœur du Congo-Brazzaville. Depuis notre création, nous nous engageons à fournir des produits de qualité industrielle pour les ménages et les entreprises.
+  1253→              </p>
+  1254→              <p className="text-gray-600 mb-8 leading-relaxed">
+  1255→                Notre gamme comprend du savon liquide, du détergent et de l&rsquo;eau de Javel, tous formulés pour répondre aux normes les plus strictes. Nous sommes fiers de contribuer au développement économique local en créant des emplois et en utilisant des ressources disponibles au Congo.
+  1256→              </p>
+  1257→
+  1258→              {/* Stats */}
+  1259→              <div className="grid grid-cols-2 gap-4">
+  1260→                {stats.map((stat, i) => (
+  1261→                  <div
+  1262→                    key={i}
+  1263→                    className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-emerald-50 transition-colors"
+  1264→                  >
+  1265→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1266→                      <stat.icon className="w-5 h-5 text-emerald-600" />
+  1267→                    </div>
+  1268→                    <div>
+  1269→                      <p className="font-bold text-gray-900 text-sm">
+  1270→                        {stat.value > 0 ? <AnimatedCounter target={stat.value} suffix={stat.suffix || ''} /> : stat.textValue}
+  1271→                      </p>
+  1272→                      <p className="text-gray-500 text-xs">{stat.label}</p>
+  1273→                    </div>
+  1274→                  </div>
+  1275→                ))}
+  1276→              </div>
+  1277→            </div>
+  1278→          </div>
+  1279→        </FadeInSection>
+  1280→      </div>
+  1281→    </section>
+  1282→  )
+  1283→
+  1284→  // ==================== TESTIMONIALS SECTION ====================
+  1285→
+  1286→  const testimonials = [
+  1287→    { name: 'Marie Nzaba', role: 'Ménagère, Pointe-Noire', text: 'Le CongoClean 5L est devenu indispensable chez nous. Parfait pour toute la famille, il nettoie bien et ne sèche pas les mains.', rating: 5 },
+  1288→    { name: 'Jean-Pierre Massamba', role: 'Gérant Hôtel Le Phare', text: 'Nous utilisons les produits CongoClean depuis 2 ans. Qualité constante et prix compétitifs. Je recommande vivement.', rating: 5 },
+  1289→    { name: 'Aline Mouanda', role: 'Propriétaire Restaurant', text: 'Le détergent ProWash est excellent pour la vaisselle de mon restaurant. Format 5L très économique. Livraison rapide.', rating: 4 },
+  1290→  ]
+  1291→
+  1292→  const TestimonialsSection = (
+  1293→    <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-gray-50/50">
+  1294→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1295→        <FadeInSection>
+  1296→          <div className="text-center mb-12">
+  1297→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Ce que disent nos clients</h2>
+  1298→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1299→              La satisfaction de nos clients est notre plus grande fierté
+  1300→            </p>
+  1301→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1302→          </div>
+  1303→        </FadeInSection>
+  1304→        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  1305→          {testimonials.map((t, i) => (
+  1306→            <FadeInSection key={i}>
+  1307→              <Card className={`p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300 border-l-4 border-emerald-400 ${isMobile && activeTestimonial !== i ? 'hidden' : ''}`}>
+  1308→                <CardContent className="p-0 flex flex-col flex-1">
+  1309→                  <div className="mb-4">
+  1310→                    <Quote className="w-8 h-8 text-emerald-200" />
+  1311→                  </div>
+  1312→                  <div className="flex gap-0.5 mb-3">
+  1313→                    {Array.from({ length: 5 }).map((_, si) => (
+  1314→                      <Star key={si} className={`w-4 h-4 ${si < t.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+  1315→                    ))}
+  1316→                  </div>
+  1317→                  <p className="text-gray-600 leading-relaxed flex-1 mb-4">{t.text}</p>
+  1318→                  <div className="border-t border-gray-100 pt-4">
+  1319→                    <div className="flex items-center gap-3">
+  1320→                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+  1321→                        <span className="text-emerald-700 font-semibold text-sm">{getInitials(t.name)}</span>
+  1322→                      </div>
+  1323→                      <div>
+  1324→                        <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+  1325→                        <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
+  1326→                      </div>
+  1327→                    </div>
+  1328→                  </div>
+  1329→                </CardContent>
+  1330→              </Card>
+  1331→            </FadeInSection>
+  1332→          ))}
+  1333→        </div>
+  1334→        {/* Navigation dots (mobile) */}
+  1335→        <div className="flex justify-center gap-2 mt-6 md:hidden">
+  1336→          {testimonials.map((_, i) => (
+  1337→            <button
+  1338→              key={i}
+  1339→              onClick={() => setActiveTestimonial(i)}
+  1340→              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeTestimonial === i ? 'bg-emerald-600 w-6' : 'bg-gray-300'}`}
+  1341→              aria-label={`Témoignage ${i + 1}`}
+  1342→            />
+  1343→          ))}
+  1344→        </div>
+  1345→      </div>
+  1346→    </section>
+  1347→  )
+  1348→
+  1349→  // ==================== DELIVERY & PRICING SECTION ====================
+  1350→
+  1351→  const DeliveryPricingSection = (
+  1352→    <FadeInSection>
+  1353→      <section className="py-16 bg-gray-50">
+  1354→        <div className="container mx-auto px-4">
+  1355→          <div className="text-center mb-12">
+  1356→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Livraison & Tarifs</h2>
+  1357→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1358→              Livraison rapide et fiable à Pointe-Noire et environs
+  1359→            </p>
+  1360→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1361→          </div>
+  1362→          <div className="grid md:grid-cols-2 gap-6">
+  1363→            {/* Left Column - Livraison & Tarifs */}
+  1364→            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 sm:p-8">
+  1365→              <h2 className="text-2xl font-bold text-gray-900 mb-6">Livraison & Tarifs</h2>
+  1366→              <ul className="space-y-4">
+  1367→                <li className="flex items-start gap-3">
+  1368→                  <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+  1369→                  <span className="text-gray-700">Livraison gratuite à partir de 25 000 FCFA</span>
+  1370→                </li>
+  1371→                <li className="flex items-start gap-3">
+  1372→                  <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+  1373→                  <span className="text-gray-700">Zone de livraison : Pointe-Noire et périphérie (rayon de 15 km)</span>
+  1374→                </li>
+  1375→                <li className="flex items-start gap-3">
+  1376→                  <Clock className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+  1377→                  <span className="text-gray-700">Délai de livraison : 24-48h après confirmation</span>
+  1378→                </li>
+  1379→                <li className="flex items-start gap-3">
+  1380→                  <Truck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+  1381→                  <span className="text-gray-700">Frais de livraison : 1 500 FCFA (sous 25 000 FCFA)</span>
+  1382→                </li>
+  1383→                <li className="flex items-start gap-3">
+  1384→                  <Package className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+  1385→                  <span className="text-gray-700">Commandes en gros : Contactez-nous pour des tarifs préférentiels</span>
+  1386→                </li>
+  1387→              </ul>
+  1388→            </div>
+  1389→
+  1390→            {/* Right Column - Pourquoi CongoClean ? */}
+  1391→            <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8">
+  1392→              <h2 className="text-2xl font-bold text-gray-900 mb-6">Pourquoi CongoClean ?</h2>
+  1393→              <ul className="space-y-4">
+  1394→                <li className="flex items-start gap-3">
+  1395→                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+  1396→                  <span className="text-gray-700">Fabrication 100% congolaise avec des matières premières locales</span>
+  1397→                </li>
+  1398→                <li className="flex items-start gap-3">
+  1399→                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+  1400→                  <span className="text-gray-700">Contrôle qualité rigoureux à chaque étape de production</span>
+  1401→                </li>
+  1402→                <li className="flex items-start gap-3">
+  1403→                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+  1404→                  <span className="text-gray-700">Prix compétitifs adaptés au marché local</span>
+  1405→                </li>
+  1406→                <li className="flex items-start gap-3">
+  1407→                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+  1408→                  <span className="text-gray-700">Service client réactif et disponible 7j/7</span>
+  1409→                </li>
+  1410→                <li className="flex items-start gap-3">
+  1411→                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+  1412→                  <span className="text-gray-700">Produits biodégradables et respectueux de l'environnement</span>
+  1413→                </li>
+  1414→              </ul>
+  1415→            </div>
+  1416→          </div>
+  1417→        </div>
+  1418→      </section>
+  1419→    </FadeInSection>
+  1420→  )
+  1421→
+  1422→  // ==================== ORDER TRACKING SECTION ====================
+  1423→
+  1424→  const OrderTrackingSection = (
+  1425→    <section className="py-16 sm:py-20 bg-white">
+  1426→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1427→        <FadeInSection>
+  1428→          <div className="text-center mb-12">
+  1429→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Suivi de Commande</h2>
+  1430→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1431→              Entrez votre email pour retrouver et suivre l&rsquo;état de vos commandes
+  1432→            </p>
+  1433→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1434→          </div>
+  1435→        </FadeInSection>
+  1436→        <FadeInSection>
+  1437→          <div className="max-w-lg mx-auto">
+  1438→            <form onSubmit={handleTrackOrder} className="flex gap-3">
+  1439→              <div className="flex-1 relative">
+  1440→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+  1441→                <Input
+  1442→                  type="email"
+  1443→                  placeholder="Votre email de commande"
+  1444→                  value={trackEmail}
+  1445→                  onChange={(e) => setTrackEmail(e.target.value)}
+  1446→                  required
+  1447→                  className="pl-10"
+  1448→                />
+  1449→              </div>
+  1450→              <Button
+  1451→                type="submit"
+  1452→                disabled={trackLoading}
+  1453→                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6"
+  1454→              >
+  1455→                {trackLoading ? '...' : 'Rechercher'}
+  1456→                <Search className="w-4 h-4 ml-2" />
+  1457→              </Button>
+  1458→            </form>
+  1459→
+  1460→            {/* Tracked Orders Results */}
+  1461→            {trackedOrders.length > 0 && (
+  1462→              <div className="mt-8 space-y-4">
+  1463→                <h3 className="font-semibold text-gray-900 text-lg">Résultats ({trackedOrders.length})</h3>
+  1464→                {trackedOrders.map((order) => (
+  1465→                  <Card key={order.id} className="overflow-hidden">
+  1466→                    <button
+  1467→                      onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+  1468→                      className="w-full p-4 flex flex-col sm:flex-row sm:items-center gap-3 text-left hover:bg-gray-50 transition-colors"
+  1469→                    >
+  1470→                      <div className="flex-1 min-w-0">
+  1471→                        <div className="flex items-center gap-2 flex-wrap">
+  1472→                          <span className="font-semibold text-gray-900 text-sm">#{order.orderNumber}</span>
+  1473→                          <Badge variant="outline" className={getStatusColor(order.status)}>
+  1474→                            {getStatusLabel(order.status)}
+  1475→                          </Badge>
+  1476→                        </div>
+  1477→                        <p className="text-xs text-gray-500 mt-1">
+  1478→                          {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+  1479→                        </p>
+  1480→                      </div>
+  1481→                      <div className="flex items-center gap-3">
+  1482→                        <span className="font-bold text-emerald-700">{formatPrice(order.totalAmount)}</span>
+  1483→                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedOrder === order.id ? 'rotate-180' : ''}`} />
+  1484→                      </div>
+  1485→                    </button>
+  1486→                    <AnimatePresence>
+  1487→                      {expandedOrder === order.id && (
+  1488→                        <motion.div
+  1489→                          initial={{ height: 0, opacity: 0 }}
+  1490→                          animate={{ height: 'auto', opacity: 1 }}
+  1491→                          exit={{ height: 0, opacity: 0 }}
+  1492→                          transition={{ duration: 0.2 }}
+  1493→                          className="overflow-hidden"
+  1494→                        >
+  1495→                          <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+  1496→                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Articles</p>
+  1497→                            <div className="space-y-2">
+  1498→                              {order.items.map((item, idx) => (
+  1499→                                <div key={idx} className="flex items-center justify-between text-sm">
+  1500→                                  <div className="flex items-center gap-2">
+  1501→                                    <Package className="w-3.5 h-3.5 text-gray-400" />
+  1502→                                    <span className="text-gray-700">{item.productName}</span>
+  1503→                                    <span className="text-gray-400">x{item.quantity}</span>
+  1504→                                  </div>
+  1505→                                  <span className="text-gray-900 font-medium">{formatPrice(item.totalPrice)}</span>
+  1506→                                </div>
+  1507→                              ))}
+  1508→                            </div>
+  1509→                          </div>
+  1510→                        </motion.div>
+  1511→                      )}
+  1512→                    </AnimatePresence>
+  1513→                  </Card>
+  1514→                ))}
+  1515→              </div>
+  1516→            )}
+  1517→          </div>
+  1518→        </FadeInSection>
+  1519→      </div>
+  1520→    </section>
+  1521→  )
+  1522→
+  1523→  // ==================== FAQ SECTION ====================
+  1524→
+  1525→  const faqs = [
+  1526→    {
+  1527→      question: 'Quelle est votre zone de livraison ?',
+  1528→      answer: 'Nous livrons à Pointe-Noire et dans sa périphérie dans un rayon de 15 km. La livraison est gratuite pour les commandes de plus de 25 000 FCFA. Pour les zones éloignées, veuillez nous contacter pour vérifier la disponibilité.'
+  1529→    },
+  1530→    {
+  1531→      question: 'Quels sont les modes de paiement acceptés ?',
+  1532→      answer: 'Nous acceptons le paiement à la livraison (espèces), les virements mobiles (M-Pesa, Orange Money), et les virements bancaires. Le paiement en ligne par carte sera bientôt disponible.'
+  1533→    },
+  1534→    {
+  1535→      question: 'Quel est le délai de livraison ?',
+  1536→      answer: 'Le délai de livraison standard est de 24 à 48 heures après confirmation de votre commande. Pour les commandes en gros, le délai peut être de 2 à 5 jours ouvrables selon la disponibilité des produits.'
+  1537→    },
+  1538→    {
+  1539→      question: 'Quelle est votre politique de retours et échanges ?',
+  1540→      answer: 'En cas de produit défectueux ou non conforme, vous disposez de 7 jours après réception pour demander un échange ou un remboursement. Contactez-nous par email à contact@congoclean.cg ou par téléphone au +242 06 123 4567.'
+  1541→    },
+  1542→    {
+  1543→      question: 'Proposez-vous des commandes en gros ?',
+  1544→      answer: 'Oui, nous proposons des tarifs préférentiels pour les commandes en gros (hôtels, restaurants, entreprises, etc.). Contactez-nous directement par téléphone ou via le formulaire de contact pour obtenir un devis personnalisé.'
+  1545→    },
+  1546→    {
+  1547→      question: 'Quelle est la qualité de vos produits ?',
+  1548→      answer: 'Nos produits sont fabriqués selon des normes industrielles strictes avec des matières premières de qualité. Chaque lot est contrôlé avant la mise sur le marché. Nos produits sont biodégradables et respectueux de l\'environnement.'
+  1549→    },
+  1550→  ]
+  1551→
+  1552→  const FAQSection = (
+  1553→    <section className="py-16 sm:py-20 bg-gray-50">
+  1554→      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+  1555→        <FadeInSection>
+  1556→          <div className="text-center mb-12">
+  1557→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Foire Aux Questions</h2>
+  1558→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1559→              Trouvez rapidement les réponses à vos questions les plus fréquentes
+  1560→            </p>
+  1561→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1562→          </div>
+  1563→        </FadeInSection>
+  1564→        <FadeInSection>
+  1565→          <div className="space-y-3">
+  1566→            {faqs.map((faq, i) => (
+  1567→              <Card key={i} className="overflow-hidden border border-gray-200">
+  1568→                <button
+  1569→                  onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+  1570→                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+  1571→                  aria-expanded={expandedFaq === i}
+  1572→                >
+  1573→                  <span className="font-medium text-gray-900 pr-4">{faq.question}</span>
+  1574→                  <ChevronDown className={`w-5 h-5 text-emerald-600 shrink-0 transition-transform duration-200 ${expandedFaq === i ? 'rotate-180' : ''}`} />
+  1575→                </button>
+  1576→                <AnimatePresence>
+  1577→                  {expandedFaq === i && (
+  1578→                    <motion.div
+  1579→                      initial={{ height: 0, opacity: 0 }}
+  1580→                      animate={{ height: 'auto', opacity: 1 }}
+  1581→                      exit={{ height: 0, opacity: 0 }}
+  1582→                      transition={{ duration: 0.2 }}
+  1583→                      className="overflow-hidden"
+  1584→                    >
+  1585→                      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
+  1586→                        <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+  1587→                      </div>
+  1588→                    </motion.div>
+  1589→                  )}
+  1590→                </AnimatePresence>
+  1591→              </Card>
+  1592→            ))}
+  1593→          </div>
+  1594→        </FadeInSection>
+  1595→      </div>
+  1596→    </section>
+  1597→  )
+  1598→
+  1599→  // ==================== NEWSLETTER SECTION ====================
+  1600→
+  1601→  const NewsletterSection = (
+  1602→    <section className="py-16 bg-gradient-to-r from-emerald-600 to-teal-600 relative overflow-hidden">
+  1603→      {/* Wave SVG divider */}
+  1604→      <div className="absolute top-0 left-0 right-0 -translate-y-[99%]">
+  1605→        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto block">
+  1606→          <path d="M0 60L48 55C96 50 192 40 288 35C384 30 480 30 576 33.3C672 36.7 768 43.3 864 45C960 46.7 1056 43.3 1152 40C1248 36.7 1344 33.3 1392 31.7L1440 30V60H0Z" fill="white"/>
+  1607→        </svg>
+  1608→      </div>
+  1609→      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+  1610→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+  1611→        <FadeInSection>
+  1612→          <div className="text-center max-w-2xl mx-auto">
+  1613→            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Restez Informé</h2>
+  1614→            <p className="text-emerald-100 mb-8">
+  1615→              Inscrivez-vous pour recevoir nos offres spéciales et nouveautés
+  1616→            </p>
+  1617→            <div className="w-16 h-1 bg-gradient-to-r from-white/80 to-white/40 rounded-full mx-auto mt-4" />
+  1618→            <AnimatePresence mode="wait">
+  1619→              {newsletterSuccess ? (
+  1620→                <motion.div
+  1621→                  key="success"
+  1622→                  initial={{ scale: 0, rotate: -180 }}
+  1623→                  animate={{ scale: 1, rotate: 0 }}
+  1624→                  exit={{ scale: 0, rotate: 180 }}
+  1625→                  transition={{ duration: 0.5, type: 'spring' }}
+  1626→                  className="flex flex-col items-center gap-4 mt-8"
+  1627→                >
+  1628→                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+  1629→                    <Check className="w-8 h-8 text-emerald-600" />
+  1630→                  </div>
+  1631→                  <p className="text-white font-semibold text-lg">Merci pour votre inscription !</p>
+  1632→                </motion.div>
+  1633→              ) : (
+  1634→                <motion.form
+  1635→                  key="form"
+  1636→                  initial={{ opacity: 1 }}
+  1637→                  exit={{ opacity: 0, scale: 0.9 }}
+  1638→                  transition={{ duration: 0.2 }}
+  1639→                  onSubmit={handleNewsletterSubmit}
+  1640→                  className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-8"
+  1641→                >
+  1642→                  <Input
+  1643→                    type="email"
+  1644→                    placeholder="Votre adresse email"
+  1645→                    value={newsletterEmail}
+  1646→                    onChange={(e) => setNewsletterEmail(e.target.value)}
+  1647→                    required
+  1648→                    className="bg-white/10 border-white/20 text-white placeholder:text-emerald-200 focus:border-white focus:ring-white/20"
+  1649→                  />
+  1650→                  <Button
+  1651→                    type="submit"
+  1652→                    disabled={newsletterLoading}
+  1653→                    className="bg-white text-emerald-700 hover:bg-emerald-50 font-semibold px-8"
+  1654→                  >
+  1655→                    {newsletterLoading ? '...' : 'S\'abonner'}
+  1656→                    <Send className="w-4 h-4 ml-2" />
+  1657→                  </Button>
+  1658→                </motion.form>
+  1659→              )}
+  1660→            </AnimatePresence>
+  1661→          </div>
+  1662→        </FadeInSection>
+  1663→      </div>
+  1664→    </section>
+  1665→  )
+  1666→
+  1667→  // ==================== CONTACT SECTION ====================
+  1668→
+  1669→  const ContactSection = (
+  1670→    <section id="contact" className="py-16 sm:py-20 bg-gray-50">
+  1671→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1672→        <FadeInSection>
+  1673→          <div className="text-center mb-12">
+  1674→            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Contactez-Nous</h2>
+  1675→            <p className="text-gray-500 max-w-2xl mx-auto">
+  1676→              Une question ? N&rsquo;hésitez pas à nous contacter. Notre équipe est à votre disposition.
+  1677→            </p>
+  1678→            <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full mx-auto mt-4" />
+  1679→          </div>
+  1680→        </FadeInSection>
+  1681→
+  1682→        <FadeInSection>
+  1683→          <div className="grid lg:grid-cols-5 gap-10">
+  1684→            {/* Contact Info */}
+  1685→            <div className="lg:col-span-2 space-y-6">
+  1686→              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  1687→                <h3 className="font-semibold text-gray-900 text-lg mb-6">Informations</h3>
+  1688→                <div className="space-y-5">
+  1689→                  <div className="flex items-start gap-4">
+  1690→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1691→                      <Phone className="w-5 h-5 text-emerald-600" />
+  1692→                    </div>
+  1693→                    <div>
+  1694→                      <p className="text-sm text-gray-500">Téléphone</p>
+  1695→                      <p className="font-medium text-gray-900">+242 06 123 4567</p>
+  1696→                    </div>
+  1697→                  </div>
+  1698→                  <div className="flex items-start gap-4">
+  1699→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1700→                      <Mail className="w-5 h-5 text-emerald-600" />
+  1701→                    </div>
+  1702→                    <div>
+  1703→                      <p className="text-sm text-gray-500">Email</p>
+  1704→                      <p className="font-medium text-gray-900">contact@congoclean.cg</p>
+  1705→                    </div>
+  1706→                  </div>
+  1707→                  <div className="flex items-start gap-4">
+  1708→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1709→                      <MapPin className="w-5 h-5 text-emerald-600" />
+  1710→                    </div>
+  1711→                    <div>
+  1712→                      <p className="text-sm text-gray-500">Adresse</p>
+  1713→                      <p className="font-medium text-gray-900">Zone Industrielle, Pointe-Noire</p>
+  1714→                    </div>
+  1715→                  </div>
+  1716→                </div>
+  1717→              </div>
+  1718→              {/* Working Hours Card */}
+  1719→              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  1720→                <h3 className="font-semibold text-gray-900 text-lg mb-6">Horaires d'ouverture</h3>
+  1721→                <div className="space-y-3">
+  1722→                  <div className="flex items-center gap-3">
+  1723→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1724→                      <Clock className="w-5 h-5 text-emerald-600" />
+  1725→                    </div>
+  1726→                    <div>
+  1727→                      <p className="text-sm text-gray-500">Lun-Ven</p>
+  1728→                      <p className="font-medium text-gray-900">8h - 18h</p>
+  1729→                    </div>
+  1730→                  </div>
+  1731→                  <div className="flex items-center gap-3">
+  1732→                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1733→                      <Clock className="w-5 h-5 text-emerald-600" />
+  1734→                    </div>
+  1735→                    <div>
+  1736→                      <p className="text-sm text-gray-500">Samedi</p>
+  1737→                      <p className="font-medium text-gray-900">8h - 14h</p>
+  1738→                    </div>
+  1739→                  </div>
+  1740→                  <div className="flex items-center gap-3">
+  1741→                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+  1742→                      <Clock className="w-5 h-5 text-gray-400" />
+  1743→                    </div>
+  1744→                    <div>
+  1745→                      <p className="text-sm text-gray-500">Dimanche</p>
+  1746→                      <p className="font-medium text-gray-400">Fermé</p>
+  1747→                    </div>
+  1748→                  </div>
+  1749→                </div>
+  1750→              </div>
+  1751→            </div>
+  1752→
+  1753→            {/* Contact Form */}
+  1754→            <div className="lg:col-span-3">
+  1755→              <form onSubmit={handleContactSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+  1756→                <div className="grid sm:grid-cols-2 gap-4">
+  1757→                  <div className="space-y-2">
+  1758→                    <Label htmlFor="contact-name">Nom <span className="text-red-500">*</span></Label>
+  1759→                    <Input
+  1760→                      id="contact-name"
+  1761→                      placeholder="Votre nom"
+  1762→                      value={contactForm.name}
+  1763→                      onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+  1764→                      required
+  1765→                    />
+  1766→                  </div>
+  1767→                  <div className="space-y-2">
+  1768→                    <Label htmlFor="contact-email">Email <span className="text-red-500">*</span></Label>
+  1769→                    <Input
+  1770→                      id="contact-email"
+  1771→                      type="email"
+  1772→                      placeholder="votre@email.com"
+  1773→                      value={contactForm.email}
+  1774→                      onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+  1775→                      required
+  1776→                    />
+  1777→                  </div>
+  1778→                </div>
+  1779→                <div className="grid sm:grid-cols-2 gap-4">
+  1780→                  <div className="space-y-2">
+  1781→                    <Label htmlFor="contact-phone">Téléphone</Label>
+  1782→                    <Input
+  1783→                      id="contact-phone"
+  1784→                      placeholder="+242 06 XXX XXXX"
+  1785→                      value={contactForm.phone}
+  1786→                      onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+  1787→                    />
+  1788→                  </div>
+  1789→                  <div className="space-y-2">
+  1790→                    <Label htmlFor="contact-subject">Sujet</Label>
+  1791→                    <Input
+  1792→                      id="contact-subject"
+  1793→                      placeholder="Sujet de votre message"
+  1794→                      value={contactForm.subject}
+  1795→                      onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
+  1796→                    />
+  1797→                  </div>
+  1798→                </div>
+  1799→                <div className="space-y-2">
+  1800→                  <Label htmlFor="contact-message">Message <span className="text-red-500">*</span></Label>
+  1801→                  <Textarea
+  1802→                    id="contact-message"
+  1803→                    placeholder="Votre message..."
+  1804→                    rows={5}
+  1805→                    value={contactForm.message}
+  1806→                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+  1807→                    required
+  1808→                  />
+  1809→                </div>
+  1810→                <Button
+  1811→                  type="submit"
+  1812→                  disabled={contactLoading}
+  1813→                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  1814→                >
+  1815→                  {contactLoading ? 'Envoi en cours...' : 'Envoyer le message'}
+  1816→                  <Send className="w-4 h-4 ml-2" />
+  1817→                </Button>
+  1818→              </form>
+  1819→            </div>
+  1820→          </div>
+  1821→        </FadeInSection>
+  1822→      </div>
+  1823→    </section>
+  1824→  )
+  1825→
+  1826→  // ==================== CHAT WIDGET ====================
+  1827→
+  1828→  const ChatWidget = (
+  1829→    <>
+  1830→      {/* Floating Button */}
+  1831→      <button
+  1832→        onClick={() => setChatOpen(true)}
+  1833→        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+  1834→        style={{ animation: 'breathing 2s ease-in-out infinite' }}
+  1835→        aria-label="Ouvrir le chat"
+  1836→      >
+  1837→        <MessageCircle className="w-6 h-6" />
+  1838→      </button>
+  1839→
+  1840→      {/* Chat Sheet */}
+  1841→      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+  1842→        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+  1843→          <SheetHeader className="bg-emerald-600 text-white px-4 py-3 rounded-none border-0">
+  1844→            <SheetTitle className="text-white flex items-center gap-2">
+  1845→              <MessageCircle className="w-5 h-5" />
+  1846→              Chat avec CongoClean
+  1847→            </SheetTitle>
+  1848→            <SheetDescription className="text-emerald-100">Nous répondons rapidement</SheetDescription>
+  1849→          </SheetHeader>
+  1850→
+  1851→          {!chatRegistered ? (
+  1852→            <div className="flex-1 flex items-center justify-center p-6">
+  1853→              <div className="w-full max-w-sm space-y-4">
+  1854→                <div className="text-center mb-6">
+  1855→                  <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+  1856→                    <MessageCircle className="w-8 h-8 text-emerald-600" />
+  1857→                  </div>
+  1858→                  <h3 className="font-semibold text-gray-900">Bienvenue !</h3>
+  1859→                  <p className="text-gray-500 text-sm mt-1">Entrez vos informations pour commencer</p>
+  1860→                </div>
+  1861→                <div className="space-y-2">
+  1862→                  <Label htmlFor="chat-name">Nom <span className="text-red-500">*</span></Label>
+  1863→                  <Input
+  1864→                    id="chat-name"
+  1865→                    placeholder="Votre nom"
+  1866→                    value={chatName}
+  1867→                    onChange={(e) => setChatName(e.target.value)}
+  1868→                  />
+  1869→                </div>
+  1870→                <div className="space-y-2">
+  1871→                  <Label htmlFor="chat-email">Email (optionnel)</Label>
+  1872→                  <Input
+  1873→                    id="chat-email"
+  1874→                    type="email"
+  1875→                    placeholder="votre@email.com"
+  1876→                    value={chatEmail}
+  1877→                    onChange={(e) => setChatEmail(e.target.value)}
+  1878→                  />
+  1879→                </div>
+  1880→                <Button
+  1881→                  onClick={handleChatRegister}
+  1882→                  disabled={chatLoading}
+  1883→                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+  1884→                >
+  1885→                  {chatLoading ? '...' : 'Commencer le chat'}
+  1886→                </Button>
+  1887→              </div>
+  1888→            </div>
+  1889→          ) : (
+  1890→            <>
+  1891→              {/* Messages */}
+  1892→              <ScrollArea className="flex-1 p-4" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+  1893→                <div className="space-y-3">
+  1894→                  {chatMessages.length === 0 && (
+  1895→                    <div className="text-center text-gray-400 text-sm py-8">
+  1896→                      <p>Début de la conversation</p>
+  1897→                      <p className="text-xs mt-1">Envoyez-nous un message !</p>
+  1898→                    </div>
+  1899→                  )}
+  1900→                  {chatMessages.map((msg) => (
+  1901→                    <div
+  1902→                      key={msg.id}
+  1903→                      className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'}`}
+  1904→                    >
+  1905→                      <div
+  1906→                        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+  1907→                          msg.senderType === 'customer'
+  1908→                            ? 'bg-emerald-600 text-white rounded-br-md'
+  1909→                            : 'bg-gray-100 text-gray-800 rounded-bl-md'
+  1910→                        }`}
+  1911→                      >
+  1912→                        {msg.content}
+  1913→                      </div>
+  1914→                    </div>
+  1915→                  ))}
+  1916→                  <div ref={chatEndRef} />
+  1917→                </div>
+  1918→              </ScrollArea>
+  1919→
+  1920→              {/* Chat Input */}
+  1921→              <div className="p-3 border-t bg-white">
+  1922→                <form
+  1923→                  onSubmit={(e) => {
+  1924→                    e.preventDefault()
+  1925→                    handleChatSend()
+  1926→                  }}
+  1927→                  className="flex gap-2"
+  1928→                >
+  1929→                  <Input
+  1930→                    placeholder="Votre message..."
+  1931→                    value={chatInput}
+  1932→                    onChange={(e) => setChatInput(e.target.value)}
+  1933→                    disabled={chatLoading}
+  1934→                    className="flex-1"
+  1935→                  />
+  1936→                  <Button
+  1937→                    type="submit"
+  1938→                    size="icon"
+  1939→                    disabled={chatLoading || !chatInput.trim()}
+  1940→                    className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+  1941→                  >
+  1942→                    <Send className="w-4 h-4" />
+  1943→                  </Button>
+  1944→                </form>
+  1945→              </div>
+  1946→            </>
+  1947→          )}
+  1948→        </SheetContent>
+  1949→      </Sheet>
+  1950→    </>
+  1951→  )
+  1952→
+  1953→  // ==================== CART SHEET ====================
+  1954→
+  1955→  const CartSheet = (
+  1956→    <>
+  1957→      <Sheet open={cart.isOpen} onOpenChange={cart.setCartOpen}>
+  1958→        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+  1959→          <SheetHeader className="px-4 pt-4 pb-2">
+  1960→            <SheetTitle className="flex items-center gap-2">
+  1961→              <ShoppingCart className="w-5 h-5 text-emerald-600" />
+  1962→              Panier
+  1963→              {cart.totalItems() > 0 && (
+  1964→                <Badge className="bg-emerald-100 text-emerald-700 ml-1">{cart.totalItems()} article(s)</Badge>
+  1965→              )}
+  1966→            </SheetTitle>
+  1967→            <SheetDescription>Vos produits sélectionnés</SheetDescription>
+  1968→          </SheetHeader>
+  1969→
+  1970→          {/* Free delivery progress bar */}
+  1971→          {cart.items.length > 0 && (
+  1972→            <div className="px-4 pb-2">
+  1973→              <div className="bg-gray-100 rounded-full h-2.5 overflow-hidden">
+  1974→                <div
+  1975→                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+  1976→                  style={{ width: `${Math.min((cart.totalPrice() / 25000) * 100, 100)}%` }}
+  1977→                />
+  1978→              </div>
+  1979→              <p className="text-xs text-gray-500 mt-1.5">
+  1980→                {cart.totalPrice() >= 25000 ? (
+  1981→                  <span className="text-emerald-600 font-medium">Livraison gratuite !</span>
+  1982→                ) : (
+  1983→                  <>Plus que <span className="font-semibold text-emerald-700">{(25000 - cart.totalPrice()).toLocaleString('fr-FR')} FCFA</span> pour la livraison gratuite !</>
+  1984→                )}
+  1985→              </p>
+  1986→            </div>
+  1987→          )}
+  1988→
+  1989→          {cart.items.length === 0 ? (
+  1990→            <div className="flex-1 flex items-center justify-center p-6">
+  1991→              <div className="text-center">
+  1992→                <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+  1993→                <p className="text-gray-500 font-medium">Votre panier est vide</p>
+  1994→                <p className="text-gray-400 text-sm mt-1">Ajoutez des produits pour commencer</p>
+  1995→                <Button
+  1996→                  variant="outline"
+  1997→                  className="mt-4"
+  1998→                  onClick={() => {
+  1999→                    cart.setCartOpen(false)
+  2000→                    scrollToSection('products')
+
+[showing lines 1-2000 of 2590; use offset=2001 with limit to continue reading]

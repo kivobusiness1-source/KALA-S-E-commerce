@@ -1,0 +1,602 @@
+   951→      <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-emerald-200" />
+   952→      {activity.map((a, i) => (
+   953→        <div key={a.id} className={`relative pb-4 last:pb-0`}>
+   954→          <div className="absolute left-[-20px] top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+   955→          <div>
+   956→            <p className="text-sm text-gray-900">
+   957→              <span className="font-medium text-emerald-700">{a.adminName}</span>
+   958→              {' — '}
+   959→              {a.details || a.action}
+   960→            </p>
+   961→            <p className="text-xs text-muted-foreground">{formatRelative(a.createdAt)}</p>
+   962→          </div>
+   963→        </div>
+   964→      ))}
+   965→    </div>
+   966→  )
+   967→}
+   968→
+   969→// ==================== PRODUCTS SECTION ====================
+   970→
+   971→function ProductsSection() {
+   972→  const queryClient = useQueryClient()
+   973→  const [search, setSearch] = useState('')
+   974→  const [categoryFilter, setCategoryFilter] = useState('all')
+   975→  const [productDialogOpen, setProductDialogOpen] = useState(false)
+   976→  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+   977→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+   978→  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
+   979→  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+   980→  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+   981→  const [newCategoryName, setNewCategoryName] = useState('')
+   982→  const [newCategorySlug, setNewCategorySlug] = useState('')
+   983→  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false)
+   984→  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
+   985→  const [showCategoryManager, setShowCategoryManager] = useState(false)
+   986→  const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null)
+   987→  const [stockAdjustQty, setStockAdjustQty] = useState('')
+   988→  const [stockAdjustLoading, setStockAdjustLoading] = useState(false)
+   989→  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
+   990→
+   991→  // Product form state
+   992→  const [pForm, setPForm] = useState({
+   993→    name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '',
+   994→    volume: '', stockQty: '', minStockAlert: '', isFeatured: false, isActive: true,
+   995→  })
+   996→  const [saving, setSaving] = useState(false)
+   997→  const [uploadingImage, setUploadingImage] = useState(false)
+   998→
+   999→  const { data: products, isLoading: productsLoading } = useQuery({
+  1000→    queryKey: ['admin-products', search, categoryFilter],
+  1001→    queryFn: () => {
+  1002→      const params = new URLSearchParams({ all: 'true' })
+  1003→      if (search) params.set('search', search)
+  1004→      if (categoryFilter && categoryFilter !== 'all') params.set('categoryId', categoryFilter)
+  1005→      return fetch(`/api/products?${params}`).then(r => r.json()).then(d => d.data as Product[])
+  1006→    },
+  1007→  })
+  1008→
+  1009→  const { data: categories, isLoading: catsLoading } = useQuery({
+  1010→    queryKey: ['categories'],
+  1011→    queryFn: () => fetch('/api/categories').then(r => r.json()).then(d => d.data as Category[]),
+  1012→  })
+  1013→
+  1014→  const openProductDialog = (product?: Product) => {
+  1015→    if (product) {
+  1016→      setEditingProduct(product)
+  1017→      setPForm({
+  1018→        name: product.name,
+  1019→        description: product.description || '',
+  1020→        longDescription: product.longDescription || '',
+  1021→        price: String(product.price),
+  1022→        comparePrice: product.comparePrice ? String(product.comparePrice) : '',
+  1023→        categoryId: product.categoryId,
+  1024→        volume: product.volume || '',
+  1025→        stockQty: String(product.stockQty),
+  1026→        minStockAlert: String(product.minStockAlert),
+  1027→        isFeatured: product.isFeatured,
+  1028→        isActive: product.isActive,
+  1029→      })
+  1030→    } else {
+  1031→      setEditingProduct(null)
+  1032→      setPForm({ name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '', volume: '', stockQty: '0', minStockAlert: '10', isFeatured: false, isActive: true })
+  1033→    }
+  1034→    setProductDialogOpen(true)
+  1035→  }
+  1036→
+  1037→  const saveProduct = async () => {
+  1038→    if (!pForm.name || !pForm.price || !pForm.categoryId) {
+  1039→      toast.error('Nom, prix et catégorie sont requis')
+  1040→      return
+  1041→    }
+  1042→    setSaving(true)
+  1043→    try {
+  1044→      const body = {
+  1045→        name: pForm.name,
+  1046→        description: pForm.description || undefined,
+  1047→        longDescription: pForm.longDescription || undefined,
+  1048→        price: parseFloat(pForm.price),
+  1049→        comparePrice: pForm.comparePrice ? parseFloat(pForm.comparePrice) : null,
+  1050→        categoryId: pForm.categoryId,
+  1051→        volume: pForm.volume || null,
+  1052→        stockQty: parseInt(pForm.stockQty) || 0,
+  1053→        minStockAlert: parseInt(pForm.minStockAlert) || 10,
+  1054→        isFeatured: pForm.isFeatured,
+  1055→        isActive: pForm.isActive,
+  1056→        image: editingProduct?.image || null,
+  1057→      }
+  1058→
+  1059→      let res: Response
+  1060→      if (editingProduct) {
+  1061→        res = await fetch(`/api/products/${editingProduct.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  1062→      } else {
+  1063→        res = await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  1064→      }
+  1065→      const data = await res.json()
+  1066→      if (data.success) {
+  1067→        toast.success(editingProduct ? 'Produit modifié' : 'Produit créé')
+  1068→        setProductDialogOpen(false)
+  1069→        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1070→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1071→      } else {
+  1072→        toast.error(data.error || 'Erreur')
+  1073→      }
+  1074→    } catch {
+  1075→      toast.error('Erreur serveur')
+  1076→    } finally {
+  1077→      setSaving(false)
+  1078→    }
+  1079→  }
+  1080→
+  1081→  const deleteProduct = async () => {
+  1082→    if (!deletingProduct) return
+  1083→    try {
+  1084→      const res = await fetch(`/api/products/${deletingProduct.id}`, { method: 'DELETE' })
+  1085→      const data = await res.json()
+  1086→      if (data.success) {
+  1087→        toast.success('Produit supprimé')
+  1088→        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1089→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1090→      } else {
+  1091→        toast.error(data.error || 'Erreur')
+  1092→      }
+  1093→    } catch {
+  1094→      toast.error('Erreur serveur')
+  1095→    } finally {
+  1096→      setDeleteDialogOpen(false)
+  1097→      setDeletingProduct(null)
+  1098→    }
+  1099→  }
+  1100→
+  1101→  const toggleProductActive = async (product: Product) => {
+  1102→    try {
+  1103→      const res = await fetch(`/api/products/${product.id}`, {
+  1104→        method: 'PUT',
+  1105→        headers: { 'Content-Type': 'application/json' },
+  1106→        body: JSON.stringify({ isActive: !product.isActive, inStock: !product.isActive }),
+  1107→      })
+  1108→      const data = await res.json()
+  1109→      if (data.success) {
+  1110→        toast.success(product.isActive ? 'Produit désactivé' : 'Produit activé')
+  1111→        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1112→        queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1113→      } else {
+  1114→        toast.error(data.error || 'Erreur')
+  1115→      }
+  1116→    } catch {
+  1117→      toast.error('Erreur serveur')
+  1118→    }
+  1119→  }
+  1120→
+  1121→  const handleStockAdjust = async () => {
+  1122→    if (!stockAdjustProduct) return
+  1123→    const qty = parseInt(stockAdjustQty)
+  1124→    if (isNaN(qty) || qty < 0) { toast.error('Quantité invalide'); return }
+  1125→    setStockAdjustLoading(true)
+  1126→    try {
+  1127→      const res = await fetch(`/api/products/${stockAdjustProduct.id}`, {
+  1128→        method: 'PUT',
+  1129→        headers: { 'Content-Type': 'application/json' },
+  1130→        body: JSON.stringify({ stockQty: qty, inStock: qty > 0 }),
+  1131→      })
+  1132→      if (res.ok) {
+  1133→        toast.success(`Stock mis à jour: ${qty} unités`)
+  1134→        setStockAdjustProduct(null)
+  1135→        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1136→      } else {
+  1137→        toast.error('Erreur lors de la mise à jour')
+  1138→      }
+  1139→    } catch {
+  1140→      toast.error('Erreur serveur')
+  1141→    } finally {
+  1142→      setStockAdjustLoading(false)
+  1143→    }
+  1144→  }
+  1145→
+  1146→  const toggleFeatured = async (product: Product) => {
+  1147→    try {
+  1148→      const res = await fetch(`/api/products/${product.id}`, {
+  1149→        method: 'PUT',
+  1150→        headers: { 'Content-Type': 'application/json' },
+  1151→        body: JSON.stringify({ isFeatured: !product.isFeatured }),
+  1152→      })
+  1153→      const data = await res.json()
+  1154→      if (data.success) {
+  1155→        toast.success(product.isFeatured ? 'Produit retiré des vedettes' : 'Produit mis en vedette')
+  1156→        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1157→      } else {
+  1158→        toast.error(data.error || 'Erreur')
+  1159→      }
+  1160→    } catch {
+  1161→      toast.error('Erreur serveur')
+  1162→    }
+  1163→  }
+  1164→
+  1165→  const toggleSelectProduct = (id: string) => {
+  1166→    setSelectedProducts(prev => {
+  1167→      const next = new Set(prev)
+  1168→      if (next.has(id)) next.delete(id)
+  1169→      else next.add(id)
+  1170→      return next
+  1171→    })
+  1172→  }
+  1173→
+  1174→  const toggleSelectAll = () => {
+  1175→    if (!products) return
+  1176→    if (selectedProducts.size === products.length) {
+  1177→      setSelectedProducts(new Set())
+  1178→    } else {
+  1179→      setSelectedProducts(new Set(products.map(p => p.id)))
+  1180→    }
+  1181→  }
+  1182→
+  1183→  const deleteSelectedProducts = async () => {
+  1184→    if (selectedProducts.size === 0) return
+  1185→    try {
+  1186→      await Promise.all(
+  1187→        [...selectedProducts].map(id => fetch(`/api/products/${id}`, { method: 'DELETE' }))
+  1188→      )
+  1189→      toast.success(`${selectedProducts.size} produit(s) supprimé(s)`)
+  1190→      setSelectedProducts(new Set())
+  1191→      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  1192→      queryClient.invalidateQueries({ queryKey: ['stats'] })
+  1193→    } catch {
+  1194→      toast.error('Erreur lors de la suppression')
+  1195→    }
+  1196→  }
+  1197→
+  1198→  const exportSelectedCSV = () => {
+  1199→    if (!products || selectedProducts.size === 0) return
+  1200→    const selected = products.filter(p => selectedProducts.has(p.id))
+  1201→    const headers = ['Nom', 'Catégorie', 'Prix', 'Stock', 'Statut', 'Vedette']
+  1202→    const rows = selected.map(p => [
+  1203→      p.name,
+  1204→      p.category?.name || '',
+  1205→      String(p.price),
+  1206→      String(p.stockQty),
+  1207→      p.isActive ? 'Actif' : 'Inactif',
+  1208→      p.isFeatured ? 'Oui' : 'Non',
+  1209→    ])
+  1210→    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  1211→    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  1212→    const url = URL.createObjectURL(blob)
+  1213→    const a = document.createElement('a')
+  1214→    a.href = url
+  1215→    a.download = `produits-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+  1216→    a.click()
+  1217→    URL.revokeObjectURL(url)
+  1218→    toast.success('Fichier CSV téléchargé')
+  1219→  }
+  1220→
+  1221→  // Category management
+  1222→  const saveCategory = async () => {
+  1223→    if (!newCategoryName.trim()) { toast.error('Le nom est requis'); return }
+  1224→    setSaving(true)
+  1225→    try {
+  1226→      if (editingCategory) {
+  1227→        const slug = newCategorySlug || newCategoryName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').trim()
+  1228→        const res = await fetch(`/api/categories/${editingCategory.id}`, {
+  1229→          method: 'PUT',
+  1230→          headers: { 'Content-Type': 'application/json' },
+  1231→          body: JSON.stringify({ name: newCategoryName, slug }),
+  1232→        })
+  1233→        const data = await res.json()
+  1234→        if (data.success) { toast.success('Catégorie modifiée'); setCategoryDialogOpen(false); queryClient.invalidateQueries({ queryKey: ['categories'] }) }
+  1235→        else toast.error(data.error || 'Erreur')
+  1236→      } else {
+  1237→        const slug = newCategorySlug || newCategoryName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').trim()
+  1238→        const res = await fetch('/api/categories', {
+  1239→          method: 'POST',
+  1240→          headers: { 'Content-Type': 'application/json' },
+  1241→          body: JSON.stringify({ name: newCategoryName, slug }),
+  1242→        })
+  1243→        const data = await res.json()
+  1244→        if (data.success) { toast.success('Catégorie créée'); setCategoryDialogOpen(false); queryClient.invalidateQueries({ queryKey: ['categories'] }) }
+  1245→        else toast.error(data.error || 'Erreur')
+  1246→      }
+  1247→    } catch { toast.error('Erreur serveur') }
+  1248→    finally { setSaving(false) }
+  1249→  }
+  1250→
+  1251→  const deleteCategory = async () => {
+  1252→    if (!deletingCategory) return
+  1253→    try {
+  1254→      const res = await fetch(`/api/categories/${deletingCategory.id}`, { method: 'DELETE' })
+  1255→      const data = await res.json()
+  1256→      if (data.success) { toast.success('Catégorie supprimée'); queryClient.invalidateQueries({ queryKey: ['categories'] }) }
+  1257→      else toast.error(data.error || 'Erreur')
+  1258→    } catch { toast.error('Erreur serveur') }
+  1259→    finally { setDeleteCategoryDialogOpen(false); setDeletingCategory(null) }
+  1260→  }
+  1261→
+  1262→  return (
+  1263→    <div className="space-y-6">
+  1264→      {/* Top bar */}
+  1265→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+  1266→        <h3 className="text-xl font-semibold text-gray-900">Produits</h3>
+  1267→        <div className="flex-1" />
+  1268→        <div className="flex items-center gap-2 w-full sm:w-auto">
+  1269→          <div className="relative flex-1 sm:w-64">
+  1270→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1271→            <Input placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+  1272→          </div>
+  1273→          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+  1274→            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+  1275→            <SelectContent>
+  1276→              <SelectItem value="all">Toutes</SelectItem>
+  1277→              {categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+  1278→            </SelectContent>
+  1279→          </Select>
+  1280→          <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(!showCategoryManager)}>
+  1281→            <Filter className="h-4 w-4 mr-1" />Catégories
+  1282→          </Button>
+  1283→          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => openProductDialog()}>
+  1284→            <Plus className="h-4 w-4 mr-1" />Ajouter
+  1285→          </Button>
+  1286→        </div>
+  1287→      </div>
+  1288→
+  1289→      {/* Category Manager */}
+  1290→      {showCategoryManager && (
+  1291→        <Card>
+  1292→          <CardHeader className="pb-3">
+  1293→            <div className="flex items-center justify-between">
+  1294→              <CardTitle className="text-base">Gestion des Catégories</CardTitle>
+  1295→              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setEditingCategory(null); setNewCategoryName(''); setNewCategorySlug(''); setCategoryDialogOpen(true) }}>
+  1296→                <Plus className="h-4 w-4 mr-1" />Nouvelle Catégorie
+  1297→              </Button>
+  1298→            </div>
+  1299→          </CardHeader>
+  1300→          <CardContent>
+  1301→            {catsLoading ? <Skeleton className="h-32 w-full" /> : (
+  1302→              <div className="space-y-2">
+  1303→                {categories?.map(c => (
+  1304→                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+  1305→                    <div>
+  1306→                      <p className="font-medium text-sm">{c.name}</p>
+  1307→                      <p className="text-xs text-muted-foreground">{c.slug} · {c._count.products} produit(s)</p>
+  1308→                    </div>
+  1309→                    <div className="flex items-center gap-1">
+  1310→                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingCategory(c); setNewCategoryName(c.name); setNewCategorySlug(c.slug); setCategoryDialogOpen(true) }}>
+  1311→                        <Edit className="h-4 w-4" />
+  1312→                      </Button>
+  1313→                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => { setDeletingCategory(c); setDeleteCategoryDialogOpen(true) }}>
+  1314→                        <Trash2 className="h-4 w-4" />
+  1315→                      </Button>
+  1316→                    </div>
+  1317→                  </div>
+  1318→                ))}
+  1319→                {(!categories || categories.length === 0) && <p className="text-sm text-muted-foreground text-center py-4">Aucune catégorie</p>}
+  1320→              </div>
+  1321→            )}
+  1322→          </CardContent>
+  1323→        </Card>
+  1324→      )}
+  1325→
+  1326→      {/* Products table */}
+  1327→      <Card>
+  1328→        <CardContent className="p-0">
+  1329→          {productsLoading ? (
+  1330→            <div className="p-6 space-y-4"><Skeleton className="h-10 w-full" />{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+  1331→          ) : products && products.length > 0 ? (
+  1332→            <div className="overflow-x-auto">
+  1333→              <Table>
+  1334→                <TableHeader>
+  1335→                  <TableRow className="bg-gray-50/80">
+  1336→                    <TableHead className="w-10">
+  1337→                      <input
+  1338→                        type="checkbox"
+  1339→                        checked={products.length > 0 && selectedProducts.size === products.length}
+  1340→                        onChange={toggleSelectAll}
+  1341→                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+  1342→                      />
+  1343→                    </TableHead>
+  1344→                    <TableHead className="w-16">Image</TableHead>
+  1345→                    <TableHead>Nom</TableHead>
+  1346→                    <TableHead>Catégorie</TableHead>
+  1347→                    <TableHead className="text-right">Prix</TableHead>
+  1348→                    <TableHead className="text-right">Stock</TableHead>
+  1349→                    <TableHead>Vedette</TableHead>
+  1350→                    <TableHead>Statut</TableHead>
+  1351→                    <TableHead className="w-24">Actions</TableHead>
+  1352→                  </TableRow>
+  1353→                </TableHeader>
+  1354→                <TableBody>
+  1355→                  {products.map((p, i) => (
+  1356→                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} ${selectedProducts.has(p.id) ? 'bg-emerald-50/50' : ''}`}>
+  1357→                      <TableCell>
+  1358→                        <input
+  1359→                          type="checkbox"
+  1360→                          checked={selectedProducts.has(p.id)}
+  1361→                          onChange={() => toggleSelectProduct(p.id)}
+  1362→                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+  1363→                        />
+  1364→                      </TableCell>
+  1365→                      <TableCell>
+  1366→                        <div className="w-10 h-10 rounded-lg overflow-hidden">
+  1367→                          {p.image ? (
+  1368→                            <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+  1369→                          ) : (
+  1370→                            <div className="w-full h-full rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+  1371→                              <Package className="h-4 w-4 text-emerald-300" />
+  1372→                            </div>
+  1373→                          )}
+  1374→                        </div>
+  1375→                      </TableCell>
+  1376→                      <TableCell>
+  1377→                        <div>
+  1378→                          <p className="font-medium text-sm">{p.name}</p>
+  1379→                          {p.volume && <p className="text-xs text-muted-foreground">{p.volume}</p>}
+  1380→                        </div>
+  1381→                      </TableCell>
+  1382→                      <TableCell className="text-sm">{p.category?.name}</TableCell>
+  1383→                      <TableCell className="text-right text-sm font-medium">{formatPrice(p.price)}</TableCell>
+  1384→                      <TableCell className="text-right">
+  1385→                        <button
+  1386→                          className={`text-sm font-medium hover:underline cursor-pointer ${p.stockQty < p.minStockAlert ? 'text-red-600 font-bold' : 'text-gray-900'}`}
+  1387→                          onClick={() => { setStockAdjustProduct(p); setStockAdjustQty(String(p.stockQty)) }}
+  1388→                        >
+  1389→                          {p.stockQty}
+  1390→                        </button>
+  1391→                      </TableCell>
+  1392→                      <TableCell>
+  1393→                        <button
+  1394→                          onClick={() => toggleFeatured(p)}
+  1395→                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${p.isFeatured ? 'bg-emerald-500' : 'bg-gray-200'}`}
+  1396→                        >
+  1397→                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${p.isFeatured ? 'translate-x-5' : 'translate-x-0'}`} />
+  1398→                        </button>
+  1399→                      </TableCell>
+  1400→                      <TableCell>
+  1401→                        <div className="flex items-center gap-2">
+  1402→                          <Badge variant="outline" className={p.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}>
+  1403→                            {p.isActive ? 'Actif' : 'Inactif'}
+  1404→                          </Badge>
+  1405→                          {p.isFeatured && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">★</Badge>}
+  1406→                        </div>
+  1407→                      </TableCell>
+  1408→                      <TableCell>
+  1409→                        <div className="flex items-center gap-1">
+  1410→                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openProductDialog(p)}><Edit className="h-4 w-4" /></Button>
+  1411→                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleProductActive(p)}>
+  1412→                            {p.isActive ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4 opacity-40" />}
+  1413→                          </Button>
+  1414→                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => { setDeletingProduct(p); setDeleteDialogOpen(true) }}>
+  1415→                            <Trash2 className="h-4 w-4" />
+  1416→                          </Button>
+  1417→                        </div>
+  1418→                      </TableCell>
+  1419→                    </TableRow>
+  1420→                  ))}
+  1421→                </TableBody>
+  1422→              </Table>
+  1423→            </div>
+  1424→          ) : (
+  1425→            <div className="p-12 text-center">
+  1426→              <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  1427→              <p className="text-muted-foreground">Aucun produit trouvé</p>
+  1428→            </div>
+  1429→          )}
+  1430→        </CardContent>
+  1431→      </Card>
+  1432→
+  1433→      {selectedProducts.size > 0 && (
+  1434→        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl">
+  1435→          <span className="text-sm font-medium">{selectedProducts.size} produit(s) sélectionné(s)</span>
+  1436→          <Button size="sm" variant="ghost" className="text-red-300 hover:text-red-200 hover:bg-red-900/50" onClick={deleteSelectedProducts}>
+  1437→            <Trash2 className="h-4 w-4 mr-1" />
+  1438→            Supprimer la sélection
+  1439→          </Button>
+  1440→          <Button size="sm" variant="ghost" className="text-emerald-300 hover:text-emerald-200 hover:bg-emerald-900/50" onClick={exportSelectedCSV}>
+  1441→            <FileDown className="h-4 w-4 mr-1" />
+  1442→            Exporter CSV
+  1443→          </Button>
+  1444→        </div>
+  1445→      )}
+  1446→
+  1447→      {/* Product Dialog */}
+  1448→      <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+  1449→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+  1450→          <DialogHeader>
+  1451→            <DialogTitle>{editingProduct ? 'Modifier le Produit' : 'Ajouter un Produit'}</DialogTitle>
+  1452→            <DialogDescription>Remplissez les informations du produit</DialogDescription>
+  1453→          </DialogHeader>
+  1454→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+  1455→            <div className="sm:col-span-2 space-y-2">
+  1456→              <Label>Image du produit</Label>
+  1457→              <div className="relative group">
+  1458→                {editingProduct?.image && (
+  1459→                  <div className="mb-3 relative w-full h-40 rounded-lg overflow-hidden bg-gray-100">
+  1460→                    <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
+  1461→                    <button
+  1462→                      type="button"
+  1463→                      onClick={() => {
+  1464→                        setEditingProduct(prev => prev ? { ...prev, image: null } : prev)
+  1465→                      }}
+  1466→                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+  1467→                    >
+  1468→                      <X className="w-3 h-3" />
+  1469→                    </button>
+  1470→                  </div>
+  1471→                )}
+  1472→                <Input
+  1473→                  type="file"
+  1474→                  accept="image/jpeg,image/png,image/webp"
+  1475→                  onChange={async (e) => {
+  1476→                    const file = e.target.files?.[0]
+  1477→                    if (!file) return
+  1478→                    setUploadingImage(true)
+  1479→                    try {
+  1480→                      const formData = new FormData()
+  1481→                      formData.append('image', file)
+  1482→                      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+  1483→                      if (!res.ok) throw new Error('Upload failed')
+  1484→                      const data = await res.json()
+  1485→                      setEditingProduct(prev => prev ? { ...prev, image: data.data.url } : prev)
+  1486→                    } catch {
+  1487→                      toast.error('Erreur lors du téléchargement')
+  1488→                    } finally {
+  1489→                      setUploadingImage(false)
+  1490→                    }
+  1491→                  }}
+  1492→                  disabled={uploadingImage}
+  1493→                />
+  1494→                {uploadingImage && <p className="text-xs text-gray-500 mt-1">Téléchargement en cours...</p>}
+  1495→              </div>
+  1496→            </div>
+  1497→            <div className="sm:col-span-2 space-y-2">
+  1498→              <Label>Nom *</Label>
+  1499→              <Input value={pForm.name} onChange={e => setPForm({ ...pForm, name: e.target.value })} placeholder="Nom du produit" />
+  1500→            </div>
+  1501→            <div className="sm:col-span-2 space-y-2">
+  1502→              <Label>Catégorie *</Label>
+  1503→              <Select value={pForm.categoryId} onValueChange={v => setPForm({ ...pForm, categoryId: v })}>
+  1504→                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+  1505→                <SelectContent>{categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+  1506→              </Select>
+  1507→            </div>
+  1508→            <div className="sm:col-span-2 space-y-2">
+  1509→              <Label>Description</Label>
+  1510→              <Input value={pForm.description} onChange={e => setPForm({ ...pForm, description: e.target.value })} placeholder="Description courte" />
+  1511→            </div>
+  1512→            <div className="sm:col-span-2 space-y-2">
+  1513→              <Label>Description Longue</Label>
+  1514→              <Textarea value={pForm.longDescription} onChange={e => setPForm({ ...pForm, longDescription: e.target.value })} placeholder="Description détaillée" rows={3} />
+  1515→            </div>
+  1516→            <div className="space-y-2">
+  1517→              <Label>Prix (FCFA) *</Label>
+  1518→              <Input type="number" value={pForm.price} onChange={e => setPForm({ ...pForm, price: e.target.value })} placeholder="0" min="0" />
+  1519→            </div>
+  1520→            <div className="space-y-2">
+  1521→              <Label>Prix Comparé (FCFA)</Label>
+  1522→              <Input type="number" value={pForm.comparePrice} onChange={e => setPForm({ ...pForm, comparePrice: e.target.value })} placeholder="Optionnel" min="0" />
+  1523→            </div>
+  1524→            <div className="space-y-2">
+  1525→              <Label>Volume</Label>
+  1526→              <Input value={pForm.volume} onChange={e => setPForm({ ...pForm, volume: e.target.value })} placeholder="ex: 1L, 5L" />
+  1527→            </div>
+  1528→            <div className="space-y-2">
+  1529→              <Label>Stock</Label>
+  1530→              <Input type="number" value={pForm.stockQty} onChange={e => setPForm({ ...pForm, stockQty: e.target.value })} placeholder="0" min="0" />
+  1531→            </div>
+  1532→            <div className="space-y-2">
+  1533→              <Label>Alerte Stock Min</Label>
+  1534→              <Input type="number" value={pForm.minStockAlert} onChange={e => setPForm({ ...pForm, minStockAlert: e.target.value })} placeholder="10" min="0" />
+  1535→            </div>
+  1536→            <div className="flex items-center gap-8 pt-6">
+  1537→              <div className="flex items-center gap-2">
+  1538→                <Switch checked={pForm.isFeatured} onCheckedChange={v => setPForm({ ...pForm, isFeatured: v })} />
+  1539→                <Label>En vedette</Label>
+  1540→              </div>
+  1541→              <div className="flex items-center gap-2">
+  1542→                <Switch checked={pForm.isActive} onCheckedChange={v => setPForm({ ...pForm, isActive: v })} />
+  1543→                <Label>Actif</Label>
+  1544→              </div>
+  1545→            </div>
+  1546→          </div>
+  1547→          <DialogFooter>
+  1548→            <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Annuler</Button>
+  1549→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveProduct} disabled={saving}>
+  1550→              {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+
+[showing lines 951-1550 of 3441; use offset=1551 with limit to continue reading]

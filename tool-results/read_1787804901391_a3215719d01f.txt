@@ -1,0 +1,590 @@
+  2001→                  }}
+  2002→                >
+  2003→                  Voir les produits
+  2004→                </Button>
+  2005→              </div>
+  2006→            </div>
+  2007→          ) : (
+  2008→            <>
+  2009→              <ScrollArea className="flex-1 px-4" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+  2010→                <div className="space-y-3 py-2">
+  2011→                  {cart.items.map((item) => (
+  2012→                    <div
+  2013→                      key={item.id}
+  2014→                      className="flex gap-3 p-3 bg-gray-50 rounded-xl"
+  2015→                    >
+  2016→                      {/* Item image */}
+  2017→                      <div className="w-14 h-14 rounded-lg shrink-0 overflow-hidden">
+  2018→                        {item.image ? (
+  2019→                          <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+  2020→                        ) : (
+  2021→                          <div className="w-full h-full rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+  2022→                            <Package className="w-6 h-6 text-white/60" />
+  2023→                          </div>
+  2024→                        )}
+  2025→                      </div>
+  2026→                      <div className="flex-1 min-w-0">
+  2027→                        <h4 className="font-medium text-gray-900 text-sm truncate">{item.name}</h4>
+  2028→                        {item.volume && (
+  2029→                          <p className="text-xs text-gray-500">{item.volume}</p>
+  2030→                        )}
+  2031→                        <p className="text-sm font-semibold text-emerald-700 mt-0.5">
+  2032→                          {formatPrice(item.price * item.quantity)}
+  2033→                        </p>
+  2034→                        <div className="flex items-center gap-2 mt-1.5">
+  2035→                          <button
+  2036→                            onClick={() => cart.updateQuantity(item.id, item.quantity - 1)}
+  2037→                            className="w-7 h-7 rounded-md border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+  2038→                          >
+  2039→                            <Minus className="w-3 h-3" />
+  2040→                          </button>
+  2041→                          <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+  2042→                          <button
+  2043→                            onClick={() => cart.updateQuantity(item.id, item.quantity + 1)}
+  2044→                            className="w-7 h-7 rounded-md border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+  2045→                          >
+  2046→                            <Plus className="w-3 h-3" />
+  2047→                          </button>
+  2048→                          <button
+  2049→                            onClick={() => cart.removeItem(item.id)}
+  2050→                            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-red-50 text-red-500 transition-colors ml-auto"
+  2051→                          >
+  2052→                            <Trash2 className="w-3.5 h-3.5" />
+  2053→                          </button>
+  2054→                        </div>
+  2055→                      </div>
+  2056→                    </div>
+  2057→                  ))}
+  2058→                </div>
+  2059→              </ScrollArea>
+  2060→
+  2061→              <SheetFooter className="border-t bg-white p-4 gap-3">
+  2062→                <div className="w-full space-y-3">
+  2063→                  <div className="flex items-center justify-between">
+  2064→                    <span className="text-gray-600 font-medium">Total</span>
+  2065→                    <span className="text-xl font-bold text-emerald-700">{formatPrice(cart.totalPrice())}</span>
+  2066→                  </div>
+  2067→                  <Button
+  2068→                    onClick={() => setOrderDialogOpen(true)}
+  2069→                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11"
+  2070→                  >
+  2071→                    Commander
+  2072→                    <ChevronRight className="w-4 h-4 ml-1" />
+  2073→                  </Button>
+  2074→                </div>
+  2075→              </SheetFooter>
+  2076→            </>
+  2077→          )}
+  2078→        </SheetContent>
+  2079→      </Sheet>
+  2080→
+  2081→      {/* Order Dialog */}
+  2082→      <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
+  2083→        <DialogContent className="sm:max-w-md">
+  2084→          <DialogHeader>
+  2085→            <DialogTitle>Passer la commande</DialogTitle>
+  2086→            <DialogDescription>
+  2087→              Remplissez vos informations pour finaliser la commande de{' '}
+  2088→              <span className="font-semibold text-emerald-700">{formatPrice(cart.totalPrice())}</span>
+  2089→            </DialogDescription>
+  2090→          </DialogHeader>
+  2091→          <form onSubmit={handleOrderSubmit} className="space-y-4">
+  2092→            <div className="space-y-2">
+  2093→              <Label htmlFor="order-name">Nom complet <span className="text-red-500">*</span></Label>
+  2094→              <Input
+  2095→                id="order-name"
+  2096→                placeholder="Votre nom"
+  2097→                value={orderForm.customerName}
+  2098→                onChange={(e) => setOrderForm({ ...orderForm, customerName: e.target.value })}
+  2099→                required
+  2100→              />
+  2101→            </div>
+  2102→            <div className="space-y-2">
+  2103→              <Label htmlFor="order-email">Email <span className="text-red-500">*</span></Label>
+  2104→              <Input
+  2105→                id="order-email"
+  2106→                type="email"
+  2107→                placeholder="votre@email.com"
+  2108→                value={orderForm.customerEmail}
+  2109→                onChange={(e) => setOrderForm({ ...orderForm, customerEmail: e.target.value })}
+  2110→                required
+  2111→              />
+  2112→            </div>
+  2113→            <div className="space-y-2">
+  2114→              <Label htmlFor="order-phone">Téléphone <span className="text-red-500">*</span></Label>
+  2115→              <Input
+  2116→                id="order-phone"
+  2117→                placeholder="+242 06 XXX XXXX"
+  2118→                value={orderForm.customerPhone}
+  2119→                onChange={(e) => setOrderForm({ ...orderForm, customerPhone: e.target.value })}
+  2120→                required
+  2121→              />
+  2122→            </div>
+  2123→            <div className="space-y-2">
+  2124→              <Label htmlFor="order-address">Adresse de livraison <span className="text-red-500">*</span></Label>
+  2125→              <Input
+  2126→                id="order-address"
+  2127→                placeholder="Votre adresse complète"
+  2128→                value={orderForm.address}
+  2129→                onChange={(e) => setOrderForm({ ...orderForm, address: e.target.value })}
+  2130→                required
+  2131→              />
+  2132→            </div>
+  2133→            <div className="bg-gray-50 rounded-lg p-3">
+  2134→              <p className="text-sm text-gray-600">
+  2135→                <span className="font-medium">{cart.totalItems()} article(s)</span> — Total:{' '}
+  2136→                <span className="font-bold text-emerald-700">{formatPrice(cart.totalPrice())}</span>
+  2137→              </p>
+  2138→            </div>
+  2139→            <div className="flex gap-3">
+  2140→              <Button
+  2141→                type="button"
+  2142→                variant="outline"
+  2143→                className="flex-1"
+  2144→                onClick={() => setOrderDialogOpen(false)}
+  2145→              >
+  2146→                Annuler
+  2147→              </Button>
+  2148→              <Button
+  2149→                type="submit"
+  2150→                disabled={orderLoading}
+  2151→                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  2152→              >
+  2153→                {orderLoading ? '...' : 'Confirmer'}
+  2154→              </Button>
+  2155→            </div>
+  2156→          </form>
+  2157→        </DialogContent>
+  2158→      </Dialog>
+  2159→
+  2160→      {/* Product Detail Dialog */}
+  2161→      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+  2162→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+  2163→          <DialogHeader>
+  2164→            <div className="flex items-center gap-3">
+  2165→              {selectedProduct?.category && (
+  2166→                <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">{selectedProduct.category.name}</Badge>
+  2167→              )}
+  2168→              {selectedProduct?.volume && <Badge variant="secondary">{selectedProduct.volume}</Badge>}
+  2169→            </div>
+  2170→            <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
+  2171→          </DialogHeader>
+  2172→          <div className="space-y-4">
+  2173→            {/* Rating summary */}
+  2174→            {selectedProduct && (
+  2175→              <div className="flex items-center gap-2">
+  2176→                <div className="flex gap-0.5">
+  2177→                  {Array.from({ length: 5 }).map((_, si) => (
+  2178→                    <Star key={si} className={`w-4 h-4 ${si < Math.round(avgRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+  2179→                  ))}
+  2180→                </div>
+  2181→                <span className="text-sm text-gray-600">
+  2182→                  {avgRating > 0 ? `${avgRating}/5` : 'Pas encore d\'avis'}
+  2183→                  {totalReviews > 0 && ` (${totalReviews})`}
+  2184→                </span>
+  2185→              </div>
+  2186→            )}
+  2187→            <div className="h-40 rounded-xl bg-gray-100 overflow-hidden">
+  2188→              {selectedProduct?.image ? (
+  2189→                <img 
+  2190→                  src={selectedProduct.image} 
+  2191→                  alt={selectedProduct.name} 
+  2192→                  className="w-full h-full object-cover"
+  2193→                />
+  2194→              ) : (
+  2195→                <div className={`w-full h-full bg-gradient-to-br ${selectedProduct ? getCategoryColor(selectedProduct.category?.slug || '') : ''} flex items-center justify-center`}>
+  2196→                  <span className="text-6xl font-bold text-white/30">{selectedProduct ? getCategoryInitial(selectedProduct.category?.slug || '') : ''}</span>
+  2197→                </div>
+  2198→              )}
+  2199→            </div>
+  2200→            <p className="text-gray-600 leading-relaxed">{selectedProduct?.longDescription || selectedProduct?.description || ''}</p>
+  2201→            <div className="flex items-baseline gap-3">
+  2202→              <span className="text-2xl font-bold text-emerald-700">{selectedProduct ? formatPrice(selectedProduct.price) : ''}</span>
+  2203→              {selectedProduct?.comparePrice && selectedProduct.comparePrice > selectedProduct.price && (
+  2204→                <span className="text-lg text-gray-400 line-through">{formatPrice(selectedProduct.comparePrice)}</span>
+  2205→              )}
+  2206→            </div>
+  2207→            <div className="flex items-center gap-2">
+  2208→              <div className={`w-2.5 h-2.5 rounded-full ${selectedProduct?.inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
+  2209→              <span className="text-sm text-gray-600">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
+  2210→            </div>
+  2211→
+  2212→            {/* Reviews list */}
+  2213→            {reviews.length > 0 && (
+  2214→              <div className="border-t border-gray-100 pt-4">
+  2215→                <h4 className="font-semibold text-gray-900 text-sm mb-3">
+  2216→                  Avis clients ({totalReviews})
+  2217→                </h4>
+  2218→                <div className="space-y-3 max-h-60 overflow-y-auto">
+  2219→                  {reviews.map((review) => (
+  2220→                    <div key={review.id} className="bg-gray-50 rounded-lg p-3">
+  2221→                      <div className="flex items-center justify-between mb-1">
+  2222→                        <div className="flex items-center gap-2">
+  2223→                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+  2224→                            <span className="text-emerald-700 font-semibold text-xs">{getInitials(review.customerName)}</span>
+  2225→                          </div>
+  2226→                          <span className="text-sm font-medium text-gray-900">{review.customerName}</span>
+  2227→                        </div>
+  2228→                        <span className="text-xs text-gray-400">
+  2229→                          {new Date(review.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+  2230→                        </span>
+  2231→                      </div>
+  2232→                      <div className="flex gap-0.5 mb-1">
+  2233→                        {Array.from({ length: 5 }).map((_, si) => (
+  2234→                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+  2235→                        ))}
+  2236→                      </div>
+  2237→                      {review.comment && (
+  2238→                        <p className="text-sm text-gray-600 leading-relaxed">{review.comment}</p>
+  2239→                      )}
+  2240→                    </div>
+  2241→                  ))}
+  2242→                </div>
+  2243→              </div>
+  2244→            )}
+  2245→
+  2246→            {/* Review toggle button */}
+  2247→            <Button
+  2248→              variant="outline"
+  2249→              className="w-full"
+  2250→              onClick={() => setShowReviewForm(!showReviewForm)}
+  2251→            >
+  2252→              <Star className="w-4 h-4 mr-2" />
+  2253→              {showReviewForm ? 'Fermer le formulaire' : 'Laisser un avis'}
+  2254→            </Button>
+  2255→
+  2256→            {/* Review form */}
+  2257→            {showReviewForm && (
+  2258→              <form onSubmit={handleReviewSubmit} className="space-y-3 border border-gray-200 rounded-lg p-4">
+  2259→                <div className="space-y-2">
+  2260→                  <Label htmlFor="review-name">Nom <span className="text-red-500">*</span></Label>
+  2261→                  <Input
+  2262→                    id="review-name"
+  2263→                    placeholder="Votre nom"
+  2264→                    value={reviewForm.customerName}
+  2265→                    onChange={(e) => setReviewForm({ ...reviewForm, customerName: e.target.value })}
+  2266→                    required
+  2267→                  />
+  2268→                </div>
+  2269→                <div className="space-y-2">
+  2270→                  <Label>Note</Label>
+  2271→                  <div className="flex gap-1">
+  2272→                    {Array.from({ length: 5 }).map((_, si) => (
+  2273→                      <button
+  2274→                        key={si}
+  2275→                        type="button"
+  2276→                        onClick={() => setReviewForm({ ...reviewForm, rating: si + 1 })}
+  2277→                        className="p-0.5 hover:scale-110 transition-transform"
+  2278→                        aria-label={`${si + 1} étoile(s)`}
+  2279→                      >
+  2280→                        <Star className={`w-6 h-6 ${si < reviewForm.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+  2281→                      </button>
+  2282→                    ))}
+  2283→                  </div>
+  2284→                </div>
+  2285→                <div className="space-y-2">
+  2286→                  <Label htmlFor="review-comment">Commentaire (optionnel)</Label>
+  2287→                  <Textarea
+  2288→                    id="review-comment"
+  2289→                    placeholder="Votre avis sur ce produit..."
+  2290→                    rows={3}
+  2291→                    value={reviewForm.comment}
+  2292→                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+  2293→                    maxLength={500}
+  2294→                  />
+  2295→                </div>
+  2296→                <Button
+  2297→                  type="submit"
+  2298→                  disabled={reviewLoading}
+  2299→                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  2300→                >
+  2301→                  {reviewLoading ? 'Envoi en cours...' : 'Publier l\'avis'}
+  2302→                </Button>
+  2303→              </form>
+  2304→            )}
+  2305→          </div>
+  2306→          <DialogFooter>
+  2307→            {selectedProduct?.inStock && (
+  2308→              <Button onClick={() => { if (selectedProduct) { handleAddToCart(selectedProduct); setSelectedProduct(null) } }} className="w-full bg-emerald-600 hover:bg-emerald-700">
+  2309→                <ShoppingCart className="w-4 h-4 mr-2" />
+  2310→                Ajouter au panier
+  2311→              </Button>
+  2312→            )}
+  2313→          </DialogFooter>
+  2314→        </DialogContent>
+  2315→      </Dialog>
+  2316→    </>
+  2317→  )
+  2318→
+  2319→  // ==================== RECENTLY VIEWED ====================
+  2320→
+  2321→  const RecentlyViewedSection = recentlyViewed.length > 0 ? (
+  2322→    <section className="py-10 bg-white border-t border-gray-100">
+  2323→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  2324→        <h3 className="text-lg font-semibold text-gray-900 mb-4">Récemment consultés</h3>
+  2325→        <div className="flex gap-4 overflow-x-auto flex-nowrap pb-2">
+  2326→          {recentlyViewed.map((product) => {
+  2327→            const catSlug = product.category?.slug || ''
+  2328→            const gradient = getCategoryColor(catSlug)
+  2329→            const initial = getCategoryInitial(catSlug)
+  2330→            return (
+  2331→              <button
+  2332→                key={product.id}
+  2333→                onClick={() => setSelectedProduct(product)}
+  2334→                className="shrink-0 w-40 group"
+  2335→              >
+  2336→                <div className="h-24 rounded-lg overflow-hidden bg-gray-100 mb-2">
+  2337→                  {product.image ? (
+  2338→                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+  2339→                  ) : (
+  2340→                    <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+  2341→                      <span className="text-3xl font-bold text-white/30 select-none">{initial}</span>
+  2342→                    </div>
+  2343→                  )}
+  2344→                </div>
+  2345→                <p className="text-sm font-medium text-gray-900 line-clamp-1 text-left group-hover:text-emerald-700 transition-colors">{product.name}</p>
+  2346→                <p className="text-sm text-emerald-700 font-semibold text-left">{formatPrice(product.price)}</p>
+  2347→              </button>
+  2348→            )
+  2349→          })}
+  2350→        </div>
+  2351→      </div>
+  2352→    </section>
+  2353→  ) : null
+  2354→
+  2355→  // ==================== FOOTER =====================
+  2356→
+  2357→  const Footer = (
+  2358→    <footer className="mt-auto bg-gray-900 text-gray-300">
+  2359→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  2360→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+  2361→          {/* Company Info */}
+  2362→          <div>
+  2363→            <div className="flex items-center gap-2 mb-4">
+  2364→              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+  2365→                <Droplets className="w-4 h-4 text-white" />
+  2366→              </div>
+  2367→              <span className="text-lg font-bold text-white">CongoClean</span>
+  2368→            </div>
+  2369→            <p className="text-gray-400 text-sm leading-relaxed">
+  2370→              Fabricant de produits d&rsquo;hygiène de qualité industrielle basé à Pointe-Noire, Congo-Brazzaville.
+  2371→            </p>
+  2372→            <div className="flex items-center gap-3 mt-4">
+  2373→              <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+  2374→                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+  2375→              </a>
+  2376→              <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+  2377→                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+  2378→              </a>
+  2379→              <a href="#" aria-label="Twitter" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+  2380→                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+  2381→              </a>
+  2382→            </div>
+  2383→          </div>
+  2384→
+  2385→          {/* Quick Links */}
+  2386→          <div>
+  2387→            <h4 className="font-semibold text-white mb-4">Liens Rapides</h4>
+  2388→            <ul className="space-y-2">
+  2389→              {[
+  2390→                { label: 'Accueil', id: 'hero' },
+  2391→                { label: 'Produits', id: 'products' },
+  2392→                { label: 'À Propos', id: 'about' },
+  2393→                { label: 'Contact', id: 'contact' },
+  2394→              ].map((link) => (
+  2395→                <li key={link.id}>
+  2396→                  <button
+  2397→                    onClick={() => scrollToSection(link.id)}
+  2398→                    className="text-gray-400 hover:text-emerald-400 transition-colors text-sm"
+  2399→                  >
+  2400→                    {link.label}
+  2401→                  </button>
+  2402→                </li>
+  2403→              ))}
+  2404→            </ul>
+  2405→          </div>
+  2406→
+  2407→          {/* Contact Info */}
+  2408→          <div>
+  2409→            <h4 className="font-semibold text-white mb-4">Contact</h4>
+  2410→            <div className="space-y-3">
+  2411→              <div className="flex items-center gap-3">
+  2412→                <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+  2413→                <span className="text-sm">+242 06 123 4567</span>
+  2414→              </div>
+  2415→              <div className="flex items-center gap-3">
+  2416→                <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+  2417→                <span className="text-sm">contact@congoclean.cg</span>
+  2418→              </div>
+  2419→              <div className="flex items-start gap-3">
+  2420→                <MapPin className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+  2421→                <span className="text-sm">Zone Industrielle, Pointe-Noire</span>
+  2422→              </div>
+  2423→            </div>
+  2424→          </div>
+  2425→        </div>
+  2426→
+  2427→        <Separator className="my-6 bg-gray-700" />
+  2428→
+  2429→        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+  2430→          <div className="flex items-center gap-3 flex-wrap justify-center">
+  2431→            <button
+  2432→              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+  2433→              className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
+  2434→            >
+  2435→              <ChevronUp className="w-3.5 h-3.5" />
+  2436→              Retour en haut
+  2437→            </button>
+  2438→            <Separator orientation="vertical" className="h-3 bg-gray-700 hidden sm:block" />
+  2439→            <button className="hover:text-emerald-400 transition-colors">Conditions Générales</button>
+  2440→            <Separator orientation="vertical" className="h-3 bg-gray-700 hidden sm:block" />
+  2441→            <button className="hover:text-emerald-400 transition-colors">Politique de Confidentialité</button>
+  2442→          </div>
+  2443→          <p>© 2025 CongoClean. Tous droits réservés. Fabriqué avec ❤️ à Pointe-Noire, Congo-Brazzaville</p>
+  2444→        </div>
+  2445→      </div>
+  2446→    </footer>
+  2447→  )
+  2448→
+  2449→  // ==================== RENDER ====================
+  2450→
+  2451→  return (
+  2452→    <>
+  2453→      {NavBar}
+  2454→
+  2455→      {/* Promotional Banner Bar */}
+  2456→      {promoBarVisible && (
+  2457→        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden">
+  2458→          <div className="overflow-hidden whitespace-nowrap flex-1">
+  2459→            <div className="animate-[scroll_20s_linear_infinite] inline-block">
+  2460→              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+  2461→              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+  2462→              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+  2463→              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
+  2464→            </div>
+  2465→          </div>
+  2466→          <button
+  2467→            onClick={() => setPromoBarVisible(false)}
+  2468→            className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800 rounded-full transition-colors"
+  2469→            aria-label="Fermer la bannière"
+  2470→          >
+  2471→            <X className="w-3.5 h-3.5" />
+  2472→          </button>
+  2473→          <style>{`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } } @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
+  2474→        </div>
+  2475→      )}
+  2476→
+  2477→      <main>
+  2478→        {HeroSection}
+  2479→        {FeaturesBar}
+  2480→        {HowToOrderSection}
+  2481→        {ProductsSection}
+  2482→        {AboutSection}
+  2483→        {TestimonialsSection}
+  2484→        {DeliveryPricingSection}
+  2485→        {OrderTrackingSection}
+  2486→        {FAQSection}
+  2487→        {NewsletterSection}
+  2488→        {ContactSection}
+  2489→      </main>
+  2490→      {RecentlyViewedSection}
+  2491→      {Footer}
+  2492→      {CartSheet}
+  2493→
+  2494→      {/* WhatsApp Floating Button */}
+  2495→      <a
+  2496→        href="https://wa.me/242061234567"
+  2497→        target="_blank"
+  2498→        rel="noopener noreferrer"
+  2499→        aria-label="WhatsApp"
+  2500→        className="fixed bottom-6 right-[5.5rem] z-40 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+  2501→      >
+  2502→        <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-30 animate-ping" />
+  2503→        <MessageCircle className="w-6 h-6 relative z-10" />
+  2504→      </a>
+  2505→
+  2506→      {/* Back to Top Button with Scroll Progress */}
+  2507→      <AnimatePresence>
+  2508→        {showBackToTop && (
+  2509→          <motion.div
+  2510→            initial={{ opacity: 0, scale: 0.8 }}
+  2511→            animate={{ opacity: 1, scale: 1 }}
+  2512→            exit={{ opacity: 0, scale: 0.8 }}
+  2513→            transition={{ duration: 0.2 }}
+  2514→            className="fixed bottom-24 right-6 z-40"
+  2515→          >
+  2516→            <button
+  2517→              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+  2518→              className="w-12 h-12 bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+  2519→              aria-label="Retour en haut"
+  2520→            >
+  2521→              <svg className="absolute inset-0 w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+  2522→                <circle
+  2523→                  cx="24" cy="24" r="20"
+  2524→                  fill="none"
+  2525→                  stroke="currentColor"
+  2526→                  strokeWidth="2"
+  2527→                  className="text-gray-200"
+  2528→                />
+  2529→                <circle
+  2530→                  cx="24" cy="24" r="20"
+  2531→                  fill="none"
+  2532→                  stroke="currentColor"
+  2533→                  strokeWidth="2.5"
+  2534→                  className="text-emerald-500"
+  2535→                  strokeDasharray={`${2 * Math.PI * 20}`}
+  2536→                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - scrollProgress)}`}
+  2537→                  strokeLinecap="round"
+  2538→                />
+  2539→              </svg>
+  2540→              <ChevronUp className="w-5 h-5 relative z-10" />
+  2541→            </button>
+  2542→          </motion.div>
+  2543→        )}
+  2544→      </AnimatePresence>
+  2545→
+  2546→      {ChatWidget}
+  2547→
+  2548→      {/* Cookie Consent Banner */}
+  2549→      <AnimatePresence>
+  2550→        {cookieConsentVisible && (
+  2551→          <motion.div
+  2552→            initial={{ y: 100, opacity: 0 }}
+  2553→            animate={{ y: 0, opacity: 1 }}
+  2554→            exit={{ y: 100, opacity: 0 }}
+  2555→            transition={{ duration: 0.3 }}
+  2556→            className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.1)] border-t border-gray-200"
+  2557→          >
+  2558→            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+  2559→              <div className="flex items-center gap-3">
+  2560→                <Cookie className="w-6 h-6 text-emerald-600 shrink-0" />
+  2561→                <p className="text-sm text-gray-700">Nous utilisons des cookies pour améliorer votre expérience.</p>
+  2562→              </div>
+  2563→              <div className="flex items-center gap-3 shrink-0">
+  2564→                <button
+  2565→                  onClick={() => {
+  2566→                    localStorage.setItem('congoclean_cookie_consent', 'rejected')
+  2567→                    setCookieConsentVisible(false)
+  2568→                  }}
+  2569→                  className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 transition-colors"
+  2570→                >
+  2571→                  Refuser
+  2572→                </button>
+  2573→                <button
+  2574→                  onClick={() => {
+  2575→                    localStorage.setItem('congoclean_cookie_consent', 'accepted')
+  2576→                    setCookieConsentVisible(false)
+  2577→                  }}
+  2578→                  className="text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium transition-colors"
+  2579→                >
+  2580→                  Accepter
+  2581→                </button>
+  2582→              </div>
+  2583→            </div>
+  2584→          </motion.div>
+  2585→        )}
+  2586→      </AnimatePresence>
+  2587→    </>
+  2588→  )
+  2589→}
+  2590→
