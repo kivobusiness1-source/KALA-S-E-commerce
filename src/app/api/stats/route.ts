@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
       totalEmails,
       ordersByStatus,
       recentActivity,
+      unreadContactCount,
+      pendingOrdersCount,
     ] = await Promise.all([
       db.product.count({ where: { isActive: true } }),
       db.order.count(),
@@ -59,6 +61,8 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
+      db.contactSubmission.count({ where: { isRead: false } }),
+      db.order.count({ where: { status: 'pending' } }),
     ])
 
     const totalRevenue = totalRevenueResult._sum.totalAmount ?? 0
@@ -80,6 +84,8 @@ export async function GET(request: NextRequest) {
       totalEmails,
       ordersByStatus: statusMap,
       recentActivity,
+      unreadContactCount,
+      pendingOrdersCount,
     })
   } catch (error) {
     console.error('Stats GET error:', error)

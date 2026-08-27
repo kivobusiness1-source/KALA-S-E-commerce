@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { motion, useInView } from 'framer-motion'
+import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   ShoppingCart,
@@ -25,7 +25,11 @@ import {
   ArrowRight,
   Search,
   ChevronRight,
+  ChevronUp,
   Droplets,
+  Eye,
+  Globe,
+  Quote,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -49,6 +53,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -69,6 +74,7 @@ interface ProductType {
   volume: string | null
   isFeatured: boolean
   inStock: boolean
+  longDescription?: string | null
   category?: { id: string; name: string; slug: string }
 }
 
@@ -144,6 +150,8 @@ export default function Home() {
   // Navigation scroll state
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null)
 
   // Products state
   const [activeCategory, setActiveCategory] = useState('all')
@@ -187,7 +195,10 @@ export default function Home() {
 
   // Scroll detection
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+      setShowBackToTop(window.scrollY > 400)
+    }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -586,9 +597,7 @@ export default function Home() {
 
   const categoryTabs = [
     { label: 'Tous', value: 'all' },
-    { label: 'Savon Liquide', value: 'savon-liquide' },
-    { label: 'Détergent', value: 'detergent' },
-    { label: 'Eau de Javel', value: 'eau-de-javel' },
+    ...(categories || []).map((c) => ({ label: c.name, value: c.id })),
   ]
 
   const ProductsSection = (
@@ -665,11 +674,20 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                 >
-                  <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+                  <Card className="overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer">
                     {/* Product Image Placeholder */}
                     <div className={`relative h-48 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
                       <span className="text-5xl font-bold text-white/30 select-none">{initial}</span>
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                      <button
+                        onClick={() => setSelectedProduct(product)}
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        aria-label="Voir les détails"
+                      >
+                        <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
+                          <Eye className="w-5 h-5 text-emerald-700" />
+                        </div>
+                      </button>
                       {/* Badges */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                         {product.isFeatured && (
@@ -698,7 +716,12 @@ export default function Home() {
                           {product.category.name}
                         </Badge>
                       )}
-                      <h3 className="font-semibold text-gray-900 text-base mb-1 line-clamp-2">{product.name}</h3>
+                      <h3
+                        onClick={() => setSelectedProduct(product)}
+                        className="font-semibold text-gray-900 text-base mb-1 line-clamp-2 cursor-pointer hover:text-emerald-700 transition-colors"
+                      >
+                        {product.name}
+                      </h3>
                       {product.description && (
                         <p className="text-gray-500 text-sm mb-3 line-clamp-2 flex-1">{product.description}</p>
                       )}
@@ -708,13 +731,24 @@ export default function Home() {
                           <span className="text-sm text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
                         )}
                       </div>
-                      <Button
-                        onClick={() => handleAddToCart(product)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ajouter au panier
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setSelectedProduct(product)}
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200"
+                          aria-label="Voir les détails"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleAddToCart(product)}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Ajouter au panier
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -800,6 +834,52 @@ export default function Home() {
             </div>
           </div>
         </FadeInSection>
+      </div>
+    </section>
+  )
+
+  // ==================== TESTIMONIALS SECTION ====================
+
+  const testimonials = [
+    { name: 'Marie Nzaba', role: 'Ménagère, Pointe-Noire', text: 'Le CongoClean 5L est devenu indispensable chez nous. Parfait pour toute la famille, il nettoie bien et ne sèche pas les mains.', rating: 5 },
+    { name: 'Jean-Pierre Massamba', role: 'Gérant Hôtel Le Phare', text: 'Nous utilisons les produits CongoClean depuis 2 ans. Qualité constante et prix compétitifs. Je recommande vivement.', rating: 5 },
+    { name: 'Aline Mouanda', role: 'Propriétaire Restaurant', text: 'Le détergent ProWash est excellent pour la vaisselle de mon restaurant. Format 5L très économique. Livraison rapide.', rating: 4 },
+  ]
+
+  const TestimonialsSection = (
+    <section className="py-16 sm:py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <FadeInSection>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Ce que disent nos clients</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              La satisfaction de nos clients est notre plus grande fierté
+            </p>
+          </div>
+        </FadeInSection>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map((t, i) => (
+            <FadeInSection key={i}>
+              <Card className="p-6 h-full flex flex-col hover:shadow-lg transition-shadow duration-300">
+                <CardContent className="p-0 flex flex-col flex-1">
+                  <div className="mb-4">
+                    <Quote className="w-8 h-8 text-emerald-200" />
+                  </div>
+                  <div className="flex gap-0.5 mb-3">
+                    {Array.from({ length: 5 }).map((_, si) => (
+                      <Star key={si} className={`w-4 h-4 ${si < t.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </div>
+                  <p className="text-gray-600 leading-relaxed flex-1 mb-4">{t.text}</p>
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </FadeInSection>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -1271,10 +1351,49 @@ export default function Home() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Product Detail Dialog */}
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              {selectedProduct?.category && (
+                <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">{selectedProduct.category.name}</Badge>
+              )}
+              {selectedProduct?.volume && <Badge variant="secondary">{selectedProduct.volume}</Badge>}
+            </div>
+            <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className={`h-40 rounded-xl bg-gradient-to-br ${selectedProduct ? getCategoryColor(selectedProduct.category?.slug || '') : ''} flex items-center justify-center`}>
+              <span className="text-6xl font-bold text-white/30">{selectedProduct ? getCategoryInitial(selectedProduct.category?.slug || '') : ''}</span>
+            </div>
+            <p className="text-gray-600 leading-relaxed">{selectedProduct?.longDescription || selectedProduct?.description || ''}</p>
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-bold text-emerald-700">{selectedProduct ? formatPrice(selectedProduct.price) : ''}</span>
+              {selectedProduct?.comparePrice && selectedProduct.comparePrice > selectedProduct.price && (
+                <span className="text-lg text-gray-400 line-through">{formatPrice(selectedProduct.comparePrice)}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-2.5 h-2.5 rounded-full ${selectedProduct?.inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-gray-600">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            {selectedProduct?.inStock && (
+              <Button onClick={() => { if (selectedProduct) { handleAddToCart(selectedProduct); setSelectedProduct(null) } }} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Ajouter au panier
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 
-  // ==================== FOOTER ====================
+  // ==================== FOOTER =====================
 
   const Footer = (
     <footer className="mt-auto bg-gray-900 text-gray-300">
@@ -1291,6 +1410,17 @@ export default function Home() {
             <p className="text-gray-400 text-sm leading-relaxed">
               Fabricant de produits d&rsquo;hygiène de qualité industrielle basé à Pointe-Noire, Congo-Brazzaville.
             </p>
+            <div className="flex items-center gap-3 mt-4">
+              <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+              </a>
+              <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+              </a>
+              <a href="#" aria-label="Twitter" className="w-9 h-9 rounded-full bg-gray-800 hover:bg-emerald-600 flex items-center justify-center transition-colors">
+                <Globe className="w-4 h-4 text-gray-300 hover:text-white" />
+              </a>
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -1335,7 +1465,7 @@ export default function Home() {
           </div>
         </div>
 
-        <Separator className="my-8 bg-gray-700" />
+        <Separator className="my-6 bg-gray-700" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
           <p>© 2024 CongoClean. Tous droits réservés.</p>
@@ -1355,11 +1485,46 @@ export default function Home() {
         {FeaturesBar}
         {ProductsSection}
         {AboutSection}
+        {TestimonialsSection}
         {NewsletterSection}
         {ContactSection}
       </main>
       {Footer}
       {CartSheet}
+
+      {/* WhatsApp Floating Button */}
+      <a
+        href="https://wa.me/242061234567"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp"
+        className="fixed bottom-6 right-[5.5rem] z-40 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+      >
+        <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-30 animate-ping" />
+        <Phone className="w-6 h-6 relative z-10" />
+      </a>
+
+      {/* Back to Top Button */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-24 right-6 z-40"
+          >
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="w-11 h-11 bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+              aria-label="Retour en haut"
+            >
+              <ChevronUp className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {ChatWidget}
     </>
   )

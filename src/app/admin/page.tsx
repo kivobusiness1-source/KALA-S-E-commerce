@@ -34,6 +34,8 @@ import {
   Users,
   Menu,
   Download,
+  Inbox,
+  FileDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -85,11 +87,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { BarChart, Bar, XAxis, YAxis, Cell, PieChart, Pie } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Cell, PieChart, Pie, Label as PieLabel } from 'recharts'
 
 // ==================== TYPES ====================
 
-type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'emails' | 'settings'
+type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings'
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -191,6 +193,18 @@ interface EmailSubscriber {
   createdAt: string
 }
 
+interface ContactSubmission {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  subject: string | null
+  message: string
+  isRead: boolean
+  isReplied: boolean
+  createdAt: string
+}
+
 interface StatsData {
   totalProducts: number
   totalOrders: number
@@ -207,6 +221,8 @@ interface StatsData {
     details: string | null
     createdAt: string
   }[]
+  unreadContactCount: number
+  pendingOrdersCount: number
 }
 
 // ==================== HELPERS ====================
@@ -251,6 +267,20 @@ const statusDotColors: Record<string, string> = {
 }
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#f97316']
+
+const PIE_COLORS = ['#10b981', '#f59e0b', '#3b82f6']
+
+const CATEGORY_PIE_DATA = [
+  { name: 'Savon Liquide', value: 45, fill: PIE_COLORS[0] },
+  { name: 'Détergent', value: 35, fill: PIE_COLORS[1] },
+  { name: 'Eau de Javel', value: 20, fill: PIE_COLORS[2] },
+]
+
+const CATEGORY_PIE_CONFIG = {
+  'Savon Liquide': { label: 'Savon Liquide', color: PIE_COLORS[0] },
+  'Détergent': { label: 'Détergent', color: PIE_COLORS[1] },
+  'Eau de Javel': { label: 'Eau de Javel', color: PIE_COLORS[2] },
+}
 
 // ==================== MAIN COMPONENT ====================
 
@@ -377,15 +407,12 @@ export default function AdminPage() {
   }
 
   // Admin panel
-  const navItems: { key: Section; label: string; icon: React.ReactNode; badge?: number }[] = [
+  const navItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Tableau de Bord', icon: <LayoutDashboard className="h-5 w-5" /> },
     { key: 'products', label: 'Produits', icon: <Package className="h-5 w-5" /> },
     { key: 'orders', label: 'Commandes', icon: <ShoppingCart className="h-5 w-5" /> },
-    {
-      key: 'messages',
-      label: 'Messages',
-      icon: <MessageSquare className="h-5 w-5" />,
-    },
+    { key: 'messages', label: 'Messages', icon: <MessageSquare className="h-5 w-5" /> },
+    { key: 'contact', label: 'Contact', icon: <Inbox className="h-5 w-5" /> },
     { key: 'emails', label: 'Emails', icon: <Mail className="h-5 w-5" /> },
     { key: 'settings', label: 'Paramètres', icon: <Settings className="h-5 w-5" /> },
   ]
@@ -426,7 +453,7 @@ export default function AdminPage() {
               >
                 {item.icon}
                 <span className="flex-1 text-left">{item.label}</span>
-                {item.key === 'messages' && <MessageBadge section={section} />}
+                <NavBadge itemKey={item.key} activeSection={section} />
               </button>
             ))}
           </nav>
@@ -474,6 +501,7 @@ export default function AdminPage() {
           {section === 'products' && <ProductsSection />}
           {section === 'orders' && <OrdersSection />}
           {section === 'messages' && <MessagesSection />}
+          {section === 'contact' && <ContactSection />}
           {section === 'emails' && <EmailsSection />}
           {section === 'settings' && <SettingsSection />}
         </div>
@@ -482,19 +510,24 @@ export default function AdminPage() {
   )
 }
 
-// ==================== MESSAGE BADGE ====================
+// ==================== NAV BADGE ====================
 
-function MessageBadge({ section }: { section: Section }) {
+function NavBadge({ itemKey, activeSection }: { itemKey: Section; activeSection: Section }) {
   const { data: stats } = useQuery({
     queryKey: ['stats'],
     queryFn: () => fetch('/api/stats').then(r => r.json()).then(d => d.data as StatsData),
     enabled: true,
     refetchInterval: 30000,
   })
-  const count = stats?.unreadMessages ?? 0
+  
+  let count = 0
+  if (itemKey === 'messages') count = stats?.unreadMessages ?? 0
+  else if (itemKey === 'contact') count = stats?.unreadContactCount ?? 0
+  else if (itemKey === 'orders') count = stats?.pendingOrdersCount ?? 0
+
   if (count === 0) return null
   return (
-    <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${section === 'messages' ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
+    <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${activeSection === itemKey ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
       {count}
     </span>
   )
@@ -565,34 +598,52 @@ function DashboardSection() {
           </CardContent>
         </Card>
 
-        {/* Low stock alerts */}
+        {/* Category distribution PieChart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Alertes de Stock
-            </CardTitle>
+            <CardTitle className="text-base">Répartition par Catégorie</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.lowStockProducts.length > 0 ? (
-              <div className="space-y-3 max-h-[250px] overflow-y-auto">
-                {stats.lowStockProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-amber-50 border border-amber-100">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.category?.name}</p>
-                    </div>
-                    <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50 shrink-0 ml-2">
-                      {p.stockQty} en stock
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-                Tous les produits ont un stock suffisant
-              </div>
-            )}
+            <ChartContainer config={CATEGORY_PIE_CONFIG} className="h-[250px] w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Pie
+                  data={CATEGORY_PIE_DATA}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={3}
+                >
+                  {CATEGORY_PIE_DATA.map((entry, index) => (
+                    <Cell key={index} fill={entry.fill} />
+                  ))}
+                  <PieLabel
+                    content={({ viewBox }) => {
+                      if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                        return (
+                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                            <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-base font-bold">3</tspan>
+                            <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 16} className="fill-muted-foreground text-xs">Catégories</tspan>
+                          </text>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              {CATEGORY_PIE_DATA.map(d => (
+                <div key={d.name} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.fill }} />
+                  <span className="text-xs text-muted-foreground">{d.name}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -635,33 +686,64 @@ function DashboardSection() {
           </CardContent>
         </Card>
 
-        {/* Recent activity */}
+        {/* Low stock alerts */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Activité Récente
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Alertes de Stock
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.recentActivity.length > 0 ? (
-              <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                {stats.recentActivity.map(a => (
-                  <div key={a.id} className="flex items-start gap-3 pb-3 border-b border-gray-50 last:border-0">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-gray-900">{a.details || a.action}</p>
-                      <p className="text-xs text-muted-foreground">{formatRelative(a.createdAt)}</p>
+            {stats.lowStockProducts.length > 0 ? (
+              <div className="space-y-3 max-h-[250px] overflow-y-auto">
+                {stats.lowStockProducts.map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-amber-50 border border-amber-100">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.category?.name}</p>
                     </div>
+                    <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50 shrink-0 ml-2">
+                      {p.stockQty} en stock
+                    </Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Aucune activité récente</p>
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
+                Tous les produits ont un stock suffisant
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Activité Récente
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.recentActivity.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {stats.recentActivity.map(a => (
+                <div key={a.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-900">{a.details || a.action}</p>
+                    <p className="text-xs text-muted-foreground">{formatRelative(a.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">Aucune activité récente</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -1222,6 +1304,37 @@ function OrdersSection() {
 
   const statusTabs = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const
 
+  const exportOrdersCSV = async () => {
+    try {
+      const res = await fetch('/api/orders?limit=1000')
+      const data = await res.json()
+      const allOrders: Order[] = data.data?.orders ?? []
+      if (allOrders.length === 0) { toast.error('Aucune commande à exporter'); return }
+      const headers = ['N°', 'Client', 'Email', 'Téléphone', 'Adresse', 'Montant', 'Statut', 'Date']
+      const rows = allOrders.map(o => [
+        o.orderNumber,
+        o.customerName,
+        o.customerEmail,
+        o.customerPhone || '',
+        `${o.address}, ${o.city}`,
+        String(o.totalAmount),
+        statusLabels[o.status] || o.status,
+        format(new Date(o.createdAt), 'yyyy-MM-dd HH:mm'),
+      ])
+      const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `commandes-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Fichier CSV téléchargé')
+    } catch {
+      toast.error('Erreur lors de l\'export')
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -1234,9 +1347,14 @@ function OrdersSection() {
           ))}
         </div>
         <div className="flex-1" />
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+          </div>
+          <Button variant="outline" size="sm" onClick={exportOrdersCSV}>
+            <FileDown className="h-4 w-4 mr-1" />Exporter CSV
+          </Button>
         </div>
       </div>
 
@@ -1577,6 +1695,229 @@ function MessagesSection() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ==================== CONTACT SECTION ====================
+
+function ContactSection() {
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedContact, setSelectedContact] = useState<ContactSubmission | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [markingRead, setMarkingRead] = useState<string | null>(null)
+  const limit = 20
+
+  const { data: contactData, isLoading } = useQuery({
+    queryKey: ['contact-submissions', search, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (search) params.set('search', search)
+      return fetch(`/api/contact?${params}`).then(r => r.json()).then(d => d.data)
+    },
+  })
+
+  const submissions = contactData?.submissions ?? []
+  const totalPages = contactData?.totalPages ?? 1
+
+  const openDetail = (submission: ContactSubmission) => {
+    setSelectedContact(submission)
+    setDetailOpen(true)
+    if (!submission.isRead) {
+      markAsRead(submission.id)
+    }
+  }
+
+  const markAsRead = async (id: string) => {
+    setMarkingRead(id)
+    try {
+      await fetch('/api/contact', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isRead: true }),
+      })
+      queryClient.invalidateQueries({ queryKey: ['contact-submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      if (selectedContact?.id === id) {
+        setSelectedContact({ ...selectedContact, isRead: true })
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setMarkingRead(null)
+    }
+  }
+
+  const deleteContact = async () => {
+    if (!deletingId) return
+    try {
+      const res = await fetch(`/api/contact?id=${deletingId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Soumission supprimée')
+        queryClient.invalidateQueries({ queryKey: ['contact-submissions'] })
+        queryClient.invalidateQueries({ queryKey: ['stats'] })
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setDeleteDialogOpen(false)
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Top bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-semibold text-gray-900">Soumissions de Contact</h3>
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+            {contactData?.total ?? 0} soumission(s)
+          </Badge>
+        </div>
+        <div className="flex-1" />
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+        </div>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+          ) : submissions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Sujet</TableHead>
+                    <TableHead className="hidden lg:table-cell">Message</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead>Lu</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {submissions.map((s: ContactSubmission) => (
+                    <TableRow
+                      key={s.id}
+                      className={`cursor-pointer hover:bg-gray-50 ${!s.isRead ? 'bg-emerald-50/50' : ''}`}
+                      onClick={() => openDetail(s)}
+                    >
+                      <TableCell className="text-sm font-medium">{s.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{s.email}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{s.subject || '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{s.message}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(s.createdAt)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={s.isRead ? 'bg-gray-50 text-gray-500 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}>
+                          {s.isRead ? 'Lu' : 'Non lu'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          {!s.isRead && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => markAsRead(s.id)}
+                              disabled={markingRead === s.id}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700"
+                            onClick={() => { setDeletingId(s.id); setDeleteDialogOpen(true) }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <Inbox className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-muted-foreground">Aucune soumission de contact</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground">Page {page} / {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-lg">
+          {selectedContact && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedContact.subject || 'Soumission de Contact'}</DialogTitle>
+                <DialogDescription>De {selectedContact.name} ({selectedContact.email})</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                {selectedContact.phone && (
+                  <p><span className="text-muted-foreground">Téléphone:</span> {selectedContact.phone}</p>
+                )}
+                <Separator />
+                <p className="whitespace-pre-wrap leading-relaxed">{selectedContact.message}</p>
+                <Separator />
+                <p className="text-xs text-muted-foreground">Reçu le {formatDate(selectedContact.createdAt)}</p>
+              </div>
+              <DialogFooter>
+                {!selectedContact.isRead && (
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => markAsRead(selectedContact.id)} disabled={markingRead === selectedContact.id}>
+                    <Check className="h-4 w-4 mr-1" />Marquer comme lu
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette soumission ?</AlertDialogTitle>
+            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={deleteContact}>Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
