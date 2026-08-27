@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Search, HelpCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { FadeInSection } from './AnimatedComponents'
 
 export function FAQSection() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+  const [faqSearch, setFaqSearch] = useState('')
 
   const faqs = [
     {
@@ -36,11 +38,29 @@ export function FAQSection() {
     },
   ]
 
+  const filteredFaqs = useMemo(() => {
+    if (!faqSearch.trim()) return faqs
+    const q = faqSearch.toLowerCase()
+    return faqs.filter(
+      (f) => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q)
+    )
+  }, [faqSearch])
+
   return (
     <section className="py-16 sm:py-20 bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <FadeInSection>
           <div className="text-center mb-12">
+            {/* Decorative question mark illustration */}
+            <div className="relative w-20 h-20 mx-auto mb-5">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border-2 border-emerald-200 flex items-center justify-center">
+                <HelpCircle className="w-9 h-9 text-emerald-400" strokeWidth={1.5} />
+              </div>
+              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
+                <span className="text-amber-600 text-[10px] font-bold">?</span>
+              </div>
+              <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-teal-100 border border-teal-200" />
+            </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Foire Aux Questions</h2>
             <p className="text-gray-500 max-w-2xl mx-auto">
               Trouvez rapidement les réponses à vos questions les plus fréquentes
@@ -49,35 +69,67 @@ export function FAQSection() {
           </div>
         </FadeInSection>
         <FadeInSection>
-          <div className="space-y-3">
-            {faqs.map((faq, i) => (
-              <Card key={i} className="overflow-hidden border border-gray-200">
-                <button
-                  onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                  aria-expanded={expandedFaq === i}
-                >
-                  <span className="font-medium text-gray-900 pr-4">{faq.question}</span>
-                  <ChevronDown className={`w-5 h-5 text-emerald-600 shrink-0 transition-transform duration-200 ${expandedFaq === i ? 'rotate-180' : ''}`} />
-                </button>
-                <AnimatePresence>
-                  {expandedFaq === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
-                        <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-            ))}
+          {/* Search / Filter */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Rechercher dans la FAQ..."
+              value={faqSearch}
+              onChange={(e) => setFaqSearch(e.target.value)}
+              className="pl-10 bg-white border-gray-200 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400 transition-all duration-300"
+            />
           </div>
+
+          {filteredFaqs.length === 0 ? (
+            <div className="text-center py-12">
+              <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" strokeWidth={1.5} />
+              <p className="text-gray-500">Aucune question ne correspond à votre recherche</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredFaqs.map((faq, i) => {
+                const originalIdx = faqs.indexOf(faq)
+                const isExpanded = expandedFaq === originalIdx
+                const stepNumber = String(originalIdx + 1).padStart(2, '0')
+
+                return (
+                  <Card
+                    key={originalIdx}
+                    className={`overflow-hidden border transition-all duration-300 ${isExpanded ? 'border-emerald-300 shadow-md shadow-emerald-500/5' : 'border-gray-200'}`}
+                  >
+                    <button
+                      onClick={() => setExpandedFaq(isExpanded ? null : originalIdx)}
+                      className={`w-full p-4 sm:p-5 flex items-center gap-3 sm:gap-4 text-left transition-colors ${isExpanded ? 'bg-emerald-50/50' : 'hover:bg-gray-50'}`}
+                      aria-expanded={isExpanded}
+                    >
+                      <span className={`text-sm font-bold shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-300 ${isExpanded ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        {stepNumber}
+                      </span>
+                      <span className={`font-medium pr-4 flex-1 transition-colors duration-300 ${isExpanded ? 'text-emerald-800' : 'text-gray-900'}`}>
+                        {faq.question}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 shrink-0 transition-all duration-300 ${isExpanded ? 'rotate-180 text-emerald-600' : 'text-emerald-600'}`} />
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pl-15 sm:pl-16">
+                            <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
         </FadeInSection>
       </div>
     </section>

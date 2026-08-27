@@ -1292,3 +1292,90 @@ The CongoClean e-commerce website is a fully functional, feature-rich Next.js 16
 5. **LOW** — Add product recommendations/"You might also like" section
 6. **LOW** — Add dark mode support (next-themes is available)
 7. **LOW** — Add multi-language support (French/Lingala)
+---
+Task ID: 10a
+Agent: styling-polish
+Task: Round 10 storefront styling enhancements (6 components)
+
+Work Log:
+- Enhanced **Navbar.tsx**: Added animated shimmer gradient border (1px line at bottom with emerald→teal→cyan gradient that moves via keyframes), added pulsing "Nouv." badge next to Produits link, added hover:rotate-12 to logo icon, added Search icon button that scrolls to #products and focuses the search input via DOM query (id="product-search-input"), enhanced mobile menu with per-link icons (Home, Package, Info, Phone), gradient background (emerald-50→white), and close X button at top-right
+- Enhanced **HeroSection.tsx**: Added radial-gradient dot pattern overlay at very low opacity, added 3 floating product cards (Savon Liquide, Détergent, Eau de Javel) with icons that drift with heroFloat animation on desktop, added enhanced CTA hover glow (shadow-emerald-400/30 shadow-xl), added ★ 4.8/5 satisfaction client micro-badge, added animated scroll-down chevron arrow at bottom that bounces and scrolls to features
+- Enhanced **ProductsSection.tsx**: Added results count "X produits trouvés" below tabs/search row, replaced flat skeleton with staggered-delay rounded skeleton cards (120ms increments per card), added CSS art shopping bag empty state with decorative circles and "Parcourir tous les produits" button, replaced ArrowUpDown with SlidersHorizontal icon on sort dropdown, added "Voir tout" link with RotateCcw icon when products are filtered
+- Enhanced **DeliveryPricingSection.tsx**: Added map-like decorative visual with grid lines, dashed delivery radius circles, pin markers (animated spring entrance), and animated truck that moves across the section (12s loop), added 3 delivery zone cards (Centre-Ville with GRATUIT emphasis badge, Périphérie Proche, Périphérie Éloignée) with hover effects and pricing highlights, kept original info columns below
+- Enhanced **OrderTrackingSection.tsx**: Added visual stepper/timeline (5-step: pending→confirmed→processing→shipped→delivered) with progress line, completed/active/pending states using gradient emerald circles, color-coded status badges with icons in order headers, added estimated delivery date display with CalendarDays icon, added package illustration empty state
+- Enhanced **FAQSection.tsx**: Added numbered steps (01-06) with animated badge that turns emerald when expanded, improved accordion animation with custom cubic-bezier easing (0.35s), added decorative question mark illustration at top, added search/filter input for FAQ items with empty state
+
+Stage Summary:
+- All 6 component files enhanced with visual polish and UX improvements
+- `bun run lint`: 0 errors, 0 warnings
+- Dev server compiles and serves correctly (verified via dev.log)
+- No blue/indigo colors used (OrderTracking status colors use amber/teal/cyan/emerald instead of blue/purple)
+- All text in French
+- No API routes or admin panel modified
+- No page.tsx modified
+---
+Task ID: 10b
+Agent: features-dev
+Task: Round 10 new features (loyalty points, admin dashboard, product dialog, newsletter, WhatsApp)
+
+Work Log:
+- Added **LoyaltyPoint** model to Prisma schema (id, email, points, orderId, description, createdAt with email index) and ran `bun run db:push`
+- Created **/api/loyalty/route.ts** — GET returns total points + entries for an email query param; POST creates a loyalty point entry
+- Updated **/api/orders/route.ts** POST — after order creation, calculates `Math.floor(totalAmount / 1000)` points and creates a LoyaltyPoint entry; returns `earnedPoints` in response
+- Updated **/api/stats/route.ts** — added `monthlyRevenue` aggregation (current month, non-cancelled orders) to stats response
+- Updated **admin/types.ts** — added `monthlyRevenue: number` to `StatsData` interface
+- Created **LoyaltyBadge.tsx** component — sparkle icon + amber gradient badge showing points with motion animation, 3 size variants
+- Updated **page.tsx** — added `earnedPoints` state, updated `handleOrderSubmit` to capture earned points from API response and store email in localStorage for footer loyalty lookup, updated `handleAddToCart` to accept optional `quantity` param, passed `earnedPoints` and `products` props to CartSheet
+- Updated **CartSheet.tsx** — added loyalty points animation (sparkle + text card) in cart sheet on successful order; added quantity selector (+/- buttons) in product detail dialog; added Heart/favorites toggle button next to "Ajouter au panier"; added "Produits similaires" section showing 2-3 same-category products at bottom of product dialog; added `earnedPoints` and `products` props; updated `onAddToCart` signature to accept quantity
+- Updated **Footer.tsx** — added "Points Fidélité" section in footer grid that fetches points from `/api/loyalty` on mount using localStorage-stored email; enhanced WhatsApp floating button with pre-filled message URL, TooltipProvider tooltip ("Commander via WhatsApp"), double-ping pulse animation layers
+- Updated **NewsletterSection.tsx** — added animated discount code card on success state showing CONGOCLEAN10 with copy-to-clipboard button, Gift icon, and glassmorphism styling
+- Updated **ActivityTimeline.tsx** — added per-action icons (ShoppingCart, Package, MessageCircle, Star, etc.), colored circle icons, max-h-80 scrollable container, "Voir tout" link at bottom with ArrowRight icon
+- Updated **DashboardSection.tsx** — added side-by-side layout with revenue progress bar + new "Chiffre d'affaires du mois" stat card showing monthlyRevenue from API, comparison badge (+12%/-12% vs last month)
+
+Stage Summary:
+- `bun run lint`: 0 errors, 0 warnings
+- `bun run db:push`: Schema synced successfully
+- Dev server compiles and serves correctly (verified via dev.log)
+- All text in French
+- No blue/indigo colors used
+- Loyalty points system: 1 point per 1 000 FCFA, auto-awarded on order creation, visible in cart sheet and footer
+- Admin dashboard enhanced with monthly revenue card and real-time activity feed with icons
+- Product dialog enhanced with quantity selector, favorites toggle, and related products
+- Newsletter success state shows copyable CONGOCLEAN10 discount code
+- WhatsApp button has pre-filled message and prominent pulse animation
+---
+Task ID: 10
+Agent: main-coordinator (Round 10 Review)
+Task: Fix critical bugs, add styling improvements and new features
+
+Work Log:
+- Read worklog.md to assess project status (Round 9 completed with 12+ components enhanced, 5 new features)
+- QA testing revealed 3 critical bugs causing server crashes
+
+- Fixed FlashSaleSection memory leak: ref-based setupAutoScroll with proper useEffect cleanup
+- Fixed Products API: 'approved' field should be 'isApproved' (Prisma schema mismatch)
+- Fixed duplicate comparison state in page.tsx after sub-agent merge conflict
+- Fixed missing earnedPoints state definition after loyalty feature addition
+- Implemented lazy loading (next/dynamic with ssr:false) for 15 components to reduce Turbopack memory usage
+  Server now compiles and stays alive (previously died after page compilation)
+- Verified: page 200, all APIs 200, lint 0 errors
+- Launched 2 parallel agents for styling (6 components) and features (5 features)
+
+Stage Summary:
+- Server stability issue RESOLVED via lazy loading strategy
+- 3 critical runtime bugs fixed
+- 6 storefront components enhanced with more visual detail
+- 5 new features added (loyalty, admin dashboard, product detail, newsletter discount, WhatsApp)
+- ESLint: 0 errors throughout
+ENDOFWORKLOG
+ENDDOFWORKLOG
+ENDDOFWORKLOG
+ENDDOFWORKLOG
+ENDDOFWORKLOG
+ENDOFWORKLOG
+ENDDOFWORKLOG
+Thu Aug 27 08:35:27 UTC 2026
+Thu Aug 27 08:35:33 UTC 2026
+ENDDOFWORKLOG
+test
+ENDDOFWORKLOG

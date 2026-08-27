@@ -1,0 +1,703 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react'
+     4→import dynamic from 'next/dynamic'
+     5→import { useQuery } from '@tanstack/react-query'
+     6→import { toast } from 'sonner'
+     7→import { X, Megaphone } from 'lucide-react'
+     8→import { useCartStore } from '@/stores/cart-store'
+     9→import { useWishlistStore } from '@/stores/wishlist-store'
+    10→
+    11→import { Navbar } from '@/components/storefront/Navbar'
+    12→import { HeroSection } from '@/components/storefront/HeroSection'
+    13→import { FeaturesBar } from '@/components/storefront/FeaturesBar'
+    14→import { ProductsSection } from '@/components/storefront/ProductsSection'
+    15→import { MarqueeText } from '@/components/storefront/AnimatedComponents'
+    16→import type { ProductType, CategoryType, ChatMessageType, ReviewType, TrackedOrder } from '@/components/storefront/types'
+    17→
+    18→// Lazy-loaded below-the-fold and heavy components to reduce Turbopack compilation memory
+    19→const HowToOrderSection = dynamic(() => import('@/components/storefront/HowToOrderSection').then(m => ({ default: m.HowToOrderSection })), { ssr: false })
+    20→const AboutSection = dynamic(() => import('@/components/storefront/AboutSection').then(m => ({ default: m.AboutSection })), { ssr: false })
+    21→const TestimonialsSection = dynamic(() => import('@/components/storefront/TestimonialsSection').then(m => ({ default: m.TestimonialsSection })), { ssr: false })
+    22→const DeliveryPricingSection = dynamic(() => import('@/components/storefront/DeliveryPricingSection').then(m => ({ default: m.DeliveryPricingSection })), { ssr: false })
+    23→const OrderTrackingSection = dynamic(() => import('@/components/storefront/OrderTrackingSection').then(m => ({ default: m.OrderTrackingSection })), { ssr: false })
+    24→const FAQSection = dynamic(() => import('@/components/storefront/FAQSection').then(m => ({ default: m.FAQSection })), { ssr: false })
+    25→const NewsletterSection = dynamic(() => import('@/components/storefront/NewsletterSection').then(m => ({ default: m.NewsletterSection })), { ssr: false })
+    26→const ContactSection = dynamic(() => import('@/components/storefront/ContactSection').then(m => ({ default: m.ContactSection })), { ssr: false })
+    27→const FlashSaleSection = dynamic(() => import('@/components/storefront/FlashSaleSection').then(m => ({ default: m.FlashSaleSection })), { ssr: false })
+    28→const CartSheet = dynamic(() => import('@/components/storefront/CartSheet').then(m => ({ default: m.CartSheet })), { ssr: false })
+    29→const ChatWidget = dynamic(() => import('@/components/storefront/ChatWidget').then(m => ({ default: m.ChatWidget })), { ssr: false })
+    30→const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => ({ default: m.Footer })), { ssr: false })
+    31→const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
+    32→const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
+    33→import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
+    34→
+    35→export default function Home() {
+    36→  // Promo bar state
+    37→  const [promoText, setPromoText] = useState('🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉')
+    38→  const [promoBarVisible, setPromoBarVisible] = useState(true)
+    39→
+    40→  // Navigation scroll state
+    41→  const [scrolled, setScrolled] = useState(false)
+    42→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    43→  const [showBackToTop, setShowBackToTop] = useState(false)
+    44→  const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null)
+    45→
+    46→  // Quick add feedback
+    47→  const [quickAddedId, setQuickAddedId] = useState<string | null>(null)
+    48→
+    49→  // Testimonial auto-rotation
+    50→  const [activeTestimonial, setActiveTestimonial] = useState(0)
+    51→  const [isMobile, setIsMobile] = useState(false)
+    52→
+    53→  // Newsletter success
+    54→  const [newsletterSuccess, setNewsletterSuccess] = useState(false)
+    55→
+    56→  // Scroll progress
+    57→  const [scrollProgress, setScrollProgress] = useState(0)
+    58→
+    59→  // Recently viewed
+    60→  const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([])
+    61→
+    62→  // Cookie consent
+    63→  const [cookieConsentVisible, setCookieConsentVisible] = useState(false)
+    64→
+    65→  // Products state
+    66→  const [activeCategory, setActiveCategory] = useState('all')
+    67→  const [searchQuery, setSearchQuery] = useState('')
+    68→  const [sortBy, setSortBy] = useState('newest')
+    69→
+    70→  // Contact form state
+    71→  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' })
+    72→  const [contactLoading, setContactLoading] = useState(false)
+    73→
+    74→  // Newsletter state
+    75→  const [newsletterEmail, setNewsletterEmail] = useState('')
+    76→  const [newsletterLoading, setNewsletterLoading] = useState(false)
+    77→
+    78→  // Chat state
+    79→  const [chatOpen, setChatOpen] = useState(false)
+    80→  const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([])
+    81→  const [chatInput, setChatInput] = useState('')
+    82→  const [chatLoading, setChatLoading] = useState(false)
+    83→  const [chatName, setChatName] = useState('')
+    84→  const [chatEmail, setChatEmail] = useState('')
+    85→  const [chatRegistered, setChatRegistered] = useState(false)
+    86→  const [sessionId] = useState(() => {
+    87→    if (typeof window !== 'undefined') {
+    88→      const stored = localStorage.getItem('congoclean_session_id')
+    89→      if (stored) return stored
+    90→      const newId = crypto.randomUUID()
+    91→      localStorage.setItem('congoclean_session_id', newId)
+    92→      return newId
+    93→    }
+    94→    return ''
+    95→  })
+    96→
+    97→  // Order dialog state
+    98→  const [orderDialogOpen, setOrderDialogOpen] = useState(false)
+    99→  const [orderForm, setOrderForm] = useState({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
+   100→  const [orderLoading, setOrderLoading] = useState(false)
+   101→
+   102→  // Order tracking state
+   103→  const [trackEmail, setTrackEmail] = useState('')
+   104→  const [trackLoading, setTrackLoading] = useState(false)
+   105→  const [trackedOrders, setTrackedOrders] = useState<TrackedOrder[]>([])
+   106→
+   107→  // Earned loyalty points state
+   108→  const [earnedPoints, setEarnedPoints] = useState(0)
+   109→
+   110→  const toggleComparison = (id: string) => {
+   111→    setComparisonIds((prev) => {
+   112→      if (prev.includes(id)) {
+   113→        return prev.filter((pid) => pid !== id)
+   114→      }
+   115→      if (prev.length >= 4) {
+   116→        return prev
+   117→      }
+   118→      return [...prev, id]
+   119→    })
+   120→  }
+   121→
+   122→  const clearComparison = () => {
+   123→    setComparisonIds([])
+   124→  }
+   125→
+   126→  // Delivery zone state
+   127→  const [deliveryZone, setDeliveryZone] = useState<DeliveryZoneId>('centre-ville')
+   128→
+   129→  // Reviews state
+   130→  const [reviewForm, setReviewForm] = useState({ customerName: '', rating: 5, comment: '' })
+   131→  const [reviewLoading, setReviewLoading] = useState(false)
+   132→  const [reviews, setReviews] = useState<ReviewType[]>([])
+   133→  const [avgRating, setAvgRating] = useState(0)
+   134→  const [totalReviews, setTotalReviews] = useState(0)
+   135→  const [showReviewForm, setShowReviewForm] = useState(false)
+   136→
+   137→  // Cart store
+   138→  const cart = useCartStore()
+   139→
+   140→  // Wishlist store
+   141→  const wishlist = useWishlistStore()
+   142→
+   143→  // Page load animation
+   144→  const [pageLoaded, setPageLoaded] = useState(false)
+   145→  const pageRef = useRef<HTMLDivElement>(null)
+   146→
+   147→  useEffect(() => {
+   148→    const timer = requestAnimationFrame(() => setPageLoaded(true))
+   149→    return () => cancelAnimationFrame(timer)
+   150→  }, [])
+   151→
+   152→  // Scroll detection
+   153→  useEffect(() => {
+   154→    const handleScroll = () => {
+   155→      setScrolled(window.scrollY > 20)
+   156→      setShowBackToTop(window.scrollY > 400)
+   157→      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+   158→      if (docHeight > 0) {
+   159→        setScrollProgress(Math.min(window.scrollY / docHeight, 1))
+   160→      }
+   161→    }
+   162→    window.addEventListener('scroll', handleScroll)
+   163→    return () => window.removeEventListener('scroll', handleScroll)
+   164→  }, [])
+   165→
+   166→  // Mobile detection for testimonials
+   167→  useEffect(() => {
+   168→    const checkMobile = () => {
+   169→      setIsMobile(window.innerWidth < 768)
+   170→    }
+   171→    checkMobile()
+   172→    window.addEventListener('resize', checkMobile)
+   173→    return () => window.removeEventListener('resize', checkMobile)
+   174→  }, [])
+   175→
+   176→  // Testimonial auto-rotation on mobile
+   177→  useEffect(() => {
+   178→    if (!isMobile) return
+   179→    const interval = setInterval(() => {
+   180→      setActiveTestimonial((prev) => (prev + 1) % 3)
+   181→    }, 5000)
+   182→    return () => clearInterval(interval)
+   183→  }, [isMobile])
+   184→
+   185→  // Cookie consent check
+   186→  useEffect(() => {
+   187→    const consent = localStorage.getItem('congoclean_cookie_consent')
+   188→    if (!consent) {
+   189→      setCookieConsentVisible(true)
+   190→    }
+   191→  }, [])
+   192→
+   193→  // Fetch site settings for promo banner
+   194→  useEffect(() => {
+   195→    const fetchSettings = async () => {
+   196→      try {
+   197→        const res = await fetch('/api/site-settings')
+   198→        if (res.ok) {
+   199→          const data = await res.json()
+   200→          const settings = data.data || data.settings || data
+   201→          if (settings.promo_banner_text) {
+   202→            setPromoText(settings.promo_banner_text)
+   203→          }
+   204→          if (typeof settings.promo_banner_enabled === 'boolean') {
+   205→            setPromoBarVisible(settings.promo_banner_enabled)
+   206→          }
+   207→        }
+   208→      } catch {
+   209→        // Use default values on error
+   210→      }
+   211→    }
+   212→    fetchSettings()
+   213→  }, [])
+   214→
+   215→  // Smooth scroll helper
+   216→  const scrollToSection = useCallback((id: string) => {
+   217→    setMobileMenuOpen(false)
+   218→    const el = document.getElementById(id)
+   219→    if (el) {
+   220→      el.scrollIntoView({ behavior: 'smooth' })
+   221→    }
+   222→  }, [])
+   223→
+   224→  // Fetch categories
+   225→  const { data: categories } = useQuery<CategoryType[]>({
+   226→    queryKey: ['categories'],
+   227→    queryFn: async () => {
+   228→      const res = await fetch('/api/categories')
+   229→      if (!res.ok) throw new Error('Failed to fetch categories')
+   230→      const data = await res.json()
+   231→      return data.data || data.categories || data
+   232→    },
+   233→  })
+   234→
+   235→  // Fetch products
+   236→  const { data: products, isLoading: productsLoading } = useQuery<ProductType[]>({
+   237→    queryKey: ['products', activeCategory, searchQuery],
+   238→    queryFn: async () => {
+   239→      const params = new URLSearchParams()
+   240→      if (activeCategory !== 'all' && activeCategory) params.set('categoryId', activeCategory)
+   241→      if (searchQuery) params.set('search', searchQuery)
+   242→      const res = await fetch(`/api/products?${params.toString()}`)
+   243→      if (!res.ok) throw new Error('Failed to fetch products')
+   244→      const data = await res.json()
+   245→      return data.data || data.products || data
+   246→    },
+   247→  })
+   248→
+   249→  // Fetch chat messages
+   250→  const loadChatMessages = useCallback(async () => {
+   251→    if (!sessionId) return
+   252→    try {
+   253→      const res = await fetch(`/api/chat?sessionId=${sessionId}`)
+   254→      if (res.ok) {
+   255→        const data = await res.json()
+   256→        const msgs = data.data?.messages || data.messages
+   257→        if (msgs && msgs.length > 0) {
+   258→          setChatMessages(msgs)
+   259→          setChatRegistered(true)
+   260→        }
+   261→      }
+   262→    } catch {
+   263→      // silently fail
+   264→    }
+   265→  }, [sessionId])
+   266→
+   267→  useEffect(() => {
+   268→    if (chatOpen && !chatRegistered) {
+   269→      loadChatMessages()
+   270→    }
+   271→  }, [chatOpen, chatRegistered, loadChatMessages])
+   272→
+   273→  // Fetch reviews when product is selected
+   274→  const fetchReviews = useCallback(async (productId: string) => {
+   275→    try {
+   276→      const res = await fetch(`/api/products/${productId}/reviews`)
+   277→      if (res.ok) {
+   278→        const data = await res.json()
+   279→        const reviewData = data.data || data
+   280→        setReviews(reviewData.reviews || [])
+   281→        setAvgRating(reviewData.averageRating || 0)
+   282→        setTotalReviews(reviewData.totalReviews || 0)
+   283→      }
+   284→    } catch {
+   285→      // silently fail
+   286→    }
+   287→  }, [])
+   288→
+   289→  useEffect(() => {
+   290→    if (selectedProduct) {
+   291→      fetchReviews(selectedProduct.id)
+   292→      setShowReviewForm(false)
+   293→      setReviewForm({ customerName: '', rating: 5, comment: '' })
+   294→      setRecentlyViewed((prev) => {
+   295→        const filtered = prev.filter((p) => p.id !== selectedProduct.id)
+   296→        return [selectedProduct, ...filtered].slice(0, 5)
+   297→      })
+   298→    }
+   299→  }, [selectedProduct, fetchReviews])
+   300→
+   301→  // Add to cart handler
+   302→  const handleAddToCart = (product: ProductType, quantity?: number) => {
+   303→    const qty = quantity || 1
+   304→    for (let i = 0; i < qty; i++) {
+   305→      cart.addItem({
+   306→        id: product.id,
+   307→        name: product.name,
+   308→        price: product.price,
+   309→        image: product.image,
+   310→        volume: product.volume,
+   311→      })
+   312→    }
+   313→    toast.success(`${product.name}${qty > 1 ? ` ×${qty}` : ''} ajouté au panier`)
+   314→  }
+   315→
+   316→  // Quick add handler
+   317→  const handleQuickAdd = (product: ProductType) => {
+   318→    handleAddToCart(product)
+   319→    setQuickAddedId(product.id)
+   320→    setTimeout(() => setQuickAddedId(null), 800)
+   321→  }
+   322→
+   323→  // Contact form submit
+   324→  const handleContactSubmit = async (e: React.FormEvent) => {
+   325→    e.preventDefault()
+   326→    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+   327→      toast.error('Veuillez remplir tous les champs obligatoires')
+   328→      return
+   329→    }
+   330→    setContactLoading(true)
+   331→    try {
+   332→      const res = await fetch('/api/contact', {
+   333→        method: 'POST',
+   334→        headers: { 'Content-Type': 'application/json' },
+   335→        body: JSON.stringify(contactForm),
+   336→      })
+   337→      if (res.ok) {
+   338→        toast.success('Message envoyé avec succès !')
+   339→        setContactForm({ name: '', email: '', phone: '', subject: '', message: '' })
+   340→      } else {
+   341→        toast.error('Erreur lors de l\'envoi du message')
+   342→      }
+   343→    } catch {
+   344→      toast.error('Erreur de connexion')
+   345→    } finally {
+   346→      setContactLoading(false)
+   347→    }
+   348→  }
+   349→
+   350→  // Newsletter submit
+   351→  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+   352→    e.preventDefault()
+   353→    if (!newsletterEmail) {
+   354→      toast.error('Veuillez entrer votre email')
+   355→      return
+   356→    }
+   357→    setNewsletterLoading(true)
+   358→    try {
+   359→      const res = await fetch('/api/newsletter', {
+   360→        method: 'POST',
+   361→        headers: { 'Content-Type': 'application/json' },
+   362→        body: JSON.stringify({ email: newsletterEmail }),
+   363→      })
+   364→      if (res.ok) {
+   365→        setNewsletterSuccess(true)
+   366→        setNewsletterEmail('')
+   367→        setTimeout(() => setNewsletterSuccess(false), 3000)
+   368→      } else {
+   369→        toast.error('Erreur lors de l\'inscription')
+   370→      }
+   371→    } catch {
+   372→      toast.error('Erreur de connexion')
+   373→    } finally {
+   374→      setNewsletterLoading(false)
+   375→    }
+   376→  }
+   377→
+   378→  // Chat register
+   379→  const handleChatRegister = async () => {
+   380→    if (!chatName) {
+   381→      toast.error('Veuillez entrer votre nom')
+   382→      return
+   383→    }
+   384→    setChatLoading(true)
+   385→    try {
+   386→      const res = await fetch('/api/chat', {
+   387→        method: 'POST',
+   388→        headers: { 'Content-Type': 'application/json' },
+   389→        body: JSON.stringify({ sessionId, customerName: chatName, customerEmail: chatEmail || undefined, content: 'Bonjour !' }),
+   390→      })
+   391→      if (res.ok) {
+   392→        setChatRegistered(true)
+   393→        await loadChatMessages()
+   394→      }
+   395→    } catch {
+   396→      toast.error('Erreur de connexion')
+   397→    } finally {
+   398→      setChatLoading(false)
+   399→    }
+   400→  }
+   401→
+   402→  // Chat send message
+   403→  const handleChatSend = async () => {
+   404→    if (!chatInput.trim()) return
+   405→    const content = chatInput.trim()
+   406→    setChatInput('')
+   407→    setChatMessages((prev) => [
+   408→      ...prev,
+   409→      { id: `temp-${Date.now()}`, content, senderType: 'customer', createdAt: new Date().toISOString() },
+   410→    ])
+   411→    setChatLoading(true)
+   412→    try {
+   413→      const res = await fetch('/api/chat', {
+   414→        method: 'POST',
+   415→        headers: { 'Content-Type': 'application/json' },
+   416→        body: JSON.stringify({ sessionId, content }),
+   417→      })
+   418→      if (res.ok) {
+   419→        await loadChatMessages()
+   420→      }
+   421→    } catch {
+   422→      toast.error('Erreur d\'envoi')
+   423→    } finally {
+   424→      setChatLoading(false)
+   425→    }
+   426→  }
+   427→
+   428→  // Order submit
+   429→  const handleOrderSubmit = async (e: React.FormEvent) => {
+   430→    e.preventDefault()
+   431→    if (!orderForm.customerName || !orderForm.customerEmail || !orderForm.customerPhone || !orderForm.address) {
+   432→      toast.error('Veuillez remplir tous les champs')
+   433→      return
+   434→    }
+   435→    setOrderLoading(true)
+   436→    try {
+   437→      const res = await fetch('/api/orders', {
+   438→        method: 'POST',
+   439→        headers: { 'Content-Type': 'application/json' },
+   440→        body: JSON.stringify({
+   441→          ...orderForm,
+   442→          items: cart.items.map((item) => ({
+   443→            productId: item.id,
+   444→            name: item.name,
+   445→            quantity: item.quantity,
+   446→            unitPrice: item.price,
+   447→          })),
+   448→        }),
+   449→      })
+   450→      if (res.ok) {
+   451→        const result = await res.json()
+   452→        const orderData = result.data || result
+   453→        const pts = orderData.earnedPoints || Math.floor(cart.totalPrice() / 1000)
+   454→        setEarnedPoints(pts)
+   455→        toast.success('Commande passée avec succès !')
+   456→        cart.clearCart()
+   457→        cart.setCartOpen(false)
+   458→        setOrderDialogOpen(false)
+   459→        setOrderForm({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
+   460→        // Store email for loyalty lookup in footer
+   461→        if (orderForm.customerEmail) {
+   462→          localStorage.setItem('congoclean_loyalty_email', orderForm.customerEmail)
+   463→        }
+   464→        setTimeout(() => setEarnedPoints(0), 8000)
+   465→      } else {
+   466→        const errData = await res.json()
+   467→        toast.error(errData.error || 'Erreur lors de la commande')
+   468→      }
+   469→    } catch {
+   470→      toast.error('Erreur de connexion')
+   471→    } finally {
+   472→      setOrderLoading(false)
+   473→    }
+   474→  }
+   475→
+   476→  // Order tracking submit
+   477→  const handleTrackOrder = async (e: React.FormEvent) => {
+   478→    e.preventDefault()
+   479→    if (!trackEmail) {
+   480→      toast.error('Veuillez entrer votre email')
+   481→      return
+   482→    }
+   483→    setTrackLoading(true)
+   484→    setTrackedOrders([])
+   485→    try {
+   486→      const res = await fetch('/api/orders/track', {
+   487→        method: 'POST',
+   488→        headers: { 'Content-Type': 'application/json' },
+   489→        body: JSON.stringify({ email: trackEmail }),
+   490→      })
+   491→      if (res.ok) {
+   492→        const data = await res.json()
+   493→        const orders = data.data || data.orders || []
+   494→        setTrackedOrders(orders)
+   495→        if (orders.length === 0) {
+   496→          toast.info('Aucune commande trouvée pour cet email')
+   497→        }
+   498→      } else {
+   499→        toast.error('Erreur lors de la recherche')
+   500→      }
+   501→    } catch {
+   502→      toast.error('Erreur de connexion')
+   503→    } finally {
+   504→      setTrackLoading(false)
+   505→    }
+   506→  }
+   507→
+   508→  // Submit review
+   509→  const handleReviewSubmit = async (e: React.FormEvent) => {
+   510→    e.preventDefault()
+   511→    if (!selectedProduct || !reviewForm.customerName) {
+   512→      toast.error('Veuillez entrer votre nom')
+   513→      return
+   514→    }
+   515→    setReviewLoading(true)
+   516→    try {
+   517→      const res = await fetch(`/api/products/${selectedProduct.id}/reviews`, {
+   518→        method: 'POST',
+   519→        headers: { 'Content-Type': 'application/json' },
+   520→        body: JSON.stringify({
+   521→          customerName: reviewForm.customerName,
+   522→          rating: reviewForm.rating,
+   523→          comment: reviewForm.comment || undefined,
+   524→        }),
+   525→      })
+   526→      if (res.ok) {
+   527→        toast.success('Avis ajouté avec succès !')
+   528→        setReviewForm({ customerName: '', rating: 5, comment: '' })
+   529→        setShowReviewForm(false)
+   530→        await fetchReviews(selectedProduct.id)
+   531→      } else {
+   532→        const err = await res.json()
+   533→        toast.error(err.error || 'Erreur lors de l\'ajout de l\'avis')
+   534→      }
+   535→    } catch {
+   536→      toast.error('Erreur de connexion')
+   537→    } finally {
+   538→      setReviewLoading(false)
+   539→    }
+   540→  }
+   541→
+   542→  return (
+   543→    <div
+   544→      ref={pageRef}
+   545→      className={`min-h-screen flex flex-col bg-white transition-opacity duration-500 ${pageLoaded ? 'opacity-100' : 'opacity-0'}`}
+   546→    >
+   547→      <Navbar
+   548→        scrolled={scrolled}
+   549→        mobileMenuOpen={mobileMenuOpen}
+   550→        setMobileMenuOpen={setMobileMenuOpen}
+   551→        cartTotalItems={cart.totalItems()}
+   552→        onCartOpen={() => cart.setCartOpen(true)}
+   553→        scrollToSection={scrollToSection}
+   554→      />
+   555→
+   556→      {/* Promotional Banner Bar */}
+   557→      {promoBarVisible && (
+   558→        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden border-l-2 border-emerald-300">
+   559→          <div className="flex items-center pl-3 pr-2 shrink-0">
+   560→            <Megaphone className="w-4 h-4 text-amber-300" />
+   561→          </div>
+   562→          <div className="flex-1 overflow-hidden">
+   563→            <MarqueeText speed={25} className="py-2">
+   564→              <span className="mx-8 text-white text-xs sm:text-sm bg-gradient-to-r from-white via-amber-100 to-white bg-[length:200%_100%] bg-clip-text text-transparent animate-[shimmer_3s_linear_infinite]">{promoText}</span>
+   565→            </MarqueeText>
+   566→          </div>
+   567→          <button
+   568→            onClick={() => setPromoBarVisible(false)}
+   569→            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800/60 rounded-full transition-all duration-200 hover:scale-110"
+   570→            aria-label="Fermer la bannière"
+   571→          >
+   572→            <X className="w-3.5 h-3.5" />
+   573→          </button>
+   574→          <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
+   575→        </div>
+   576→      )}
+   577→
+   578→      <main>
+   579→        <HeroSection scrollToSection={scrollToSection} />
+   580→        <FeaturesBar />
+   581→        <HowToOrderSection />
+   582→        <ProductsSection
+   583→          products={products}
+   584→          productsLoading={productsLoading}
+   585→          categories={categories}
+   586→          activeCategory={activeCategory}
+   587→          setActiveCategory={setActiveCategory}
+   588→          searchQuery={searchQuery}
+   589→          setSearchQuery={setSearchQuery}
+   590→          sortBy={sortBy}
+   591→          setSortBy={setSortBy}
+   592→          quickAddedId={quickAddedId}
+   593→          onQuickAdd={handleQuickAdd}
+   594→          onAddToCart={handleAddToCart}
+   595→          onViewProduct={setSelectedProduct}
+   596→          comparisonIds={comparisonIds}
+   597→          onToggleComparison={toggleComparison}
+   598→          wishlistToggle={wishlist.toggleItem}
+   599→          isWishlisted={wishlist.isInWishlist}
+   600→        />
+   601→        <FlashSaleSection products={products} onAddToCart={handleAddToCart} onViewProduct={setSelectedProduct} />
+   602→        <AboutSection />
+   603→        <TestimonialsSection
+   604→          activeTestimonial={activeTestimonial}
+   605→          setActiveTestimonial={setActiveTestimonial}
+   606→          isMobile={isMobile}
+   607→        />
+   608→        <DeliveryPricingSection />
+   609→        <OrderTrackingSection
+   610→          trackedOrders={trackedOrders}
+   611→          trackLoading={trackLoading}
+   612→          onTrackOrder={handleTrackOrder}
+   613→          trackEmail={trackEmail}
+   614→          setTrackEmail={setTrackEmail}
+   615→        />
+   616→        <FAQSection />
+   617→        <NewsletterSection
+   618→          newsletterEmail={newsletterEmail}
+   619→          setNewsletterEmail={setNewsletterEmail}
+   620→          newsletterLoading={newsletterLoading}
+   621→          newsletterSuccess={newsletterSuccess}
+   622→          onSubmit={handleNewsletterSubmit}
+   623→        />
+   624→        <ContactSection
+   625→          contactForm={contactForm}
+   626→          setContactForm={setContactForm}
+   627→          contactLoading={contactLoading}
+   628→          onSubmit={handleContactSubmit}
+   629→        />
+   630→      </main>
+   631→
+   632→      <ProductComparison
+   633→        comparisonIds={comparisonIds}
+   634→        products={products}
+   635→        onToggleComparison={toggleComparison}
+   636→        onClearComparison={clearComparison}
+   637→      />
+   638→
+   639→      <Footer
+   640→        scrollToSection={scrollToSection}
+   641→        recentlyViewed={recentlyViewed}
+   642→        setSelectedProduct={setSelectedProduct}
+   643→        showBackToTop={showBackToTop}
+   644→        scrollProgress={scrollProgress}
+   645→        cookieConsentVisible={cookieConsentVisible}
+   646→        setCookieConsentVisible={setCookieConsentVisible}
+   647→      />
+   648→
+   649→      <CartSheet
+   650→        items={cart.items}
+   651→        cartIsOpen={cart.isOpen}
+   652→        setCartOpen={cart.setCartOpen}
+   653→        totalItems={cart.totalItems()}
+   654→        totalPrice={cart.totalPrice()}
+   655→        updateQuantity={cart.updateQuantity}
+   656→        removeItem={cart.removeItem}
+   657→        clearCart={cart.clearCart}
+   658→        scrollToSection={scrollToSection}
+   659→        deliveryZone={deliveryZone}
+   660→        setDeliveryZone={setDeliveryZone}
+   661→        orderDialogOpen={orderDialogOpen}
+   662→        setOrderDialogOpen={setOrderDialogOpen}
+   663→        orderForm={orderForm}
+   664→        setOrderForm={setOrderForm}
+   665→        orderLoading={orderLoading}
+   666→        onOrderSubmit={handleOrderSubmit}
+   667→        selectedProduct={selectedProduct}
+   668→        setSelectedProduct={setSelectedProduct}
+   669→        onAddToCart={handleAddToCart}
+   670→        reviews={reviews}
+   671→        avgRating={avgRating}
+   672→        totalReviews={totalReviews}
+   673→        reviewForm={reviewForm}
+   674→        setReviewForm={setReviewForm}
+   675→        reviewLoading={reviewLoading}
+   676→        showReviewForm={showReviewForm}
+   677→        setShowReviewForm={setShowReviewForm}
+   678→        onReviewSubmit={handleReviewSubmit}
+   679→        earnedPoints={earnedPoints}
+   680→        products={products || []}
+   681→      />
+   682→
+   683→      <ChatWidget
+   684→        chatOpen={chatOpen}
+   685→        setChatOpen={setChatOpen}
+   686→        chatMessages={chatMessages}
+   687→        chatInput={chatInput}
+   688→        setChatInput={setChatInput}
+   689→        chatLoading={chatLoading}
+   690→        chatName={chatName}
+   691→        setChatName={setChatName}
+   692→        chatEmail={chatEmail}
+   693→        setChatEmail={setChatEmail}
+   694→        chatRegistered={chatRegistered}
+   695→        onRegister={handleChatRegister}
+   696→        onSend={handleChatSend}
+   697→      />
+   698→
+   699→      <SocialProofToast products={products} />
+   700→    </div>
+   701→  )
+   702→}
+   703→

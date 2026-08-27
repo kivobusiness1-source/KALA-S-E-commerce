@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Star, Eye, Package, Search, GitCompareArrows, ArrowUpDown, Heart } from 'lucide-react'
+import { Plus, Star, Eye, Package, Search, GitCompareArrows, SlidersHorizontal, Heart, ShoppingBag, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -65,6 +65,26 @@ function StarRating({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md
   )
 }
 
+function ProductsLoadingSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-xl overflow-hidden border border-gray-100 bg-white">
+          <div className="relative h-48 bg-gray-100">
+            <Skeleton className="w-full h-full rounded-none" style={{ animationDelay: `${i * 120}ms` }} />
+          </div>
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-4 w-1/3 rounded-full" style={{ animationDelay: `${i * 120 + 80}ms` }} />
+            <Skeleton className="h-6 w-3/4 rounded-full" style={{ animationDelay: `${i * 120 + 160}ms` }} />
+            <Skeleton className="h-4 w-1/4 rounded-full" style={{ animationDelay: `${i * 120 + 240}ms` }} />
+            <Skeleton className="h-10 w-full rounded-full" style={{ animationDelay: `${i * 120 + 320}ms` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function ProductsSection({
   products,
   productsLoading,
@@ -84,6 +104,13 @@ export function ProductsSection({
   wishlistToggle,
   isWishlisted,
 }: ProductsSectionProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.id = 'product-search-input'
+    }
+  }, [])
 
   const handleWishlistToggle = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -138,6 +165,9 @@ export function ProductsSection({
     return sorted
   }, [products, sortBy])
 
+  const isFiltered = activeCategory !== 'all' || searchQuery !== ''
+  const productCount = sortedProducts?.length || 0
+
   return (
     <section id="products" className="py-16 sm:py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,7 +182,7 @@ export function ProductsSection({
         </FadeInSection>
 
         <FadeInSection>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
             {/* Category Tabs */}
             <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full sm:w-auto">
               <TabsList className="bg-white border border-gray-200 shadow-sm w-full sm:w-auto flex flex-wrap">
@@ -173,6 +203,8 @@ export function ProductsSection({
               <div className="relative flex-1 sm:flex-none sm:w-64 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-300" />
                 <Input
+                  ref={searchInputRef}
+                  id="product-search-input"
                   placeholder="Rechercher un produit..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -181,7 +213,7 @@ export function ProductsSection({
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-200 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all duration-300">
-                  <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
                   <SelectValue placeholder="Trier par" />
                 </SelectTrigger>
                 <SelectContent>
@@ -194,23 +226,33 @@ export function ProductsSection({
               </Select>
             </div>
           </div>
+
+          {/* Results count + Voir tout link */}
+          {!productsLoading && (
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-gray-500">
+                <span className="font-semibold text-gray-700">{productCount}</span>{' '}
+                {productCount === 1 ? 'produit trouvé' : 'produits trouvés'}
+              </p>
+              {isFiltered && (
+                <button
+                  onClick={() => {
+                    setActiveCategory('all')
+                    setSearchQuery('')
+                  }}
+                  className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Voir tout
+                </button>
+              )}
+            </div>
+          )}
         </FadeInSection>
 
         {/* Products Grid */}
         {productsLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="overflow-hidden animate-pulse rounded-xl">
-                <Skeleton className="w-full h-48" />
-                <CardContent className="p-4 space-y-3">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-10 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <ProductsLoadingSkeleton />
         ) : sortedProducts && sortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedProducts.map((product, index) => {
@@ -376,18 +418,40 @@ export function ProductsSection({
           </div>
         ) : (
           <div className="text-center py-16">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">Aucun produit trouvé</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setActiveCategory('all')
-                setSearchQuery('')
-              }}
-              className="mt-4"
-            >
-              Réinitialiser les filtres
-            </Button>
+            {/* CSS Shopping Bag Illustration */}
+            <div className="relative w-32 h-32 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border-2 border-dashed border-emerald-200 flex items-center justify-center">
+                <ShoppingBag className="w-12 h-12 text-emerald-300" strokeWidth={1.5} />
+              </div>
+              {/* Small decorative circles */}
+              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-amber-100 border border-amber-200" />
+              <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-teal-100 border border-teal-200" />
+            </div>
+            <p className="text-gray-500 text-lg mb-2">Aucun produit trouvé</p>
+            <p className="text-gray-400 text-sm mb-6">Essayez de modifier vos critères de recherche</p>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setActiveCategory('all')
+                  setSearchQuery('')
+                }}
+                className="font-medium"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Réinitialiser les filtres
+              </Button>
+              <Button
+                onClick={() => {
+                  setActiveCategory('all')
+                  setSearchQuery('')
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Parcourir tous les produits
+              </Button>
+            </div>
           </div>
         )}
       </div>

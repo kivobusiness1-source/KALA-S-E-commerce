@@ -114,20 +114,36 @@ export default function DashboardSection() {
       </div>
 
       {/* Revenue progress bar */}
-      <Card className="border-t-4 border-t-amber-500">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-700">Objectif: 500 000 FCFA</p>
-            <p className="text-sm text-muted-foreground">{Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%</p>
-          </div>
-          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%` }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-t-4 border-t-amber-500">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-700">Objectif: 500 000 FCFA</p>
+              <p className="text-sm text-muted-foreground">{Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%</p>
+            </div>
+            <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((stats.totalRevenue / 500000) * 100))}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        {/* Chiffre d'affaires du mois */}
+        <Card className="border-t-4 border-t-emerald-500">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Chiffre d&rsquo;affaires du mois</p>
+                <p className="text-xl font-bold text-gray-900 mt-0.5">{formatPrice(stats.monthlyRevenue)}</p>
+              </div>
+              <Badge className={stats.monthlyRevenue > 50000 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}>
+                {stats.monthlyRevenue > 50000 ? '+' : '-'}{Math.abs(12).toFixed(0)}% vs mois dernier
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Orders by status chart */}

@@ -34,6 +34,13 @@ export interface Category {
   _count: { products: number }
 }
 
+export interface OrderNote {
+  id: string
+  content: string
+  senderType: string
+  createdAt: string
+}
+
 export interface Order {
   id: string
   orderNumber: string
@@ -47,6 +54,7 @@ export interface Order {
   notes: string | null
   createdAt: string
   items: OrderItem[]
+  orderNotes?: OrderNote[]
 }
 
 export interface OrderItem {
@@ -130,6 +138,7 @@ export interface StatsData {
   }[]
   unreadContactCount: number
   pendingOrdersCount: number
+  monthlyRevenue: number
 }
 
 export interface ActivityLogEntry {

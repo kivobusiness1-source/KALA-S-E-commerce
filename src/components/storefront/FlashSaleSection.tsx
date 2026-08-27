@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ShoppingCart, Eye, Flame, Clock } from 'lucide-react'
 import { FadeInSection } from './AnimatedComponents'
@@ -37,9 +37,54 @@ function getGradientForCategory(product: ProductType): string {
 }
 
 export function FlashSaleSection({ products, onAddToCart, onViewProduct }: FlashSaleSectionProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const discountedProducts = (products || []).filter(
     (p) => p.comparePrice && p.comparePrice > p.price
   )
+
+  // Auto-scroll effect with proper cleanup
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container || discountedProducts.length === 0) return
+    if (window.innerWidth < 768) return
+
+    let scrollDirection = 1
+    let isPaused = false
+    let animationId: number
+
+    const autoScroll = () => {
+      if (isPaused) {
+        animationId = requestAnimationFrame(autoScroll)
+        return
+      }
+      const { scrollLeft, scrollWidth, clientWidth } = container
+      const maxScroll = scrollWidth - clientWidth
+      if (scrollLeft >= maxScroll - 2) scrollDirection = -1
+      else if (scrollLeft <= 2) scrollDirection = 1
+      container.scrollLeft += scrollDirection * 0.5
+      animationId = requestAnimationFrame(autoScroll)
+    }
+
+    const onMouseEnter = () => { isPaused = true }
+    const onMouseLeave = () => { isPaused = false }
+    const onTouchStart = () => { isPaused = true }
+    const onTouchEnd = () => { isPaused = false }
+
+    container.addEventListener('mouseenter', onMouseEnter)
+    container.addEventListener('mouseleave', onMouseLeave)
+    container.addEventListener('touchstart', onTouchStart, { passive: true })
+    container.addEventListener('touchend', onTouchEnd)
+    animationId = requestAnimationFrame(autoScroll)
+
+    return () => {
+      cancelAnimationFrame(animationId)
+      container.removeEventListener('mouseenter', onMouseEnter)
+      container.removeEventListener('mouseleave', onMouseLeave)
+      container.removeEventListener('touchstart', onTouchStart)
+      container.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [discountedProducts.length])
 
   // Don't render if no discounted products
   if (discountedProducts.length === 0) return null
@@ -81,9 +126,7 @@ export function FlashSaleSection({ products, onAddToCart, onViewProduct }: Flash
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-900 to-transparent z-10 pointer-events-none" />
 
             <div
-              ref={(el) => {
-                if (el) setupAutoScroll(el)
-              }}
+              ref={scrollRef}
               className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
@@ -241,40 +284,4 @@ function CountdownTimer() {
       </div>
     </div>
   )
-}
-
-function setupAutoScroll(container: HTMLDivElement) {
-  // Auto-scroll on desktop only
-  if (window.innerWidth < 768) return
-
-  let scrollDirection = 1
-  let animationId: number
-  let isPaused = false
-
-  const autoScroll = () => {
-    if (isPaused) {
-      animationId = requestAnimationFrame(autoScroll)
-      return
-    }
-
-    const { scrollLeft, scrollWidth, clientWidth } = container
-    const maxScroll = scrollWidth - clientWidth
-
-    if (scrollLeft >= maxScroll - 2) {
-      scrollDirection = -1
-    } else if (scrollLeft <= 2) {
-      scrollDirection = 1
-    }
-
-    container.scrollLeft += scrollDirection * 0.5
-    animationId = requestAnimationFrame(autoScroll)
-  }
-
-  // Pause on hover/touch
-  container.addEventListener('mouseenter', () => { isPaused = true })
-  container.addEventListener('mouseleave', () => { isPaused = false })
-  container.addEventListener('touchstart', () => { isPaused = true }, { passive: true })
-  container.addEventListener('touchend', () => { isPaused = false })
-
-  animationId = requestAnimationFrame(autoScroll)
 }

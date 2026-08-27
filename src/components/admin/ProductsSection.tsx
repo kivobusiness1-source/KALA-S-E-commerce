@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import {
   Package, Plus, Edit, Trash2, Search, Filter, X, RefreshCw, FileDown, Eye,
+  ImagePlus, Star, ChevronLeft, ChevronRight, Upload, Link,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +30,16 @@ import {
 } from '@/components/ui/table'
 import { formatPrice } from './helpers'
 import type { Product, Category } from './types'
+
+function parseImages(imagesStr: string | null | undefined): string[] {
+  if (!imagesStr) return []
+  try {
+    const parsed = JSON.parse(imagesStr)
+    return Array.isArray(parsed) ? parsed.filter((u: unknown): u is string => typeof u === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 export default function ProductsSection() {
   const queryClient = useQueryClient()
@@ -58,6 +69,14 @@ export default function ProductsSection() {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
+  // Gallery state
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [gallerySaving, setGallerySaving] = useState(false)
+  const [galleryUploading, setGalleryUploading] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
+  const galleryFileInputRef = useRef<HTMLInputElement>(null)
+  const gallerySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products', search, categoryFilter],
     queryFn: () => {
@@ -72,6 +91,13 @@ export default function ProductsSection() {
     queryKey: ['categories'],
     queryFn: () => fetch('/api/categories').then(r => r.json()).then(d => d.data as Category[]),
   })
+
+  // Cleanup gallery save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (gallerySaveTimerRef.current) clearTimeout(gallerySaveTimerRef.current)
+    }
+  }, [])
 
   const openProductDialog = (product?: Product) => {
     if (product) {
@@ -89,11 +115,102 @@ export default function ProductsSection() {
         isFeatured: product.isFeatured,
         isActive: product.isActive,
       })
+      setGalleryImages(parseImages(product.images))
     } else {
       setEditingProduct(null)
       setPForm({ name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '', volume: '', stockQty: '0', minStockAlert: '10', isFeatured: false, isActive: true })
+      setGalleryImages([])
     }
     setProductDialogOpen(true)
+  }
+
+  const saveGalleryToServer = useCallback(async (images: string[], mainImage: string | null, productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: JSON.stringify(images), image: mainImage }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      } else {
+        toast.error(data.error || 'Erreur lors de la sauvegarde de la galerie')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    }
+  }, [queryClient])
+
+  const debouncedSaveGallery = useCallback((images: string[], mainImage: string | null, productId: string) => {
+    if (gallerySaveTimerRef.current) clearTimeout(gallerySaveTimerRef.current)
+    gallerySaveTimerRef.current = setTimeout(() => {
+      saveGalleryToServer(images, mainImage, productId)
+    }, 1000)
+  }, [saveGalleryToServer])
+
+  const handleGalleryUpload = async (files: FileList | null) => {
+    if (!files || !editingProduct) return
+    setGalleryUploading(true)
+    try {
+      const uploads = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('Upload failed')
+        const data = await res.json()
+        return data.data.url as string
+      })
+      const urls = await Promise.all(uploads)
+      const newGallery = [...galleryImages, ...urls]
+      setGalleryImages(newGallery)
+      debouncedSaveGallery(newGallery, editingProduct.image, editingProduct.id)
+      toast.success(`${urls.length} photo(s) ajoutée(s)`)
+    } catch {
+      toast.error('Erreur lors du téléchargement')
+    } finally {
+      setGalleryUploading(false)
+    }
+  }
+
+  const handleAddImageUrl = () => {
+    if (!urlInput.trim() || !editingProduct) return
+    const newGallery = [...galleryImages, urlInput.trim()]
+    setGalleryImages(newGallery)
+    setUrlInput('')
+    debouncedSaveGallery(newGallery, editingProduct.image, editingProduct.id)
+    toast.success('Photo ajoutée')
+  }
+
+  const handleSetAsMain = (url: string) => {
+    if (!editingProduct) return
+    setEditingProduct(prev => prev ? { ...prev, image: url } : prev)
+    debouncedSaveGallery(galleryImages, url, editingProduct.id)
+    toast.success('Image principale définie')
+  }
+
+  const handleDeleteGalleryImage = (index: number) => {
+    if (!editingProduct) return
+    const newGallery = galleryImages.filter((_, i) => i !== index)
+    setGalleryImages(newGallery)
+    const newMainImage = editingProduct.image === galleryImages[index]
+      ? (newGallery[0] || null)
+      : editingProduct.image
+    if (newMainImage !== editingProduct.image) {
+      setEditingProduct(prev => prev ? { ...prev, image: newMainImage } : prev)
+    }
+    debouncedSaveGallery(newGallery, newMainImage, editingProduct.id)
+    toast.success('Photo supprimée')
+  }
+
+  const handleMoveGalleryImage = (index: number, direction: 'left' | 'right') => {
+    if (!editingProduct) return
+    const newIndex = direction === 'left' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= galleryImages.length) return
+    const newGallery = [...galleryImages]
+    ;[newGallery[index], newGallery[newIndex]] = [newGallery[newIndex], newGallery[index]]
+    setGalleryImages(newGallery)
+    debouncedSaveGallery(newGallery, editingProduct.image, editingProduct.id)
   }
 
   const saveProduct = async () => {
@@ -514,6 +631,7 @@ export default function ProductsSection() {
             <DialogDescription>Remplissez les informations du produit</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+            {/* Main image upload */}
             <div className="sm:col-span-2 space-y-2">
               <Label>Image du produit</Label>
               <div className="relative group">
@@ -556,6 +674,159 @@ export default function ProductsSection() {
                 {uploadingImage && <p className="text-xs text-gray-500 mt-1">Téléchargement en cours...</p>}
               </div>
             </div>
+
+            {/* Galerie Photos Promo - only when editing */}
+            {editingProduct && (
+              <div className="sm:col-span-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-semibold text-emerald-700">Galerie Photos Promo</Label>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-medium">
+                      {galleryImages.length} photo{galleryImages.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50/30 space-y-4">
+                  {/* Upload area */}
+                  <div
+                    className="relative flex flex-col items-center justify-center gap-2 border-2 border-dashed border-emerald-300 rounded-xl p-4 cursor-pointer hover:bg-emerald-50/60 transition-colors"
+                    onClick={() => galleryFileInputRef.current?.click()}
+                  >
+                    {galleryUploading ? (
+                      <>
+                        <RefreshCw className="h-6 w-6 text-emerald-500 animate-spin" />
+                        <p className="text-xs text-emerald-600 font-medium">Téléchargement en cours...</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <ImagePlus className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <p className="text-sm text-emerald-700 font-medium">Ajouter des photos</p>
+                        <p className="text-xs text-emerald-600/70">Cliquez ou glissez vos images ici</p>
+                      </>
+                    )}
+                    <input
+                      ref={galleryFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleGalleryUpload(e.target.files)}
+                    />
+                  </div>
+
+                  {/* Add by URL */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Link className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddImageUrl() }}
+                        placeholder="Coller l'URL d'une image..."
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3"
+                      onClick={handleAddImageUrl}
+                      disabled={!urlInput.trim()}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Ajouter
+                    </Button>
+                  </div>
+
+                  {/* Gallery grid */}
+                  {galleryImages.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {galleryImages.map((url, index) => {
+                        const isMain = editingProduct.image === url
+                        return (
+                          <div
+                            key={`${url}-${index}`}
+                            className={`group relative w-full aspect-square rounded-xl overflow-hidden ${
+                              isMain ? 'ring-2 ring-emerald-500' : 'ring-1 ring-gray-200'
+                            }`}
+                          >
+                            <img
+                              src={url}
+                              alt={`Photo ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+
+                            {/* Main image badge */}
+                            {isMain && (
+                              <div className="absolute top-1 left-1 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-tight">
+                                Principale
+                              </div>
+                            )}
+
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200">
+                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-1">
+                                {/* Set as main */}
+                                {!isMain && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleSetAsMain(url) }}
+                                    className="p-1.5 bg-white/90 hover:bg-emerald-100 rounded-full transition-colors"
+                                    title="Définir comme image principale"
+                                  >
+                                    <Star className="h-3.5 w-3.5 text-emerald-600" />
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-1">
+                                  {/* Move left */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleMoveGalleryImage(index, 'left') }}
+                                    className="p-1.5 bg-white/90 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
+                                    disabled={index === 0}
+                                    title="Déplacer à gauche"
+                                  >
+                                    <ChevronLeft className="h-3.5 w-3.5 text-gray-700" />
+                                  </button>
+                                  {/* Move right */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleMoveGalleryImage(index, 'right') }}
+                                    className="p-1.5 bg-white/90 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
+                                    disabled={index === galleryImages.length - 1}
+                                    title="Déplacer à droite"
+                                  >
+                                    <ChevronRight className="h-3.5 w-3.5 text-gray-700" />
+                                  </button>
+                                  {/* Delete */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteGalleryImage(index) }}
+                                    className="p-1.5 bg-white/90 hover:bg-red-100 rounded-full transition-colors"
+                                    title="Supprimer cette photo"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {galleryImages.length === 0 && !galleryUploading && (
+                    <p className="text-xs text-center text-emerald-600/60 py-2">
+                      Aucune photo promo. Ajoutez des images ci-dessus.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="sm:col-span-2 space-y-2">
               <Label>Nom *</Label>
               <Input value={pForm.name} onChange={e => setPForm({ ...pForm, name: e.target.value })} placeholder="Nom du produit" />

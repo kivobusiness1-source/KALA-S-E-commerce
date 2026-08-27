@@ -88,6 +88,7 @@ model Order {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   items        OrderItem[]
+  orderNotes   OrderNote[]
 }
 
 model OrderItem {
@@ -208,6 +209,33 @@ model StockHistory {
   admin   Admin?   @relation(fields: [adminId], references: [id])
 
   @@index([productId])
+  @@index([createdAt])
+}
+
+// ==================== LOYALTY POINTS ====================
+
+model LoyaltyPoint {
+  id          String   @id @default(cuid())
+  email       String
+  points      Int      @default(0)
+  orderId     String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([email])
+}
+
+// ==================== ORDER NOTES / REPLIES ====================
+
+model OrderNote {
+  id         String   @id @default(cuid())
+  orderId    String
+  content    String
+  senderType String   @default("admin") // admin, system
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
   @@index([createdAt])
 }
 

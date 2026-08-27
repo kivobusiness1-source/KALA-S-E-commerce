@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       recentActivity,
       unreadContactCount,
       pendingOrdersCount,
+      monthlyRevenueResult,
     ] = await Promise.all([
       db.product.count({ where: { isActive: true } }),
       db.order.count(),
@@ -63,9 +64,19 @@ export async function GET(request: NextRequest) {
       }),
       db.contactSubmission.count({ where: { isRead: false } }),
       db.order.count({ where: { status: 'pending' } }),
+      db.order.aggregate({
+        where: {
+          status: { not: 'cancelled' },
+          createdAt: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+        _sum: { totalAmount: true },
+      }),
     ])
 
     const totalRevenue = totalRevenueResult._sum.totalAmount ?? 0
+    const monthlyRevenue = monthlyRevenueResult._sum.totalAmount ?? 0
     const totalCustomers = uniqueCustomersResult.length
 
     const statusMap: Record<string, number> = {}
@@ -77,6 +88,7 @@ export async function GET(request: NextRequest) {
       totalProducts,
       totalOrders,
       totalRevenue,
+      monthlyRevenue,
       totalCustomers,
       recentOrders,
       lowStockProducts,

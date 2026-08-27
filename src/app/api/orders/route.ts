@@ -149,7 +149,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return ok(order, 201)
+    // Award loyalty points: 1 point per 1000 FCFA spent
+    const earnedPoints = Math.floor(totalAmount / 1000)
+    if (earnedPoints > 0) {
+      await db.loyaltyPoint.create({
+        data: {
+          email: data.customerEmail,
+          points: earnedPoints,
+          orderId: order.id,
+          description: `Commande ${orderNumber} — ${earnedPoints} points gagnés`,
+        },
+      })
+    }
+
+    return ok({ ...order, earnedPoints }, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
       const messages = error.errors.map(e => e.message).join(', ')

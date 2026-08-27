@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { X, Megaphone } from 'lucide-react'
@@ -10,23 +11,26 @@ import { useWishlistStore } from '@/stores/wishlist-store'
 import { Navbar } from '@/components/storefront/Navbar'
 import { HeroSection } from '@/components/storefront/HeroSection'
 import { FeaturesBar } from '@/components/storefront/FeaturesBar'
-import { HowToOrderSection } from '@/components/storefront/HowToOrderSection'
 import { ProductsSection } from '@/components/storefront/ProductsSection'
-import { AboutSection } from '@/components/storefront/AboutSection'
-import { TestimonialsSection } from '@/components/storefront/TestimonialsSection'
-import { DeliveryPricingSection } from '@/components/storefront/DeliveryPricingSection'
-import { OrderTrackingSection } from '@/components/storefront/OrderTrackingSection'
-import { FAQSection } from '@/components/storefront/FAQSection'
-import { NewsletterSection } from '@/components/storefront/NewsletterSection'
-import { ContactSection } from '@/components/storefront/ContactSection'
-import { ChatWidget } from '@/components/storefront/ChatWidget'
-import { CartSheet, type DeliveryZoneId } from '@/components/storefront/CartSheet'
-import { Footer } from '@/components/storefront/Footer'
-import { ProductComparison } from '@/components/storefront/ProductComparison'
-import { SocialProofToast } from '@/components/storefront/SocialProofToast'
-import { FlashSaleSection } from '@/components/storefront/FlashSaleSection'
 import { MarqueeText } from '@/components/storefront/AnimatedComponents'
 import type { ProductType, CategoryType, ChatMessageType, ReviewType, TrackedOrder } from '@/components/storefront/types'
+
+// Lazy-loaded below-the-fold and heavy components to reduce Turbopack compilation memory
+const HowToOrderSection = dynamic(() => import('@/components/storefront/HowToOrderSection').then(m => ({ default: m.HowToOrderSection })), { ssr: false })
+const AboutSection = dynamic(() => import('@/components/storefront/AboutSection').then(m => ({ default: m.AboutSection })), { ssr: false })
+const TestimonialsSection = dynamic(() => import('@/components/storefront/TestimonialsSection').then(m => ({ default: m.TestimonialsSection })), { ssr: false })
+const DeliveryPricingSection = dynamic(() => import('@/components/storefront/DeliveryPricingSection').then(m => ({ default: m.DeliveryPricingSection })), { ssr: false })
+const OrderTrackingSection = dynamic(() => import('@/components/storefront/OrderTrackingSection').then(m => ({ default: m.OrderTrackingSection })), { ssr: false })
+const FAQSection = dynamic(() => import('@/components/storefront/FAQSection').then(m => ({ default: m.FAQSection })), { ssr: false })
+const NewsletterSection = dynamic(() => import('@/components/storefront/NewsletterSection').then(m => ({ default: m.NewsletterSection })), { ssr: false })
+const ContactSection = dynamic(() => import('@/components/storefront/ContactSection').then(m => ({ default: m.ContactSection })), { ssr: false })
+const FlashSaleSection = dynamic(() => import('@/components/storefront/FlashSaleSection').then(m => ({ default: m.FlashSaleSection })), { ssr: false })
+const CartSheet = dynamic(() => import('@/components/storefront/CartSheet').then(m => ({ default: m.CartSheet })), { ssr: false })
+const ChatWidget = dynamic(() => import('@/components/storefront/ChatWidget').then(m => ({ default: m.ChatWidget })), { ssr: false })
+const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => ({ default: m.Footer })), { ssr: false })
+const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
+const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
+import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
 
 export default function Home() {
   // Promo bar state
@@ -99,6 +103,9 @@ export default function Home() {
   const [trackEmail, setTrackEmail] = useState('')
   const [trackLoading, setTrackLoading] = useState(false)
   const [trackedOrders, setTrackedOrders] = useState<TrackedOrder[]>([])
+
+  // Loyalty points state
+  const [earnedPoints, setEarnedPoints] = useState(0)
 
   // Comparison state
   const [comparisonIds, setComparisonIds] = useState<string[]>([])
@@ -295,15 +302,18 @@ export default function Home() {
   }, [selectedProduct, fetchReviews])
 
   // Add to cart handler
-  const handleAddToCart = (product: ProductType) => {
-    cart.addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      volume: product.volume,
-    })
-    toast.success(`${product.name} ajouté au panier`)
+  const handleAddToCart = (product: ProductType, quantity?: number) => {
+    const qty = quantity || 1
+    for (let i = 0; i < qty; i++) {
+      cart.addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        volume: product.volume,
+      })
+    }
+    toast.success(`${product.name}${qty > 1 ? ` ×${qty}` : ''} ajouté au panier`)
   }
 
   // Quick add handler
@@ -441,14 +451,23 @@ export default function Home() {
         }),
       })
       if (res.ok) {
+        const result = await res.json()
+        const orderData = result.data || result
+        const pts = orderData.earnedPoints || Math.floor(cart.totalPrice() / 1000)
+        setEarnedPoints(pts)
         toast.success('Commande passée avec succès !')
         cart.clearCart()
         cart.setCartOpen(false)
         setOrderDialogOpen(false)
         setOrderForm({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
+        // Store email for loyalty lookup in footer
+        if (orderForm.customerEmail) {
+          localStorage.setItem('congoclean_loyalty_email', orderForm.customerEmail)
+        }
+        setTimeout(() => setEarnedPoints(0), 8000)
       } else {
-        const err = await res.json()
-        toast.error(err.error || 'Erreur lors de la commande')
+        const errData = await res.json()
+        toast.error(errData.error || 'Erreur lors de la commande')
       }
     } catch {
       toast.error('Erreur de connexion')
@@ -660,6 +679,8 @@ export default function Home() {
         showReviewForm={showReviewForm}
         setShowReviewForm={setShowReviewForm}
         onReviewSubmit={handleReviewSubmit}
+        earnedPoints={earnedPoints}
+        products={products || []}
       />
 
       <ChatWidget

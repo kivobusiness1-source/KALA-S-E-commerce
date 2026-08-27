@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Droplets, Phone, Mail, MapPin, ChevronUp, Cookie, MessageCircle, Eye, Heart, ShieldCheck, Smartphone, Banknote, Lock, Info } from 'lucide-react'
+import { Droplets, Phone, Mail, MapPin, ChevronUp, Cookie, MessageCircle, Eye, Heart, ShieldCheck, Smartphone, Banknote, Lock, Info, Sparkles } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import { formatPrice, getCategoryColor, getCategoryInitial } from './helpers'
@@ -31,6 +31,16 @@ export function Footer({
   const [termsOpen, setTermsOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null)
+
+  useEffect(() => {
+    const email = localStorage.getItem('congoclean_loyalty_email')
+    if (!email) return
+    fetch(`/api/loyalty?email=${encodeURIComponent(email)}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setLoyaltyPoints(d.data?.totalPoints || 0) })
+      .catch(() => {})
+  }, [])
 
   const navLinks = [
     { label: 'Accueil', id: 'hero' },
@@ -232,6 +242,23 @@ export function Footer({
                 ))}
               </div>
             </div>
+            {/* Points Fidélité */}
+            {loyaltyPoints !== null && loyaltyPoints > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <h4 className="font-semibold text-white mb-4">Points Fidélité</h4>
+                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-900/30 to-amber-800/20 rounded-xl px-4 py-3 border border-amber-700/30">
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-amber-300">{loyaltyPoints}</p>
+                    <p className="text-xs text-amber-400/70">points accumulés</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
           </div>
 
           <Separator className="my-8 bg-gray-700" />
@@ -266,16 +293,24 @@ export function Footer({
       </footer>
 
       {/* WhatsApp Floating Button */}
-      <a
-        href="https://wa.me/242061234567"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="WhatsApp"
-        className="fixed bottom-6 right-[5.5rem] z-40 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
-      >
-        <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-30 animate-ping" />
-        <MessageCircle className="w-6 h-6 relative z-10" />
-      </a>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a
+            href="https://wa.me/242061234567?text=Bonjour%2C%20je%20souhaite%20commander%20des%20produits%20CongoClean.%20Pouvez-vous%20m%27aider%20%3F"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Commander via WhatsApp"
+            className="fixed bottom-6 right-[5.5rem] z-40 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+          >
+            <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40 animate-ping" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-20 animate-[pulse_2s_ease-in-out_infinite]" />
+            <MessageCircle className="w-6 h-6 relative z-10" />
+          </a>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="bg-gray-900 text-white text-xs">
+          Commander via WhatsApp
+        </TooltipContent>
+      </Tooltip>
 
       {/* Back to Top Button with Scroll Progress - enhanced */}
       <AnimatePresence>

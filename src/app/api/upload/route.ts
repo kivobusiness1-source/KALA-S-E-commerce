@@ -1,59 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
 import path from 'path'
 import { validateSession } from '@/lib/auth'
-import { z } from 'zod'
+import { logActivity } from '@/lib/auth'
 
-function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
-function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export async function POST(request: NextRequest) {
   try {
-    // Auth check
-    const token = request.cookies.get('admin_token')?.value
-    if (!token) return err('Non autorisé', 401)
-
-    const admin = await validateSession(token)
-    if (!admin) return err('Non autorisé', 401)
+    // Auth check for admin uploads
+    const session = await validateSession()
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
+    }
 
     const formData = await request.formData()
-    const file = formData.get('image')
+    const file = formData.get('image') as File | null
 
-    if (!file || !(file instanceof File)) {
-      return err('Fichier image requis')
+    if (!file) {
+      return NextResponse.json({ success: false, error: 'Aucun fichier fourni' }, { status: 400 })
     }
 
-    // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return err('Type de fichier non supporté. Utilisez JPEG, PNG ou WebP.')
+      return NextResponse.json({ success: false, error: 'Type de fichier non supporté. Utilisez JPEG, PNG, WebP ou GIF.' }, { status: 400 })
     }
 
-    // Validate file size
     if (file.size > MAX_SIZE) {
-      return err('Fichier trop volumineux. Maximum 5 Mo.')
+      return NextResponse.json({ success: false, error: 'Fichier trop volumineux (max 5 Mo)' }, { status: 400 })
+    }
+
+    // Ensure upload directory exists
+    if (!existsSync(UPLOAD_DIR)) {
+      await mkdir(UPLOAD_DIR, { recursive: true })
     }
 
     // Generate unique filename
-    const ext = file.name.split('.').pop() || 'png'
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${ext}`
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-
-    // Ensure directory exists
-    await mkdir(uploadsDir, { recursive: true })
+    const ext = file.name.split('.').pop() || 'jpg'
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 8)
+    const filename = `${timestamp}-${random}.${ext}`
+    const filepath = path.join(UPLOAD_DIR, filename)
 
     // Write file
-    const filePath = path.join(uploadsDir, filename)
     const bytes = await file.arrayBuffer()
-    await writeFile(filePath, Buffer.from(bytes))
+    await writeFile(filepath, Buffer.from(bytes))
 
     const url = `/uploads/${filename}`
 
-    return ok({ url })
+    await logActivity(session.adminId, 'upload_image', `Image uploadée: ${filename}`)
+
+    return NextResponse.json({
+      success: true,
+      data: { url, filename },
+    })
   } catch (error) {
     console.error('Upload error:', error)
-    return err('Erreur lors du téléchargement', 500)
+    return NextResponse.json({ success: false, error: 'Erreur lors du téléchargement' }, { status: 500 })
   }
 }

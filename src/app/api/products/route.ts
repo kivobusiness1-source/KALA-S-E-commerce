@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         category: true,
-        _count: { select: { reviews: { where: { approved: true } } } },
+        _count: { select: { reviews: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const ratingAggregates = productIds.length > 0
       ? await db.review.groupBy({
           by: ['productId'],
-          where: { productId: { in: productIds }, approved: true },
+          where: { productId: { in: productIds }, isApproved: true },
           _avg: { rating: true },
           _count: { id: true },
         })

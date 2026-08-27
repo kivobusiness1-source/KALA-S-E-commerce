@@ -1,10 +1,11 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Send, Mail, ShieldCheck, XCircle } from 'lucide-react'
+import { Check, Send, Mail, ShieldCheck, XCircle, Copy, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FadeInSection } from './AnimatedComponents'
+import { useState } from 'react'
 
 interface NewsletterSectionProps {
   newsletterEmail: string
@@ -61,6 +62,14 @@ export function NewsletterSection({
   newsletterSuccess,
   onSubmit,
 }: NewsletterSectionProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText('CONGOCLEAN10')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     onSubmit(e)
   }
@@ -143,6 +152,30 @@ export function NewsletterSection({
                     <Check className="w-8 h-8 text-emerald-600" />
                   </div>
                   <p className="text-white font-semibold text-lg">Merci pour votre inscription !</p>
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                    className="mt-3 w-full max-w-xs"
+                  >
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Gift className="w-4 h-4 text-amber-300" />
+                        <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">Code promo exclusif</span>
+                      </div>
+                      <p className="text-white/90 text-sm mb-3">Utilisez le code pour 10% de réduction sur votre première commande !</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 bg-black/20 rounded-lg px-3 py-2 text-white font-mono font-bold text-sm tracking-wider">CONGOCLEAN10</code>
+                        <button
+                          onClick={handleCopyCode}
+                          className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
+                          aria-label="Copier le code"
+                        >
+                          {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4 text-white" />}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
                 </motion.div>
               ) : (
                 <motion.form

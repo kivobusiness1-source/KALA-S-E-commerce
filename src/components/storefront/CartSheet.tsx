@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, Truck, MessageCircle, ShoppingBag, Check } from 'lucide-react'
+import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, Truck, MessageCircle, ShoppingBag, Check, Star, Heart, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -34,8 +34,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Star } from 'lucide-react'
 import { formatPrice, getCategoryColor, getCategoryInitial, getInitials } from './helpers'
+import { LoyaltyBadge } from './LoyaltyBadge'
 import type { CartItem } from '@/stores/cart-store'
 import type { ProductType, ReviewType } from './types'
 
@@ -86,7 +86,7 @@ interface CartSheetProps {
   // Product detail dialog
   selectedProduct: ProductType | null
   setSelectedProduct: (product: ProductType | null) => void
-  onAddToCart: (product: ProductType) => void
+  onAddToCart: (product: ProductType, quantity?: number) => void
   // Reviews
   reviews: ReviewType[]
   avgRating: number
@@ -97,6 +97,10 @@ interface CartSheetProps {
   showReviewForm: boolean
   setShowReviewForm: (show: boolean) => void
   onReviewSubmit: (e: React.FormEvent) => void
+  // Loyalty
+  earnedPoints: number
+  // Related products
+  products: ProductType[]
 }
 
 function getCategoryBorderColor(slug: string): string {
@@ -206,8 +210,12 @@ export function CartSheet({
   showReviewForm,
   setShowReviewForm,
   onReviewSubmit,
+  earnedPoints,
+  products: allProducts,
 }: CartSheetProps) {
   const [orderStep, setOrderStep] = useState<1 | 2 | 3>(1)
+  const [productQty, setProductQty] = useState(1)
+  const [isFavorited, setIsFavorited] = useState(false)
   const zone = DELIVERY_ZONES.find((z) => z.id === deliveryZone) || DELIVERY_ZONES[0]
   const deliveryFee = useMemo(() => {
     if (zone.freeThreshold === 0) return 0
@@ -226,7 +234,7 @@ export function CartSheet({
   return (
     <>
       <Sheet open={cartIsOpen} onOpenChange={setCartOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col relative overflow-hidden">
           {/* Gradient header area */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-500 px-4 pt-5 pb-4">
             <SheetHeader className="text-white">
@@ -402,6 +410,35 @@ export function CartSheet({
               </SheetFooter>
             </>
           )}
+
+          {/* Loyalty Points Earned Animation */}
+          <AnimatePresence>
+            {earnedPoints > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ duration: 0.4, type: 'spring' }}
+                className="absolute bottom-4 left-4 right-4 z-10"
+              >
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-4 shadow-lg shadow-amber-200/30">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ rotate: [0, 15, -15, 10, -10, 0], scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                      className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center shrink-0"
+                    >
+                      <Sparkles className="w-5 h-5 text-amber-600" />
+                    </motion.div>
+                    <div>
+                      <p className="text-sm font-bold text-amber-900">Vous avez gagné {earnedPoints} points fidélité !</p>
+                      <p className="text-xs text-amber-700/70">1 point par 1 000 FCFA dépensés</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SheetContent>
       </Sheet>
 
@@ -532,7 +569,7 @@ export function CartSheet({
       </Dialog>
 
       {/* Product Detail Dialog with Tabs */}
-      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => { if (!open) { setSelectedProduct(null); setProductQty(1); setIsFavorited(false) } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -586,6 +623,30 @@ export function CartSheet({
               <div className={`w-2.5 h-2.5 rounded-full ${selectedProduct?.inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-sm text-gray-600">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
             </div>
+
+            {/* Quantity selector */}
+            {selectedProduct?.inStock && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">Quantité :</span>
+                <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                  <button
+                    onClick={() => setProductQty(Math.max(1, productQty - 1))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    aria-label="Diminuer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-semibold tabular-nums">{productQty}</span>
+                  <button
+                    onClick={() => setProductQty(Math.min(99, productQty + 1))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    aria-label="Augmenter"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Tabs: Description & Avis */}
             {selectedProduct && (
@@ -715,12 +776,59 @@ export function CartSheet({
           </div>
           <DialogFooter>
             {selectedProduct?.inStock && (
-              <Button onClick={() => { if (selectedProduct) { onAddToCart(selectedProduct); setSelectedProduct(null) } }} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Ajouter au panier
-              </Button>
+              <div className="flex gap-2 w-full">
+                <Button
+                  onClick={() => setIsFavorited(!isFavorited)}
+                  variant="outline"
+                  className="shrink-0 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
+                  aria-label="Favoris"
+                >
+                  <Heart className={`w-4 h-4 mr-0 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+                </Button>
+                <Button
+                  onClick={() => { if (selectedProduct) { onAddToCart(selectedProduct, productQty); setSelectedProduct(null); setProductQty(1) } }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Ajouter au panier
+                </Button>
+              </div>
             )}
           </DialogFooter>
+
+          {/* Produits similaires */}
+          {selectedProduct && (() => {
+            const related = allProducts
+              .filter((p) => p.id !== selectedProduct.id && p.categoryId === selectedProduct.categoryId)
+              .slice(0, 3)
+            if (related.length === 0) return null
+            return (
+              <div className="border-t mt-4 pt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Produits similaires</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {related.map((rp) => (
+                    <button
+                      key={rp.id}
+                      onClick={() => { setSelectedProduct(rp); setProductQty(1); setIsFavorited(false) }}
+                      className="text-left group"
+                    >
+                      <div className="h-16 rounded-lg overflow-hidden bg-gray-100 mb-1.5">
+                        {rp.image ? (
+                          <img src={rp.image} alt={rp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${getCategoryColor(rp.category?.slug || '')} flex items-center justify-center`}>
+                            <span className="text-lg font-bold text-white/30">{getCategoryInitial(rp.category?.slug || '')}</span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium text-gray-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">{rp.name}</p>
+                      <p className="text-xs font-bold text-emerald-700">{formatPrice(rp.price)}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </DialogContent>
       </Dialog>
     </>
