@@ -1379,3 +1379,60 @@ Thu Aug 27 08:35:33 UTC 2026
 ENDDOFWORKLOG
 test
 ENDDOFWORKLOG
+---
+Task ID: 10
+Agent: main
+Task: Admin panel - Gestion images promo produit + Réponse aux commandes + Suppression bulle chat
+
+Work Log:
+- Added OrderNote model to Prisma schema (id, orderId, content, senderType, createdAt) with cascade delete
+- Pushed schema to SQLite DB with db:push
+- Added OrderNote type to /src/components/admin/types.ts
+- Updated Order type to include optional orderNotes field
+- Created /src/app/api/upload/route.ts — POST endpoint for image upload (admin auth, 5MB max, JPEG/PNG/WebP/GIF, saves to public/uploads/)
+- Verified /src/app/api/orders/[id]/notes/route.ts — GET (list notes) + POST (add note) with admin auth
+- Verified /src/app/api/orders/[id]/notes/[noteId]/route.ts — DELETE note with admin auth
+- Enhanced ProductsSection.tsx (983 lines) with full image gallery management:
+  - Gallery section in product edit dialog (only when editing existing product)
+  - Grid display of promo images (3-4 cols responsive)
+  - File upload via /api/upload endpoint
+  - Add image by URL input
+  - Set image as main product image (star button)
+  - Delete images from gallery
+  - Reorder images (left/right arrows)
+  - Image counter badge, "Principale" badge on main image
+  - Debounced auto-save (1s) via PUT /api/products/{id}
+- Rewrote OrdersSection.tsx (330→380+ lines) with order reply/notes system:
+  - Notes timeline with vertical line, colored dots, sender avatars
+  - Admin notes (emerald bg) and System notes (gray bg, italic)
+  - Reply textarea with character counter (max 2000)
+  - Send button with Ctrl+Enter shortcut
+  - Delete note button for admin notes
+  - Auto-add system note when order status changes (e.g. "En attente → Confirmé")
+  - Notes badge in order detail header
+  - Toggle "Répondre" button in dialog
+- Removed ChatWidget (floating chat bubble) from /src/app/page.tsx:
+  - Removed ChatWidget dynamic import
+  - Removed all chat state variables (chatOpen, chatMessages, chatInput, chatLoading, chatName, chatEmail, chatRegistered)
+  - Removed loadChatMessages callback and useEffect
+  - Removed handleChatRegister and handleChatSend functions
+  - Removed sessionId state
+  - Removed ChatMessageType import
+  - Removed <ChatWidget> component from JSX
+- ESLint: 0 errors
+
+Stage Summary:
+- **3 new API routes**: /api/upload (POST), /api/orders/[id]/notes (GET/POST), /api/orders/[id]/notes/[noteId] (DELETE)
+- **1 new DB model**: OrderNote (with indexes on orderId and createdAt)
+- **Product Image Gallery**: Full CRUD in admin product edit dialog (upload, URL, reorder, set main, delete)
+- **Order Reply System**: Timeline-based notes with auto-status-change tracking in admin order detail
+- **WhatsApp/Chat Bubble**: Completely removed from storefront (ChatWidget no longer rendered)
+- Admin credentials: admin@congosoap.cg / Admin@2024!
+
+### Current Status
+- Dev server compiles and starts cleanly (0 lint errors)
+- All new features accessible via /admin panel
+
+### Risks
+- Upload directory (public/uploads/) is in source; add to .gitignore if needed
+- Order notes are admin-only; customers cannot see them (future: customer-facing order tracking page)

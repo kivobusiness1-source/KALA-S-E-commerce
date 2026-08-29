@@ -1,16 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { toast } from 'sonner'
 import {
   ShoppingCart, Search, Eye, ChevronLeft, ChevronRight, MoreVertical, FileDown, Printer,
+  MessageSquare, Send, Trash2, Clock, Shield, Bot, Reply, Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -26,7 +30,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { formatPrice, formatDate, getInitials, statusLabels, StatusBadge } from './helpers'
-import type { Order, OrderStatus } from './types'
+import type { Order, OrderStatus, OrderNote } from './types'
+
+const MAX_REPLY_LENGTH = 2000
 
 export default function OrdersSection() {
   const queryClient = useQueryClient()
@@ -35,6 +41,12 @@ export default function OrdersSection() {
   const [page, setPage] = useState(1)
   const [orderDetail, setOrderDetail] = useState<Order | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
+  const [orderNotes, setOrderNotes] = useState<OrderNote[]>([])
+  const [replyText, setReplyText] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
+  const [loadingNotes, setLoadingNotes] = useState(false)
+  const notesEndRef = useRef<HTMLDivElement>(null)
   const limit = 20
 
   const { data: ordersData, isLoading } = useQuery({
@@ -50,6 +62,21 @@ export default function OrdersSection() {
   const orders = ordersData?.orders ?? []
   const totalPages = ordersData?.totalPages ?? 1
 
+  const fetchNotes = useCallback(async (orderId: string) => {
+    setLoadingNotes(true)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/notes`)
+      const data = await res.json()
+      if (data.success) {
+        setOrderNotes(data.data)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingNotes(false)
+    }
+  }, [])
+
   const openDetail = async (orderId: string) => {
     try {
       const res = await fetch(`/api/orders/${orderId}`)
@@ -57,18 +84,29 @@ export default function OrdersSection() {
       if (data.success) {
         setOrderDetail(data.data)
         setDetailOpen(true)
+        setShowNotes(false)
+        setReplyText('')
+        fetchNotes(orderId)
       }
     } catch {
       toast.error('Erreur de chargement')
     }
   }
 
-  const updateStatus = async (orderId: string, status: string) => {
+  // Scroll to bottom when notes change
+  useEffect(() => {
+    if (showNotes && notesEndRef.current) {
+      notesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [orderNotes, showNotes])
+
+  const updateStatus = async (orderId: string, newStatus: string) => {
+    const oldStatus = orderDetail?.status
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: newStatus }),
       })
       const data = await res.json()
       if (data.success) {
@@ -76,13 +114,71 @@ export default function OrdersSection() {
         queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
         queryClient.invalidateQueries({ queryKey: ['stats'] })
         if (orderDetail?.id === orderId) {
-          setOrderDetail({ ...orderDetail, status })
+          setOrderDetail({ ...orderDetail, status: newStatus })
+        }
+
+        // Auto-add system note when status changes
+        if (oldStatus && oldStatus !== newStatus && orderId) {
+          const oldLabel = statusLabels[oldStatus] || oldStatus
+          const newLabel = statusLabels[newStatus] || newStatus
+          try {
+            await fetch(`/api/orders/${orderId}/notes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: `Statut mis à jour : ${oldLabel} → ${newLabel}` }),
+            })
+            fetchNotes(orderId)
+          } catch {
+            // silent
+          }
         }
       } else {
         toast.error(data.error || 'Erreur')
       }
     } catch {
       toast.error('Erreur serveur')
+    }
+  }
+
+  const sendReply = async () => {
+    if (!orderDetail || !replyText.trim()) return
+    const content = replyText.trim()
+    if (content.length > MAX_REPLY_LENGTH) {
+      toast.error('Message trop long')
+      return
+    }
+    setSendingReply(true)
+    try {
+      const res = await fetch(`/api/orders/${orderDetail.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setReplyText('')
+        fetchNotes(orderDetail.id)
+        toast.success('Réponse envoyée')
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setSendingReply(false)
+    }
+  }
+
+  const deleteNote = async (noteId: string) => {
+    if (!orderDetail) return
+    try {
+      const res = await fetch(`/api/orders/${orderDetail.id}/notes/${noteId}`, { method: 'DELETE' })
+      if (res.ok) {
+        setOrderNotes(prev => prev.filter(n => n.id !== noteId))
+        toast.success('Note supprimée')
+      }
+    } catch {
+      toast.error('Erreur')
     }
   }
 
@@ -119,6 +215,14 @@ export default function OrdersSection() {
     }
   }
 
+  const formatNoteTime = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), "d MMM yyyy 'à' HH:mm", { locale: fr })
+    } catch {
+      return dateStr
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -137,7 +241,7 @@ export default function OrdersSection() {
             <Input placeholder="Rechercher..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
           </div>
           <Button variant="outline" size="sm" onClick={exportOrdersCSV}>
-            <FileDown className="h-4 w-4 mr-1" />Exporter CSV
+            <FileDown className="h-4 w-4 mr-1" />CSV
           </Button>
         </div>
       </div>
@@ -188,7 +292,7 @@ export default function OrdersSection() {
                       <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          {o.items?.length ?? 0} article(s)
+                          {o.items?.length ?? 0} art.
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -238,7 +342,7 @@ export default function OrdersSection() {
       )}
 
       {/* Order Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      <Dialog open={detailOpen} onOpenChange={(v) => { setDetailOpen(v); if (!v) { setShowNotes(false); setOrderNotes([]) } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-printable>
           {orderDetail && (
             <>
@@ -246,15 +350,40 @@ export default function OrdersSection() {
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 rounded-t-xl" />
                 <div className="flex items-center justify-between pr-6">
                   <div>
-                    <DialogTitle>Commande {orderDetail.orderNumber}</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      Commande {orderDetail.orderNumber}
+                      {orderNotes.length > 0 && (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          {orderNotes.length}
+                        </Badge>
+                      )}
+                    </DialogTitle>
                     <DialogDescription>Créée le {formatDate(orderDetail.createdAt)}</DialogDescription>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
-                    <Printer className="w-4 h-4" />
-                    Imprimer
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={showNotes ? 'default' : 'outline'}
+                      size="sm"
+                      className={showNotes ? 'bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5' : 'gap-1.5'}
+                      onClick={() => setShowNotes(!showNotes)}
+                    >
+                      <Reply className="w-4 h-4" />
+                      Répondre
+                      {orderNotes.length > 0 && (
+                        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${showNotes ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {orderNotes.length}
+                        </span>
+                      )}
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+                      <Printer className="w-4 h-4" />
+                      <span className="hidden sm:inline">Imprimer</span>
+                    </Button>
+                  </div>
                 </div>
               </DialogHeader>
+
               <div className="space-y-4">
                 {/* Customer info */}
                 <Card>
@@ -319,10 +448,159 @@ export default function OrdersSection() {
 
                 {orderDetail.notes && (
                   <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
+                    <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" />Notes Client</CardTitle></CardHeader>
                     <CardContent><p className="text-sm text-muted-foreground">{orderDetail.notes}</p></CardContent>
                   </Card>
                 )}
+
+                {/* ====== NOTES / REPLIES SECTION ====== */}
+                <Card className="border-l-4 border-l-emerald-500 overflow-hidden">
+                  <CardHeader className="pb-3 bg-gradient-to-r from-emerald-50/80 to-transparent">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-emerald-600" />
+                        Historique des Réponses
+                        {orderNotes.length > 0 && (
+                          <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">
+                            {orderNotes.length} message(s)
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      {!showNotes && orderNotes.length > 0 && (
+                        <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => setShowNotes(true)}>
+                          Voir tout ↓
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    {loadingNotes ? (
+                      <div className="space-y-3 py-4">
+                        {[1, 2].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+                      </div>
+                    ) : orderNotes.length === 0 && !showNotes ? (
+                      <div className="text-center py-6">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                          <MessageSquare className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">Aucune réponse pour le moment</p>
+                        <p className="text-xs text-muted-foreground">Envoyez la première réponse au client</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Notes timeline */}
+                        <div className="relative space-y-0">
+                          {/* Vertical line */}
+                          {orderNotes.length > 1 && (
+                            <div className="absolute left-[18px] top-2 bottom-2 w-0.5 bg-emerald-100" />
+                          )}
+
+                          {(showNotes ? orderNotes : orderNotes.slice(-2)).map((note, idx) => {
+                            const isAdmin = note.senderType === 'admin'
+                            const isSystem = note.senderType === 'system'
+                            const isLast = idx === (showNotes ? orderNotes : orderNotes.slice(-2)).length - 1
+
+                            return (
+                              <div key={note.id} className={`relative flex gap-3 ${!isLast ? 'pb-4' : ''}`}>
+                                {/* Timeline dot */}
+                                <div className="relative z-10 mt-1 shrink-0">
+                                  <div className={`w-[36px] h-[36px] rounded-full flex items-center justify-center ${
+                                    isSystem
+                                      ? 'bg-gray-100 text-gray-500'
+                                      : 'bg-emerald-100 text-emerald-700'
+                                  }`}>
+                                    {isSystem ? <Bot className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                                  </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className={`flex-1 min-w-0 rounded-lg border p-3 ${
+                                  isSystem
+                                    ? 'bg-gray-50/80 border-gray-200/60'
+                                    : 'bg-emerald-50/60 border-emerald-200/60'
+                                }`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-xs font-semibold ${isSystem ? 'text-gray-500' : 'text-emerald-700'}`}>
+                                      {isSystem ? 'Système' : 'Admin'}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {formatNoteTime(note.createdAt)}
+                                      </span>
+                                      {isAdmin && (
+                                        <button
+                                          onClick={() => deleteNote(note.id)}
+                                          className="text-gray-300 hover:text-red-500 transition-colors duration-150"
+                                          title="Supprimer"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className={`text-sm leading-relaxed ${isSystem ? 'text-gray-600 italic' : 'text-gray-800'}`}>
+                                    {note.content}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
+                          <div ref={notesEndRef} />
+                        </div>
+
+                        {/* Reply input */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                <Reply className="h-3.5 w-3.5" />
+                                Écrire une réponse
+                              </Label>
+                              <span className={`text-xs ${replyText.length > MAX_REPLY_LENGTH * 0.9 ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                                {replyText.length} / {MAX_REPLY_LENGTH}
+                              </span>
+                            </div>
+                            <Textarea
+                              value={replyText}
+                              onChange={e => setReplyText(e.target.value)}
+                              placeholder="Écrivez votre réponse au client ici..."
+                              rows={3}
+                              className="resize-none focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                  e.preventDefault()
+                                  sendReply()
+                                }
+                              }}
+                            />
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-muted-foreground">
+                                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Ctrl</kbd>
+                                {' + '}
+                                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Entrée</kbd>
+                                {' pour envoyer'}
+                              </p>
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shadow-emerald-600/20"
+                                onClick={sendReply}
+                                disabled={sendingReply || !replyText.trim()}
+                              >
+                                {sendingReply ? (
+                                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                                Envoyer la réponse
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </>
           )}

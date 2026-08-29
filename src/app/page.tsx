@@ -13,7 +13,7 @@ import { HeroSection } from '@/components/storefront/HeroSection'
 import { FeaturesBar } from '@/components/storefront/FeaturesBar'
 import { ProductsSection } from '@/components/storefront/ProductsSection'
 import { MarqueeText } from '@/components/storefront/AnimatedComponents'
-import type { ProductType, CategoryType, ChatMessageType, ReviewType, TrackedOrder } from '@/components/storefront/types'
+import type { ProductType, CategoryType, ReviewType, TrackedOrder } from '@/components/storefront/types'
 
 // Lazy-loaded below-the-fold and heavy components to reduce Turbopack compilation memory
 const HowToOrderSection = dynamic(() => import('@/components/storefront/HowToOrderSection').then(m => ({ default: m.HowToOrderSection })), { ssr: false })
@@ -26,7 +26,6 @@ const NewsletterSection = dynamic(() => import('@/components/storefront/Newslett
 const ContactSection = dynamic(() => import('@/components/storefront/ContactSection').then(m => ({ default: m.ContactSection })), { ssr: false })
 const FlashSaleSection = dynamic(() => import('@/components/storefront/FlashSaleSection').then(m => ({ default: m.FlashSaleSection })), { ssr: false })
 const CartSheet = dynamic(() => import('@/components/storefront/CartSheet').then(m => ({ default: m.CartSheet })), { ssr: false })
-const ChatWidget = dynamic(() => import('@/components/storefront/ChatWidget').then(m => ({ default: m.ChatWidget })), { ssr: false })
 const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => ({ default: m.Footer })), { ssr: false })
 const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
 const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
@@ -74,25 +73,6 @@ export default function Home() {
   // Newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterLoading, setNewsletterLoading] = useState(false)
-
-  // Chat state
-  const [chatOpen, setChatOpen] = useState(false)
-  const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [chatLoading, setChatLoading] = useState(false)
-  const [chatName, setChatName] = useState('')
-  const [chatEmail, setChatEmail] = useState('')
-  const [chatRegistered, setChatRegistered] = useState(false)
-  const [sessionId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('congoclean_session_id')
-      if (stored) return stored
-      const newId = crypto.randomUUID()
-      localStorage.setItem('congoclean_session_id', newId)
-      return newId
-    }
-    return ''
-  })
 
   // Order dialog state
   const [orderDialogOpen, setOrderDialogOpen] = useState(false)
@@ -249,30 +229,6 @@ export default function Home() {
     },
   })
 
-  // Fetch chat messages
-  const loadChatMessages = useCallback(async () => {
-    if (!sessionId) return
-    try {
-      const res = await fetch(`/api/chat?sessionId=${sessionId}`)
-      if (res.ok) {
-        const data = await res.json()
-        const msgs = data.data?.messages || data.messages
-        if (msgs && msgs.length > 0) {
-          setChatMessages(msgs)
-          setChatRegistered(true)
-        }
-      }
-    } catch {
-      // silently fail
-    }
-  }, [sessionId])
-
-  useEffect(() => {
-    if (chatOpen && !chatRegistered) {
-      loadChatMessages()
-    }
-  }, [chatOpen, chatRegistered, loadChatMessages])
-
   // Fetch reviews when product is selected
   const fetchReviews = useCallback(async (productId: string) => {
     try {
@@ -375,56 +331,6 @@ export default function Home() {
       toast.error('Erreur de connexion')
     } finally {
       setNewsletterLoading(false)
-    }
-  }
-
-  // Chat register
-  const handleChatRegister = async () => {
-    if (!chatName) {
-      toast.error('Veuillez entrer votre nom')
-      return
-    }
-    setChatLoading(true)
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, customerName: chatName, customerEmail: chatEmail || undefined, content: 'Bonjour !' }),
-      })
-      if (res.ok) {
-        setChatRegistered(true)
-        await loadChatMessages()
-      }
-    } catch {
-      toast.error('Erreur de connexion')
-    } finally {
-      setChatLoading(false)
-    }
-  }
-
-  // Chat send message
-  const handleChatSend = async () => {
-    if (!chatInput.trim()) return
-    const content = chatInput.trim()
-    setChatInput('')
-    setChatMessages((prev) => [
-      ...prev,
-      { id: `temp-${Date.now()}`, content, senderType: 'customer', createdAt: new Date().toISOString() },
-    ])
-    setChatLoading(true)
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, content }),
-      })
-      if (res.ok) {
-        await loadChatMessages()
-      }
-    } catch {
-      toast.error('Erreur d\'envoi')
-    } finally {
-      setChatLoading(false)
     }
   }
 
@@ -681,22 +587,6 @@ export default function Home() {
         onReviewSubmit={handleReviewSubmit}
         earnedPoints={earnedPoints}
         products={products || []}
-      />
-
-      <ChatWidget
-        chatOpen={chatOpen}
-        setChatOpen={setChatOpen}
-        chatMessages={chatMessages}
-        chatInput={chatInput}
-        setChatInput={setChatInput}
-        chatLoading={chatLoading}
-        chatName={chatName}
-        setChatName={setChatName}
-        chatEmail={chatEmail}
-        setChatEmail={setChatEmail}
-        chatRegistered={chatRegistered}
-        onRegister={handleChatRegister}
-        onSend={handleChatSend}
       />
 
       <SocialProofToast products={products} />
