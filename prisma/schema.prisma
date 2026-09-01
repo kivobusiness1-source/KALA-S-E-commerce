@@ -14,11 +14,14 @@ model Admin {
   email     String   @unique
   name      String
   password  String
-  role      String   @default("admin") // admin, super_admin
+  phone     String?
+  role      String   @default("staff") // super_admin, admin, staff
+  isActive   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sessions       AdminSession[]
   stockHistories StockHistory[]
+  createdOrders  Order[]       @relation("assignedBy")
 }
 
 model AdminSession {
@@ -75,20 +78,29 @@ model Product {
 // ==================== ORDERS ====================
 
 model Order {
-  id           String      @id @default(cuid())
-  orderNumber  String      @unique
-  customerName String
-  customerEmail String
-  customerPhone String?
-  address      String
-  city         String      @default("Pointe-Noire")
-  status       String      @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
-  totalAmount  Float
-  notes        String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  items        OrderItem[]
-  orderNotes   OrderNote[]
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  customerName   String
+  customerEmail  String
+  customerPhone  String?
+  address        String
+  city           String      @default("Pointe-Noire")
+  status         String      @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
+  totalAmount    Float
+  notes          String?
+  deliveryZone   String?
+  assignedToId   String?
+  assignedBy     Admin?      @relation("assignedBy", fields: [assignedToId], references: [id])
+  delivererId    String?
+  deliverer      Deliverer?  @relation(fields: [delivererId], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  items          OrderItem[]
+  orderNotes     OrderNote[]
+
+  @@index([assignedToId])
+  @@index([delivererId])
+  @@index([status])
 }
 
 model OrderItem {
@@ -237,6 +249,39 @@ model OrderNote {
 
   @@index([orderId])
   @@index([createdAt])
+}
+
+// ==================== DELIVERER (LIVREUR) ====================
+
+model Deliverer {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique
+  email       String?
+  zone        String?  // Zone de livraison (ex: Centre-ville, Loandjili)
+  vehicle     String?  // Type de véhicule (moto, vélo, camionnette)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+
+  @@index([zone])
+  @@index([isActive])
+}
+
+// ==================== ADVERTISING / CATCHPHRASES ====================
+
+model Catchphrase {
+  id        String   @id @default(cuid())
+  text      String
+  position  String   @default("hero") // hero, promo_bar, product_page, footer
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([position])
+  @@index([isActive])
 }
 
 // ==================== REMOVED OLD MODELS ====================

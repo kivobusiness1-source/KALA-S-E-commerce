@@ -1,4 +1,4 @@
-export type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews'
+export type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews' | 'team' | 'livreurs' | 'catchphrases'
 
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -153,7 +153,30 @@ export interface AdminUser {
   id: string
   email: string
   name: string
+  phone: string | null
   role: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Deliverer {
+  id: string
+  name: string
+  phone: string
+  email: string | null
+  zone: string | null
+  vehicle: string | null
+  isActive: boolean
+  createdAt: string
+  _count: { orders: number }
+}
+
+export interface Catchphrase {
+  id: string
+  text: string
+  position: string
+  isActive: boolean
+  sortOrder: number
   createdAt: string
 }
 

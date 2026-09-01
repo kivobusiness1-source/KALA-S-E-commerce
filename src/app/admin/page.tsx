@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminStore } from '@/stores/admin-store'
 import { toast } from 'sonner'
 import {
-  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, Droplets, History, Star, Inbox,
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, Droplets, History, Star, Inbox, Users, Bike, Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -24,6 +24,9 @@ import EmailsSection from '@/components/admin/EmailsSection'
 import SettingsSection from '@/components/admin/SettingsSection'
 import StockHistorySection from '@/components/admin/StockHistorySection'
 import ReviewsSection from '@/components/admin/ReviewsSection'
+import TeamSection from '@/components/admin/TeamSection'
+import LivreursSection from '@/components/admin/LivreursSection'
+import CatchphraseSection from '@/components/admin/CatchphraseSection'
 
 export default function AdminPage() {
   const { admin, isAuthenticated, isLoading, setAdmin, logout } = useAdminStore()
@@ -231,6 +234,9 @@ export default function AdminPage() {
     { key: 'settings', label: 'Paramètres', icon: <Settings className="h-5 w-5" /> },
     { key: 'stock-history', label: 'Historique Stock', icon: <History className="h-5 w-5" /> },
     { key: 'reviews', label: 'Avis Clients', icon: <Star className="h-5 w-5" /> },
+    { key: 'team', label: 'Équipe', icon: <Users className="h-5 w-5" /> },
+    { key: 'livreurs', label: 'Livreurs', icon: <Bike className="h-5 w-5" /> },
+    { key: 'catchphrases', label: 'Publicité', icon: <Megaphone className="h-5 w-5" /> },
   ]
 
   return (
@@ -348,6 +354,9 @@ export default function AdminPage() {
           {section === 'settings' && <SettingsSection />}
           {section === 'stock-history' && <StockHistorySection />}
           {section === 'reviews' && <ReviewsSection />}
+          {section === 'team' && <TeamSection />}
+          {section === 'livreurs' && <LivreursSection />}
+          {section === 'catchphrases' && <CatchphraseSection />}
         </div>
       </main>
     </div>

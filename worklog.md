@@ -1436,3 +1436,39 @@ Stage Summary:
 ### Risks
 - Upload directory (public/uploads/) is in source; add to .gitignore if needed
 - Order notes are admin-only; customers cannot see them (future: customer-facing order tracking page)
+---
+Task ID: 11
+Agent: main
+Task: Refonte design + Super Admin + Livreurs + LLM + Publicite
+
+Work Log:
+- COMPLETE DESIGN OVERHAUL: rewrote 10 storefront components with new minimal design system
+  - Color palette: #1a1a2e (dark navy) + #c8a951 (muted gold) + white/gray
+  - Removed ALL gradients, decorative elements, excessive animations
+  - Clean product cards with subtle hover shadows, gold CTAs
+  - Minimal navbar, clean hero, professional footer
+- Added Deliverer model to Prisma (name, phone, email, zone, vehicle, isActive)
+- Added Catchphrase model (text, position, isActive, sortOrder)
+- Updated Admin model: added phone, isActive fields, default role=staff
+- Updated Order model: added deliveryZone, assignedToId, delivererId fields
+- Created 6 new API routes:
+  - /api/livreurs (GET, POST) + /api/livreurs/[id] (PUT, DELETE)
+  - /api/catchphrases (GET, POST) + /api/catchphrases/[id] (PUT, DELETE)
+  - /api/ai-reply (POST) - LLM auto-reply using z-ai-web-dev-sdk
+- Updated /api/admin/users to support super_admin/admin/staff roles
+- Created 3 new admin sections:
+  - TeamSection.tsx - User management (super_admin only)
+  - LivreursSection.tsx - Deliverer CRUD with zones and vehicles
+  - CatchphraseSection.tsx - Advertising catchphrase management
+- Updated admin navigation with 3 new items (Equipe, Livreurs, Publicite)
+- Updated admin types with Deliverer, Catchphrase interfaces
+- ESLint: 0 errors
+
+Stage Summary:
+- Design: 10 storefront components rewritten, minimal/professional look
+- New DB models: Deliverer, Catchphrase (2 new tables)
+- New API routes: 6 (livreurs, catchphrases, ai-reply)
+- New admin sections: 3 (team, livreurs, publicite)
+- LLM integration: auto-reply API using z-ai-web-dev-sdk
+- Admin roles: super_admin, admin, staff
+- Admin credentials: admin@congosoap.cg / Admin@2024! (super_admin)

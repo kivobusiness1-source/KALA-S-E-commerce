@@ -1,11 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, Truck, MessageCircle, ShoppingBag, Check, Star, Heart, Sparkles } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, Truck, Star, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
@@ -34,16 +33,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { formatPrice, getCategoryColor, getCategoryInitial, getInitials } from './helpers'
-import { LoyaltyBadge } from './LoyaltyBadge'
+import { formatPrice, getInitials } from './helpers'
 import type { CartItem } from '@/stores/cart-store'
 import type { ProductType, ReviewType } from './types'
 
 export const DELIVERY_ZONES = [
   { id: 'centre-ville', label: 'Centre-ville (Pointe-Noire)', fee: 0, freeThreshold: 0 },
-  { id: 'peripherique', label: 'Quartiers périphériques', fee: 1500, freeThreshold: 25000 },
+  { id: 'peripherique', label: 'Quartiers peripheriques', fee: 1500, freeThreshold: 25000 },
   { id: 'loango-tchimbamba', label: 'Loango / Tchimbamba', fee: 3000, freeThreshold: 25000 },
-  { id: 'hopital-diosso', label: 'Hôpital / Diosso', fee: 5000, freeThreshold: 25000 },
+  { id: 'hopital-diosso', label: 'Hopital / Diosso', fee: 5000, freeThreshold: 25000 },
   { id: 'autres', label: 'Autres zones', fee: 8000, freeThreshold: 25000 },
 ] as const
 
@@ -103,19 +101,6 @@ interface CartSheetProps {
   products: ProductType[]
 }
 
-function getCategoryBorderColor(slug: string): string {
-  switch (slug) {
-    case 'savon-liquide':
-      return 'border-l-emerald-500'
-    case 'detergent':
-      return 'border-l-amber-500'
-    case 'eau-de-javel':
-      return 'border-l-cyan-500'
-    default:
-      return 'border-l-emerald-500'
-  }
-}
-
 function QuantityControl({
   quantity,
   onDecrease,
@@ -126,56 +111,23 @@ function QuantityControl({
   onIncrease: () => void
 }) {
   return (
-    <div className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden">
+    <div className="inline-flex items-center rounded-lg border border-[#e2e8f0] bg-white overflow-hidden">
       <button
         onClick={onDecrease}
-        className="w-7 h-7 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors duration-200"
+        className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150 text-[#64748b]"
         aria-label="Diminuer"
       >
         <Minus className="w-3 h-3" />
       </button>
-      <span className="w-8 text-center text-sm font-medium tabular-nums select-none">{quantity}</span>
+      <span className="w-8 text-center text-sm font-medium tabular-nums select-none text-[#1a1a2e]">{quantity}</span>
       <button
         onClick={onIncrease}
-        className="w-7 h-7 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors duration-200"
+        className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150 text-[#64748b]"
         aria-label="Augmenter"
         disabled={quantity >= 99}
       >
         <Plus className={`w-3 h-3 ${quantity >= 99 ? 'opacity-30' : ''}`} />
       </button>
-    </div>
-  )
-}
-
-function OrderProgressIndicator({ step }: { step: 1 | 2 | 3 }) {
-  const steps = [
-    { num: 1, label: 'Informations' },
-    { num: 2, label: 'Livraison' },
-    { num: 3, label: 'Confirmation' },
-  ]
-  return (
-    <div className="flex items-center justify-between mb-6">
-      {steps.map((s, i) => (
-        <div key={s.num} className="flex items-center flex-1 last:flex-none">
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors duration-300 ${
-                step >= s.num
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
-                  : 'bg-gray-100 text-gray-400'
-              }`}
-            >
-              {step > s.num ? <Check className="w-4 h-4" /> : s.num}
-            </div>
-            <span className={`text-[11px] font-medium ${step >= s.num ? 'text-emerald-700' : 'text-gray-400'}`}>
-              {s.label}
-            </span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`flex-1 h-0.5 mx-3 rounded-full transition-colors duration-300 ${step > s.num ? 'bg-emerald-500' : 'bg-gray-200'}`} />
-          )}
-        </div>
-      ))}
     </div>
   )
 }
@@ -188,7 +140,6 @@ export function CartSheet({
   totalPrice,
   updateQuantity,
   removeItem,
-  clearCart,
   scrollToSection,
   deliveryZone,
   setDeliveryZone,
@@ -213,7 +164,6 @@ export function CartSheet({
   earnedPoints,
   products: allProducts,
 }: CartSheetProps) {
-  const [orderStep, setOrderStep] = useState<1 | 2 | 3>(1)
   const [productQty, setProductQty] = useState(1)
   const [isFavorited, setIsFavorited] = useState(false)
   const zone = DELIVERY_ZONES.find((z) => z.id === deliveryZone) || DELIVERY_ZONES[0]
@@ -234,30 +184,30 @@ export function CartSheet({
   return (
     <>
       <Sheet open={cartIsOpen} onOpenChange={setCartOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col relative overflow-hidden">
-          {/* Gradient header area */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-500 px-4 pt-5 pb-4">
-            <SheetHeader className="text-white">
-              <SheetTitle className="flex items-center gap-2 text-white">
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white">
+          {/* Header */}
+          <div className="px-4 pt-5 pb-4 border-b border-[#e2e8f0]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2 text-[#1a1a2e]">
                 <ShoppingCart className="w-5 h-5" />
                 Panier
                 {totalItems > 0 && (
-                  <Badge className="bg-white/20 text-white backdrop-blur-sm ml-1 border-white/30">{totalItems} article(s)</Badge>
+                  <span className="text-sm font-normal text-[#64748b]">({totalItems})</span>
                 )}
               </SheetTitle>
-              <SheetDescription className="text-emerald-100">Vos produits sélectionnés</SheetDescription>
+              <SheetDescription className="text-[#64748b]">Vos produits selectionnes</SheetDescription>
             </SheetHeader>
           </div>
 
           {/* Delivery zone selector */}
           {items.length > 0 && (
-            <div className="px-4 py-2 bg-emerald-50/50 border-b border-emerald-100">
+            <div className="px-4 py-3 border-b border-[#e2e8f0]">
               <div className="flex items-center gap-2 mb-1.5">
-                <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-xs font-medium text-gray-700">Zone de livraison</span>
+                <Truck className="w-3.5 h-3.5 text-[#64748b]" />
+                <span className="text-xs font-medium text-[#1a1a2e]">Zone de livraison</span>
               </div>
               <Select value={deliveryZone} onValueChange={(v) => setDeliveryZone(v as DeliveryZoneId)}>
-                <SelectTrigger className="w-full h-8 text-xs bg-white border-emerald-200">
+                <SelectTrigger className="w-full h-8 text-xs bg-white border-[#e2e8f0]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -271,20 +221,20 @@ export function CartSheet({
             </div>
           )}
 
-          {/* Free delivery progress bar */}
+          {/* Free delivery progress */}
           {items.length > 0 && freeThreshold > 0 && (
-            <div className="px-4 py-2 bg-emerald-50/30">
-              <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-[#e2e8f0] bg-[#fafafa]">
+              <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                  className="h-full bg-[#1a1a2e] rounded-full transition-all duration-300"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1.5">
+              <p className="text-xs text-[#64748b] mt-1.5">
                 {totalPrice >= freeThreshold ? (
-                  <span className="text-emerald-600 font-medium">Livraison gratuite !</span>
+                  <span className="text-[#16a34a] font-medium">Livraison gratuite !</span>
                 ) : (
-                  <>Plus que <span className="font-semibold text-emerald-700">{(freeThreshold - totalPrice).toLocaleString('fr-FR')} FCFA</span> pour la livraison gratuite !</>
+                  <>Plus que <span className="font-semibold text-[#1a1a2e]">{(freeThreshold - totalPrice).toLocaleString('fr-FR')} FCFA</span> pour la livraison gratuite</>
                 )}
               </p>
             </div>
@@ -293,75 +243,49 @@ export function CartSheet({
           {items.length === 0 ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
-                {/* Decorative shopping bag with dashed circle */}
-                <div className="relative w-32 h-32 mx-auto mb-6">
-                  <div className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-200 animate-[spin_20s_linear_infinite]" />
-                  <div className="absolute inset-2 rounded-full bg-emerald-50/60" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
-                      <ShoppingBag className="w-8 h-8 text-emerald-400" />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-gray-700 font-semibold text-lg">Votre panier est vide</p>
-                <p className="text-gray-400 text-sm mt-1.5 max-w-[200px] mx-auto">Ajoutez des produits pour commencer vos achats</p>
+                <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-[#1a1a2e] font-semibold">Votre panier est vide</p>
+                <p className="text-[#64748b] text-sm mt-1 max-w-[200px] mx-auto">Ajoutez des produits pour commencer vos achats</p>
                 <Button
-                  className="mt-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold px-6 shadow-lg shadow-emerald-600/20 transition-all duration-300"
+                  className="mt-5 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-medium"
                   onClick={() => {
                     setCartOpen(false)
                     scrollToSection('products')
                   }}
                 >
-                  Découvrez nos produits
+                  Decouvrez nos produits
                   <ChevronRight className="w-4 h-4 ml-1.5" />
                 </Button>
-                <button
-                  onClick={() => {
-                    setCartOpen(false)
-                    // Trigger chat open via custom event
-                    document.dispatchEvent(new CustomEvent('open-chat'))
-                  }}
-                  className="mt-3 text-sm text-gray-400 hover:text-emerald-600 transition-colors inline-flex items-center gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Besoin d&rsquo;aide ?
-                </button>
               </div>
             </div>
           ) : (
             <>
-              <ScrollArea className="flex-1 px-4" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-                <div className="space-y-3 py-2">
+              <ScrollArea className="flex-1 px-4" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+                <div className="space-y-0 py-2">
                   {items.map((item) => (
-                    <motion.div
+                    <div
                       key={item.id}
-                      layout
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                      className={`flex gap-3 p-3 bg-gray-50 rounded-xl border-l-[3px] ${getCategoryBorderColor(item.id)} hover:bg-emerald-50/40 hover:shadow-md hover:shadow-emerald-600/5 transition-all duration-300 group/item`}
+                      className="flex gap-3 py-3 border-b border-[#e2e8f0] last:border-0"
                     >
                       {/* Item image */}
-                      <div className="w-14 h-14 rounded-lg shrink-0 overflow-hidden">
+                      <div className="w-14 h-14 rounded-lg shrink-0 overflow-hidden bg-gray-100">
                         {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg group-hover/item:scale-105 transition-transform duration-300" />
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <Package className="w-6 h-6 text-white/60" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-5 h-5 text-gray-300" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 text-sm truncate">{item.name}</h4>
+                        <h4 className="font-medium text-[#1a1a2e] text-sm truncate">{item.name}</h4>
                         {item.volume && (
-                          <p className="text-xs text-gray-500">{item.volume}</p>
+                          <p className="text-xs text-[#64748b]">{item.volume}</p>
                         )}
-                        {/* Price × Qty = Total */}
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-xs text-gray-400">{formatPrice(item.price)} × {item.quantity}</span>
+                          <span className="text-xs text-[#64748b]">{formatPrice(item.price)} x {item.quantity}</span>
                           <span className="text-xs text-gray-300">=</span>
-                          <span className="text-sm font-bold text-emerald-700">{formatPrice(item.price * item.quantity)}</span>
+                          <span className="text-sm font-bold text-[#1a1a2e]">{formatPrice(item.price * item.quantity)}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1.5">
                           <QuantityControl
@@ -371,37 +295,44 @@ export function CartSheet({
                           />
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors duration-200 ml-auto"
+                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50 text-gray-400 hover:text-[#dc2626] transition-colors duration-150 ml-auto"
                             aria-label="Supprimer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </ScrollArea>
 
-              <SheetFooter className="border-t bg-white p-4 gap-3">
+              <SheetFooter className="border-t border-[#e2e8f0] bg-white p-4 gap-3">
                 <div className="w-full space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Sous-total</span>
-                    <span className="text-gray-700 font-medium">{formatPrice(totalPrice)}</span>
+                    <span className="text-[#64748b]">Sous-total</span>
+                    <span className="text-[#1a1a2e] font-medium">{formatPrice(totalPrice)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Livraison ({zone.label})</span>
-                    <span className={deliveryFee === 0 ? 'text-emerald-600 font-medium' : 'text-gray-700 font-medium'}>
+                    <span className="text-[#64748b]">Livraison ({zone.label})</span>
+                    <span className={deliveryFee === 0 ? 'text-[#16a34a] font-medium' : 'text-[#1a1a2e] font-medium'}>
                       {deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}
                     </span>
                   </div>
-                  <div className="border-t pt-2 flex items-center justify-between">
-                    <span className="text-gray-900 font-semibold">Total</span>
-                    <span className="text-xl font-bold text-emerald-700">{formatPrice(totalPrice + deliveryFee)}</span>
+                  {earnedPoints > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#c8a951]">Points fidelite gagnes</span>
+                      <span className="text-[#c8a951] font-medium">+{earnedPoints}</span>
+                    </div>
+                  )}
+                  <Separator className="bg-[#e2e8f0]" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#1a1a2e] font-semibold">Total</span>
+                    <span className="text-xl font-bold text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
                   </div>
                   <Button
-                    onClick={() => { setOrderStep(1); setOrderDialogOpen(true) }}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold h-11 shadow-md shadow-emerald-600/25 transition-all duration-300"
+                    onClick={() => { setOrderDialogOpen(true) }}
+                    className="w-full bg-[#c8a951] hover:bg-[#c8a951]/90 text-[#1a1a2e] font-semibold h-11"
                   >
                     Commander
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -410,48 +341,18 @@ export function CartSheet({
               </SheetFooter>
             </>
           )}
-
-          {/* Loyalty Points Earned Animation */}
-          <AnimatePresence>
-            {earnedPoints > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                transition={{ duration: 0.4, type: 'spring' }}
-                className="absolute bottom-4 left-4 right-4 z-10"
-              >
-                <div className="bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-4 shadow-lg shadow-amber-200/30">
-                  <div className="flex items-center gap-3">
-                    <motion.div
-                      animate={{ rotate: [0, 15, -15, 10, -10, 0], scale: [1, 1.2, 1] }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                      className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center shrink-0"
-                    >
-                      <Sparkles className="w-5 h-5 text-amber-600" />
-                    </motion.div>
-                    <div>
-                      <p className="text-sm font-bold text-amber-900">Vous avez gagné {earnedPoints} points fidélité !</p>
-                      <p className="text-xs text-amber-700/70">1 point par 1 000 FCFA dépensés</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </SheetContent>
       </Sheet>
 
-      {/* Order Dialog with Progress Indicator */}
+      {/* Order Dialog */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <OrderProgressIndicator step={orderStep} />
           <DialogHeader>
             <DialogTitle className="text-xl">Passer la commande</DialogTitle>
             <DialogDescription>
-              Total : <span className="font-semibold text-emerald-700">{formatPrice(totalPrice + deliveryFee)}</span>
+              Total : <span className="font-semibold text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
               {deliveryFee > 0 && (
-                <span className="text-gray-500"> (dont {formatPrice(deliveryFee)} de livraison)</span>
+                <span className="text-[#64748b]"> (dont {formatPrice(deliveryFee)} de livraison)</span>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -459,18 +360,18 @@ export function CartSheet({
             {/* Main form */}
             <form onSubmit={onOrderSubmit} className="flex-1 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="order-name">Nom complet <span className="text-red-500">*</span></Label>
+                <Label htmlFor="order-name">Nom complet <span className="text-[#dc2626]">*</span></Label>
                 <Input
                   id="order-name"
                   placeholder="Votre nom"
                   value={orderForm.customerName}
                   onChange={(e) => setOrderForm({ ...orderForm, customerName: e.target.value })}
                   required
-                  className="focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400"
+                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="order-email">Email <span className="text-red-500">*</span></Label>
+                <Label htmlFor="order-email">Email <span className="text-[#dc2626]">*</span></Label>
                 <Input
                   id="order-email"
                   type="email"
@@ -478,36 +379,36 @@ export function CartSheet({
                   value={orderForm.customerEmail}
                   onChange={(e) => setOrderForm({ ...orderForm, customerEmail: e.target.value })}
                   required
-                  className="focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400"
+                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="order-phone">Téléphone <span className="text-red-500">*</span></Label>
+                <Label htmlFor="order-phone">Telephone <span className="text-[#dc2626]">*</span></Label>
                 <Input
                   id="order-phone"
                   placeholder="+242 06 XXX XXXX"
                   value={orderForm.customerPhone}
                   onChange={(e) => setOrderForm({ ...orderForm, customerPhone: e.target.value })}
                   required
-                  className="focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400"
+                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="order-address">Adresse de livraison <span className="text-red-500">*</span></Label>
+                <Label htmlFor="order-address">Adresse de livraison <span className="text-[#dc2626]">*</span></Label>
                 <Input
                   id="order-address"
-                  placeholder="Votre adresse complète"
+                  placeholder="Votre adresse complete"
                   value={orderForm.address}
                   onChange={(e) => setOrderForm({ ...orderForm, address: e.target.value })}
                   required
-                  className="focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400"
+                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                 />
               </div>
               <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 border-[#e2e8f0] text-[#1a1a2e]"
                   onClick={() => setOrderDialogOpen(false)}
                 >
                   Annuler
@@ -515,7 +416,7 @@ export function CartSheet({
                 <Button
                   type="submit"
                   disabled={orderLoading}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  className="flex-1 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-semibold"
                 >
                   {orderLoading ? 'Envoi en cours...' : 'Confirmer la commande'}
                 </Button>
@@ -524,42 +425,42 @@ export function CartSheet({
 
             {/* Summary sidebar */}
             <div className="md:w-56 shrink-0">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 sticky top-0">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Récapitulatif</h4>
+              <div className="bg-[#fafafa] rounded-xl p-4 border border-[#e2e8f0] sticky top-0">
+                <h4 className="text-sm font-semibold text-[#1a1a2e] mb-3">Recapitulatif</h4>
                 <div className="space-y-2.5 max-h-48 overflow-y-auto">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 bg-gray-200">
+                      <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 bg-gray-100">
                         {item.image ? (
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <Package className="w-3 h-3 text-white/60" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-3 h-3 text-gray-300" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">{item.name}</p>
-                        <p className="text-[11px] text-gray-500">×{item.quantity}</p>
+                        <p className="text-xs font-medium text-[#1a1a2e] truncate">{item.name}</p>
+                        <p className="text-[11px] text-[#64748b]">x{item.quantity}</p>
                       </div>
-                      <span className="text-xs font-semibold text-gray-700">{formatPrice(item.price * item.quantity)}</span>
+                      <span className="text-xs font-semibold text-[#1a1a2e]">{formatPrice(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
-                <Separator className="my-3 bg-gray-200" />
+                <Separator className="my-3 bg-[#e2e8f0]" />
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-xs text-[#64748b]">
                     <span>Sous-total</span>
                     <span>{formatPrice(totalPrice)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-xs text-[#64748b]">
                     <span>Livraison</span>
-                    <span className={deliveryFee === 0 ? 'text-emerald-600' : ''}>{deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}</span>
+                    <span className={deliveryFee === 0 ? 'text-[#16a34a]' : ''}>{deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}</span>
                   </div>
-                  <Separator className="bg-gray-200" />
+                  <Separator className="bg-[#e2e8f0]" />
                   <div className="flex justify-between font-bold text-sm">
-                    <span>Total</span>
-                    <span className="text-emerald-700">{formatPrice(totalPrice + deliveryFee)}</span>
+                    <span className="text-[#1a1a2e]">Total</span>
+                    <span className="text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
                   </div>
                 </div>
               </div>
@@ -568,17 +469,17 @@ export function CartSheet({
         </DialogContent>
       </Dialog>
 
-      {/* Product Detail Dialog with Tabs */}
+      {/* Product Detail Dialog */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => { if (!open) { setSelectedProduct(null); setProductQty(1); setIsFavorited(false) } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {selectedProduct?.category && (
-                <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">{selectedProduct.category.name}</Badge>
+                <span className="text-xs text-[#64748b]">{selectedProduct.category.name}</span>
               )}
-              {selectedProduct?.volume && <Badge variant="secondary">{selectedProduct.volume}</Badge>}
-              </div>
-              <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
+              {selectedProduct?.volume && <span className="text-xs text-[#64748b]">{selectedProduct.volume}</span>}
+            </div>
+            <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Rating summary */}
@@ -586,52 +487,44 @@ export function CartSheet({
               <div className="flex items-center gap-2">
                 <div className="flex gap-0.5">
                   {Array.from({ length: 5 }).map((_, si) => (
-                    <Star key={si} className={`w-4 h-4 ${si < Math.round(avgRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                    <Star key={si} className={`w-4 h-4 ${si < Math.round(avgRating) ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-200'}`} />
                   ))}
                 </div>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-[#64748b]">
                   {avgRating > 0 ? `${avgRating}/5` : 'Pas encore d\'avis'}
                   {totalReviews > 0 && ` (${totalReviews})`}
                 </span>
               </div>
             )}
-            {/* Taller image with gradient overlay */}
-            <div className="h-56 rounded-xl bg-gray-100 overflow-hidden relative">
+            {/* Image */}
+            <div className="h-56 rounded-xl bg-gray-100 overflow-hidden">
               {selectedProduct?.image ? (
-                <>
-                  <img 
-                    src={selectedProduct.image} 
-                    alt={selectedProduct.name} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-                </>
+                <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
               ) : (
-                <div className={`w-full h-full bg-gradient-to-br ${selectedProduct ? getCategoryColor(selectedProduct.category?.slug || '') : ''} flex items-center justify-center`}>
-                  <span className="text-7xl font-bold text-white/30">{selectedProduct ? getCategoryInitial(selectedProduct.category?.slug || '') : ''}</span>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+                <div className="w-full h-full flex items-center justify-center">
+                  <Package className="w-12 h-12 text-gray-300" />
                 </div>
               )}
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-bold text-emerald-700">{selectedProduct ? formatPrice(selectedProduct.price) : ''}</span>
+              <span className="text-2xl font-bold text-[#1a1a2e]">{selectedProduct ? formatPrice(selectedProduct.price) : ''}</span>
               {selectedProduct?.comparePrice && selectedProduct.comparePrice > selectedProduct.price && (
-                <span className="text-lg text-gray-400 line-through">{formatPrice(selectedProduct.comparePrice)}</span>
+                <span className="text-lg text-[#64748b] line-through">{formatPrice(selectedProduct.comparePrice)}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${selectedProduct?.inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
-              <span className="text-sm text-gray-600">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
+              <div className={`w-2 h-2 rounded-full ${selectedProduct?.inStock ? 'bg-[#16a34a]' : 'bg-[#dc2626]'}`} />
+              <span className="text-sm text-[#64748b]">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
             </div>
 
             {/* Quantity selector */}
             {selectedProduct?.inStock && (
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-700">Quantité :</span>
-                <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                <span className="text-sm font-medium text-[#1a1a2e]">Quantite :</span>
+                <div className="inline-flex items-center rounded-lg border border-[#e2e8f0] bg-white overflow-hidden">
                   <button
                     onClick={() => setProductQty(Math.max(1, productQty - 1))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150"
                     aria-label="Diminuer"
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -639,7 +532,7 @@ export function CartSheet({
                   <span className="w-10 text-center text-sm font-semibold tabular-nums">{productQty}</span>
                   <button
                     onClick={() => setProductQty(Math.min(99, productQty + 1))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150"
                     aria-label="Augmenter"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -651,86 +544,83 @@ export function CartSheet({
             {/* Tabs: Description & Avis */}
             {selectedProduct && (
               <Tabs defaultValue="description" className="w-full">
-                <TabsList className="w-full bg-gray-100">
-                  <TabsTrigger value="description" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <TabsList className="w-full bg-gray-100 h-auto p-0.5">
+                  <TabsTrigger value="description" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md">
                     Description
                   </TabsTrigger>
-                  <TabsTrigger value="reviews" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <TabsTrigger value="reviews" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md">
                     Avis clients ({totalReviews})
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="description" className="mt-3">
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                    <p className="text-gray-600 leading-relaxed text-sm">
+                  <div className="bg-[#fafafa] rounded-lg p-4 border border-[#e2e8f0]">
+                    <p className="text-[#64748b] leading-relaxed text-sm">
                       {selectedProduct.longDescription || selectedProduct.description || 'Aucune description disponible pour ce produit.'}
                     </p>
                   </div>
                 </TabsContent>
                 <TabsContent value="reviews" className="mt-3">
-                  {/* Reviews list */}
                   {reviews.length > 0 ? (
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                       {reviews.map((review) => (
-                        <div key={review.id} className="bg-gray-50 rounded-lg p-3">
+                        <div key={review.id} className="bg-[#fafafa] rounded-lg p-3 border border-[#e2e8f0]">
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
-                                <span className="text-emerald-700 font-semibold text-xs">{getInitials(review.customerName)}</span>
+                              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-[#1a1a2e] font-semibold text-xs">{getInitials(review.customerName)}</span>
                               </div>
-                              <span className="text-sm font-medium text-gray-900">{review.customerName}</span>
+                              <span className="text-sm font-medium text-[#1a1a2e]">{review.customerName}</span>
                             </div>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-[#64748b]">
                               {new Date(review.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                           </div>
                           <div className="flex gap-0.5 mb-1">
                             {Array.from({ length: 5 }).map((_, si) => (
-                              <Star key={si} className={`w-3 h-3 ${si < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                              <Star key={si} className={`w-3 h-3 ${si < review.rating ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-200'}`} />
                             ))}
                           </div>
                           {review.comment && (
-                            <p className="text-sm text-gray-600 leading-relaxed">{review.comment}</p>
+                            <p className="text-sm text-[#64748b] leading-relaxed">{review.comment}</p>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-400">
+                    <div className="text-center py-6 text-[#64748b]">
                       <Star className="w-8 h-8 mx-auto mb-2 text-gray-200" />
                       <p className="text-sm">Aucun avis pour le moment</p>
                     </div>
                   )}
 
-                  {/* Review form toggle */}
                   <Button
                     variant="outline"
-                    className="w-full mt-3"
+                    className="w-full mt-3 border-[#e2e8f0] text-[#1a1a2e]"
                     onClick={() => setShowReviewForm(!showReviewForm)}
                   >
                     <Star className="w-4 h-4 mr-2" />
                     {showReviewForm ? 'Fermer le formulaire' : 'Laisser un avis'}
                   </Button>
 
-                  {/* Review form */}
                   <AnimatePresence>
                     {showReviewForm && (
-                      <motion.form
+                      <form
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.15 }}
                         onSubmit={onReviewSubmit}
-                        className="space-y-3 border border-gray-200 rounded-lg p-4 mt-3 overflow-hidden"
+                        className="space-y-3 border border-[#e2e8f0] rounded-lg p-4 mt-3 overflow-hidden"
                       >
                         <div className="space-y-2">
-                          <Label htmlFor="review-name">Nom <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="review-name">Nom <span className="text-[#dc2626]">*</span></Label>
                           <Input
                             id="review-name"
                             placeholder="Votre nom"
                             value={reviewForm.customerName}
                             onChange={(e) => setReviewForm({ ...reviewForm, customerName: e.target.value })}
                             required
-                            className="focus-visible:ring-emerald-500/30 focus-visible:border-emerald-400"
+                            className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                           />
                         </div>
                         <div className="space-y-2">
@@ -741,10 +631,10 @@ export function CartSheet({
                                 key={si}
                                 type="button"
                                 onClick={() => setReviewForm({ ...reviewForm, rating: si + 1 })}
-                                className="p-0.5 hover:scale-110 transition-transform"
-                                aria-label={`${si + 1} étoile(s)`}
+                                className="p-0.5"
+                                aria-label={`${si + 1} etoile(s)`}
                               >
-                                <Star className={`w-6 h-6 ${si < reviewForm.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                                <Star className={`w-6 h-6 ${si < reviewForm.rating ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-300'}`} />
                               </button>
                             ))}
                           </div>
@@ -758,16 +648,17 @@ export function CartSheet({
                             value={reviewForm.comment}
                             onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
                             maxLength={500}
+                            className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
                           />
                         </div>
                         <Button
                           type="submit"
                           disabled={reviewLoading}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                          className="w-full bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-semibold"
                         >
                           {reviewLoading ? 'Envoi en cours...' : 'Publier l\'avis'}
                         </Button>
-                      </motion.form>
+                      </form>
                     )}
                   </AnimatePresence>
                 </TabsContent>
@@ -780,14 +671,14 @@ export function CartSheet({
                 <Button
                   onClick={() => setIsFavorited(!isFavorited)}
                   variant="outline"
-                  className="shrink-0 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
+                  className="shrink-0 border-[#e2e8f0] hover:bg-red-50 hover:border-red-200 hover:text-[#dc2626] transition-colors duration-150"
                   aria-label="Favoris"
                 >
-                  <Heart className={`w-4 h-4 mr-0 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+                  <Heart className={`w-4 h-4 mr-0 ${isFavorited ? 'fill-[#dc2626] text-[#dc2626]' : ''}`} />
                 </Button>
                 <Button
                   onClick={() => { if (selectedProduct) { onAddToCart(selectedProduct, productQty); setSelectedProduct(null); setProductQty(1) } }}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  className="flex-1 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white"
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Ajouter au panier
@@ -803,8 +694,8 @@ export function CartSheet({
               .slice(0, 3)
             if (related.length === 0) return null
             return (
-              <div className="border-t mt-4 pt-4">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Produits similaires</p>
+              <div className="border-t border-[#e2e8f0] mt-4 pt-4">
+                <p className="text-sm font-semibold text-[#1a1a2e] mb-3">Produits similaires</p>
                 <div className="grid grid-cols-3 gap-2">
                   {related.map((rp) => (
                     <button
@@ -814,15 +705,15 @@ export function CartSheet({
                     >
                       <div className="h-16 rounded-lg overflow-hidden bg-gray-100 mb-1.5">
                         {rp.image ? (
-                          <img src={rp.image} alt={rp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                          <img src={rp.image} alt={rp.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className={`w-full h-full bg-gradient-to-br ${getCategoryColor(rp.category?.slug || '')} flex items-center justify-center`}>
-                            <span className="text-lg font-bold text-white/30">{getCategoryInitial(rp.category?.slug || '')}</span>
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-5 h-5 text-gray-300" />
                           </div>
                         )}
                       </div>
-                      <p className="text-xs font-medium text-gray-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">{rp.name}</p>
-                      <p className="text-xs font-bold text-emerald-700">{formatPrice(rp.price)}</p>
+                      <p className="text-xs font-medium text-[#1a1a2e] line-clamp-1 group-hover:text-[#c8a951] transition-colors duration-150">{rp.name}</p>
+                      <p className="text-xs font-bold text-[#1a1a2e]">{formatPrice(rp.price)}</p>
                     </button>
                   ))}
                 </div>

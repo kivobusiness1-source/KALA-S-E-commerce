@@ -16,7 +16,7 @@ const createAdminSchema = z.object({
   email: z.string().email('Email invalide'),
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
-  role: z.enum(['admin', 'super_admin']).optional().default('admin'),
+  role: z.enum(['super_admin', 'admin', 'staff']).optional().default('staff'),
 })
 
 export async function GET(request: NextRequest) {
@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' },

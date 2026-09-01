@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingBag, X, CheckCircle2 } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { X, CheckCircle2 } from 'lucide-react'
 import type { ProductType } from './types'
 
 const sampleNames = [
@@ -10,10 +11,8 @@ const sampleNames = [
   'Jean-Pierre M.',
   'Aline K.',
   'Patrick B.',
-  'Chloé L.',
+  'Chloe L.',
   'Fabrice O.',
-  'Grâce T.',
-  'Hervé D.',
 ]
 
 const sampleTimes = [
@@ -21,8 +20,6 @@ const sampleTimes = [
   'il y a 5 minutes',
   'il y a 8 minutes',
   'il y a 12 minutes',
-  'il y a 15 minutes',
-  'il y a 20 minutes',
 ]
 
 interface NotificationData {
@@ -35,10 +32,8 @@ interface NotificationData {
 export function SocialProofToast({ products }: { products: ProductType[] | undefined }) {
   const [notification, setNotification] = useState<NotificationData | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
-  const [progress, setProgress] = useState(100)
   const [dismissed, setDismissed] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const notificationIdRef = useRef(0)
 
   const getInitials = (name: string) => {
@@ -55,13 +50,12 @@ export function SocialProofToast({ products }: { products: ProductType[] | undef
   }
 
   const showNotification = useCallback(() => {
-    if (dismissed || notificationCount >= 3) return
+    if (dismissed || notificationCount >= 2) return
 
     if (!products || products.length === 0) {
-      // Show generic product if no products loaded yet
       const genericNames = [
         'Savon Liquide Premium',
-        'Détergent Concentré',
+        'Detergent Concentre',
         'Eau de Javel Classic',
       ]
       setNotification({
@@ -81,61 +75,34 @@ export function SocialProofToast({ products }: { products: ProductType[] | undef
     }
 
     setNotificationCount((prev) => prev + 1)
-    setProgress(100)
   }, [products, notificationCount, dismissed])
 
-  // Show notification and auto-dismiss
+  // Auto-dismiss after 4 seconds
   useEffect(() => {
     if (!notification) return
-
-    // Start progress bar countdown (4 seconds)
-    const startTime = Date.now()
-    const duration = 4000
-
-    progressRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
-      setProgress(remaining)
-    }, 50)
-
-    // Auto-dismiss after 4 seconds
     timerRef.current = setTimeout(() => {
       setNotification(null)
-      setProgress(100)
-      if (progressRef.current) clearInterval(progressRef.current)
-    }, duration)
-
+    }, 4000)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
-      if (progressRef.current) clearInterval(progressRef.current)
     }
   }, [notification])
 
   // Schedule periodic notifications
   useEffect(() => {
-    if (dismissed || notificationCount >= 3) return
-
-    // Show first notification after 8 seconds, then every 15-20 seconds
-    const initialDelay = 8000
-    const scheduleNext = () => {
-      const delay = initialDelay + Math.random() * 12000 // 15-20 seconds total
-      timerRef.current = setTimeout(() => {
-        showNotification()
-      }, delay)
-    }
-
-    timerRef.current = setTimeout(scheduleNext, initialDelay)
-
-    // After initial, schedule repeatedly
+    if (dismissed || notificationCount >= 2) return
+    const initialDelay = 10000
+    timerRef.current = setTimeout(() => {
+      showNotification()
+    }, initialDelay)
     const interval = setInterval(() => {
-      if (notificationCount < 3 && !dismissed) {
-        const delay = 15000 + Math.random() * 5000
+      if (notificationCount < 2 && !dismissed) {
+        const delay = 18000 + Math.random() * 5000
         timerRef.current = setTimeout(() => {
           showNotification()
         }, delay)
       }
-    }, 15000)
-
+    }, 18000)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       clearInterval(interval)
@@ -144,72 +111,49 @@ export function SocialProofToast({ products }: { products: ProductType[] | undef
 
   const handleDismiss = () => {
     setNotification(null)
-    setProgress(100)
     setDismissed(true)
     if (timerRef.current) clearTimeout(timerRef.current)
-    if (progressRef.current) clearInterval(progressRef.current)
-  }
-
-  const handleClose = () => {
-    setNotification(null)
-    setProgress(100)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (progressRef.current) clearInterval(progressRef.current)
   }
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 hidden md:block">
+    <div className="fixed bottom-4 left-4 z-50 hidden md:block">
       <AnimatePresence mode="wait">
         {notification && (
           <motion.div
             key={notification.id}
-            initial={{ x: -320, opacity: 0 }}
+            initial={{ x: -280, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -320, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="relative bg-white rounded-xl shadow-lg border border-gray-100 p-4 w-80 overflow-hidden"
+            exit={{ x: -280, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="relative bg-white rounded-lg border border-[#e2e8f0] shadow-sm p-3 w-64 overflow-hidden"
           >
-            {/* Close button */}
             <button
               onClick={handleDismiss}
-              className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-2 right-2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-[#1a1a2e] transition-colors duration-150"
               aria-label="Fermer"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
 
-            <div className="flex items-start gap-3">
-              {/* Avatar with initials */}
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                <span className="text-emerald-700 font-semibold text-sm">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#fafafa] border border-[#e2e8f0] flex items-center justify-center shrink-0">
+                <span className="text-[#1a1a2e] font-semibold text-[10px]">
                   {getInitials(notification.buyerName)}
                 </span>
               </div>
-
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-xs text-gray-500 font-medium">Achat vérifié</span>
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-[#16a34a] shrink-0" />
+                  <span className="text-[11px] text-[#64748b] font-medium">Achat verifie</span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900 mt-0.5 truncate">
+                <p className="text-xs font-semibold text-[#1a1a2e] mt-0.5 truncate">
                   {notification.buyerName}
                 </p>
-                <p className="text-xs text-gray-600 truncate flex items-center gap-1">
-                  <ShoppingBag className="w-3 h-3 shrink-0" />
-                  <span className="font-medium">{notification.productName}</span>
+                <p className="text-[11px] text-[#64748b] truncate">
+                  {notification.productName}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">{notification.timeAgo}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{notification.timeAgo}</p>
               </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-100">
-              <motion.div
-                className="h-full bg-emerald-500 rounded-full"
-                initial={{ width: '100%' }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.05, ease: 'linear' }}
-              />
             </div>
           </motion.div>
         )}
