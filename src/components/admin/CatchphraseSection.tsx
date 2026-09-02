@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Megaphone, Plus, Edit, Trash2, Type } from 'lucide-react'
+import { Megaphone, Plus, Edit, Trash2, Type, ChevronUp, ChevronDown, Power, PowerOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,20 +28,20 @@ import { formatDate } from './helpers'
 import type { Catchphrase } from './types'
 
 const POSITIONS = [
-  { value: 'hero', label: 'Bannière principale' },
-  { value: 'promo_bar', label: 'Barre promotionnelle' },
-  { value: 'product_page', label: 'Page produit' },
-  { value: 'footer', label: 'Pied de page' },
+  { value: 'hero', label: 'Bannière principale', description: 'Sous-titre de la section héro de la page d\'accueil' },
+  { value: 'promo_bar', label: 'Barre promotionnelle', description: 'Texte défilant en haut de la page' },
+  { value: 'product_page', label: 'Page produit', description: 'Texte affiché sur la page de détail des produits' },
+  { value: 'footer', label: 'Pied de page', description: 'Slogan dans le footer du site' },
 ]
 
 function PositionBadge({ position }: { position: string }) {
   switch (position) {
     case 'hero':
-      return <Badge className="bg-[#1a1a2e] text-white hover:bg-[#1a1a2e]/90">Bannière</Badge>
+      return <Badge className="bg-[#1a1a1a] text-white hover:bg-[#1a1a1a]/90">Bannière</Badge>
     case 'promo_bar':
       return <Badge className="bg-[#c8a951] text-white hover:bg-[#c8a951]/90">Promo</Badge>
     case 'product_page':
-      return <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-100">Produit</Badge>
+      return <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-200">Produit</Badge>
     case 'footer':
       return <Badge variant="outline" className="text-gray-600">Footer</Badge>
     default:
@@ -68,11 +68,25 @@ export default function CatchphraseSection() {
   const [deletingItem, setDeletingItem] = useState<Catchphrase | null>(null)
   const [form, setForm] = useState<FormData>(emptyForm)
   const [formLoading, setFormLoading] = useState(false)
+  const [positionFilter, setPositionFilter] = useState('all')
 
   const { data: catchphrases, isLoading } = useQuery({
     queryKey: ['admin-catchphrases'],
-    queryFn: () => fetch('/api/catchphrases').then(r => r.json()).then(d => d.data as Catchphrase[]),
+    // Fetch all (including inactive) for admin
+    queryFn: () => fetch('/api/catchphrases?all=true').then(r => r.json()).then(d => d.data as Catchphrase[]),
   })
+
+  // Sort by position then sortOrder
+  const sortedCatchphrases = useMemo(() => {
+    if (!catchphrases) return []
+    const filtered = positionFilter === 'all'
+      ? catchphrases
+      : catchphrases.filter(c => c.position === positionFilter)
+    return [...filtered].sort((a, b) => {
+      if (a.position !== b.position) return a.position.localeCompare(b.position)
+      return a.sortOrder - b.sortOrder
+    })
+  }, [catchphrases, positionFilter])
 
   const totalActive = catchphrases?.filter(c => c.isActive).length ?? 0
 
@@ -194,13 +208,46 @@ export default function CatchphraseSection() {
     }
   }
 
+  const handleReorder = async (item: Catchphrase, direction: 'up' | 'down') => {
+    if (!catchphrases) return
+    const samePosition = catchphrases
+      .filter(c => c.position === item.position)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    
+    const currentIndex = samePosition.findIndex(c => c.id === item.id)
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    
+    if (targetIndex < 0 || targetIndex >= samePosition.length) return
+    
+    const targetItem = samePosition[targetIndex]
+    
+    try {
+      await Promise.all([
+        fetch(`/api/catchphrases/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: targetItem.sortOrder }),
+        }),
+        fetch(`/api/catchphrases/${targetItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: item.sortOrder }),
+        }),
+      ])
+      queryClient.invalidateQueries({ queryKey: ['admin-catchphrases'] })
+      toast.success('Ordre mis à jour')
+    } catch {
+      toast.error('Erreur serveur')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total phrases</p>
+            <p className="text-sm text-muted-foreground">Total</p>
             <p className="text-2xl font-bold text-gray-900">{catchphrases?.length ?? 0}</p>
           </CardContent>
         </Card>
@@ -210,7 +257,13 @@ export default function CatchphraseSection() {
             <p className="text-2xl font-bold text-gray-900">{totalActive}</p>
           </CardContent>
         </Card>
-        <Card className="col-span-2 lg:col-span-1">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Inactives</p>
+            <p className="text-2xl font-bold text-gray-900">{(catchphrases?.length ?? 0) - totalActive}</p>
+          </CardContent>
+        </Card>
+        <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Positions</p>
             <p className="text-2xl font-bold text-gray-900">{POSITIONS.length}</p>
@@ -218,19 +271,49 @@ export default function CatchphraseSection() {
         </Card>
       </div>
 
+      {/* Position explanation */}
+      <Card className="bg-gray-50/50">
+        <CardContent className="p-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">Positions disponibles</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {POSITIONS.map(p => (
+              <div key={p.value} className="flex items-start gap-2">
+                <PositionBadge position={p.value} />
+                <div>
+                  <p className="text-sm font-medium text-gray-700">{p.label}</p>
+                  <p className="text-xs text-muted-foreground">{p.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Phrases publicitaires</h3>
           <p className="text-sm text-muted-foreground">Gérer les textes promotionnels du site</p>
         </div>
-        <Button
-          onClick={() => { resetForm(); setCreateOpen(true) }}
-          className="bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter
-        </Button>
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <Select value={positionFilter} onValueChange={setPositionFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Toutes les positions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les positions</SelectItem>
+              {POSITIONS.map(p => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => { resetForm(); setCreateOpen(true) }}
+            className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -238,22 +321,43 @@ export default function CatchphraseSection() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
-          ) : catchphrases && catchphrases.length > 0 ? (
+          ) : sortedCatchphrases.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/80">
+                    <TableHead className="w-10"></TableHead>
                     <TableHead>Texte</TableHead>
                     <TableHead>Position</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="hidden sm:table-cell">Ordre</TableHead>
                     <TableHead className="hidden md:table-cell">Créé le</TableHead>
-                    <TableHead className="w-28">Actions</TableHead>
+                    <TableHead className="w-36">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {catchphrases.map((c, i) => (
+                  {sortedCatchphrases.map((c, i) => (
                     <TableRow key={c.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50`}>
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+                            onClick={() => handleReorder(c, 'up')}
+                            disabled={i === 0 || (i > 0 && sortedCatchphrases[i - 1].position !== c.position)}
+                            title="Monter"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5 text-gray-500" />
+                          </button>
+                          <button
+                            className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+                            onClick={() => handleReorder(c, 'down')}
+                            disabled={i === sortedCatchphrases.length - 1 || (i < sortedCatchphrases.length - 1 && sortedCatchphrases[i + 1].position !== c.position)}
+                            title="Descendre"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                          </button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 max-w-[300px]">
                           <Type className="h-4 w-4 text-gray-400 shrink-0" />
@@ -280,6 +384,15 @@ export default function CatchphraseSection() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${c.isActive ? 'text-gray-500 hover:text-orange-600' : 'text-orange-500 hover:text-orange-700'}`}
+                            onClick={() => handleToggle(c)}
+                            title={c.isActive ? 'Désactiver' : 'Activer'}
+                          >
+                            {c.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -422,7 +535,7 @@ function CatchphraseFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-          <Button onClick={onSubmit} disabled={loading} className="bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white">
+          <Button onClick={onSubmit} disabled={loading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
             {loading ? 'Enregistrement...' : submitLabel}
           </Button>
         </DialogFooter>

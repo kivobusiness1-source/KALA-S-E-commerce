@@ -83,7 +83,7 @@ export default function StockHistorySection() {
                         <TableCell className="text-right text-sm">{entry.previousQty}</TableCell>
                         <TableCell className="text-right text-sm">{entry.newQty}</TableCell>
                         <TableCell className="text-right">
-                          <span className={`text-sm font-semibold ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                          <span className={`text-sm font-semibold ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                             {diff > 0 ? `+${diff}` : String(diff)}
                           </span>
                         </TableCell>
@@ -115,7 +115,7 @@ export default function StockHistorySection() {
               key={p}
               variant={page === p ? 'default' : 'outline'}
               size="sm"
-              className={page === p ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+              className={page === p ? 'bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white' : ''}
               onClick={() => setPage(p)}
             >
               {p}

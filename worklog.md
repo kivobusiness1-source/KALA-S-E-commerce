@@ -1472,3 +1472,143 @@ Stage Summary:
 - LLM integration: auto-reply API using z-ai-web-dev-sdk
 - Admin roles: super_admin, admin, staff
 - Admin credentials: admin@congosoap.cg / Admin@2024! (super_admin)
+
+---
+Task ID: 1
+Agent: frontend-styling-expert
+Task: Complete storefront redesign — natural, professional look
+
+Work Log:
+- Updated all storefront components with new color palette
+- Removed emerald/teal/amber/cyan colors from 19 files
+- Removed emojis from promo text (page.tsx) and step content (HowToOrderSection.tsx)
+- Removed gradient text, shimmer animation, breathing animation from page.tsx
+- Removed TypingEffect and PulseDot from AnimatedComponents.tsx
+- Simplified FadeInSection to subtle opacity:0→1, y:8→0, duration:0.4
+- Applied clean #1a1a1a / white / #e5e5e5 palette throughout
+- Changed borders from #e2e8f0 to #e5e5e5
+- Changed body text from #64748b to #555555/#888888
+- Changed star ratings from gold (#c8a951) to amber-500 (#f59e0b)
+- Discount badges changed to #dc2626 (red)
+- Stock indicators use #16a34a (green) sparingly
+- Hero section: solid #1a1a1a bg, white primary button, outline secondary
+- Feature cards: clean borders, no colorful accents
+- How to order: removed emojis, dashed lines, pulsing dots, gradient circles
+- About section: removed floating bottles, decorative dot pattern, emerald accents
+- Testimonials: clean white cards with border, no colored left borders
+- Delivery pricing: removed animated map, simplified to gray placeholder
+- FAQ: removed colored decorative elements, clean numbered accordion
+- Product comparison: removed emerald accents, clean neutral design
+- All buttons: #1a1a1a bg with #333 hover, or outline variants
+- ESLint: 0 errors
+
+Stage Summary:
+- All ~19 storefront components redesigned
+- Design is now clean, professional, minimal
+- All functionality preserved
+
+---
+Task ID: 2-b
+Agent: full-stack-developer
+Task: Admin roles, stock management, catchphrase CMS, role-based access
+
+Work Log:
+- Redesigned admin login page: removed emerald gradient/bubbles/animations, solid #1a1a1a left panel with CC logo, white right panel with clean form, mobile dark bg
+- Updated admin sidebar: white bg, #1a1a1a text and active states, CC logo, clean borders
+- Updated NavBadge and SidebarQuickStats to use #1a1a1a instead of emerald
+- Updated loading spinner to #1a1a1a
+- Rewrote TeamSection with full role CRUD: super_admin sees all + create/edit/delete, admin sees all + create/edit staff/livreur, staff/livreur sees only own profile
+- Added livreur role to team management with proper RoleBadge (super_admin=dark, admin=gray, staff=light, livreur=outlined)
+- Created /api/admin/users/[id] route with PUT (edit) and DELETE (delete) with role-based permissions
+- Updated /api/admin/users POST to support livreur role and phone field
+- Rewrote OrdersSection with role-based filtering: livreur sees only assigned orders, staff cannot mark delivered, admin/super_admin have full access
+- Added order assignment dropdown in order detail dialog (Assigner à) with admin/livreur list
+- Updated /api/orders GET to filter by assignedToId for livreur role
+- Updated /api/orders/[id] GET to include assignedBy and deliverer relations
+- Updated /api/orders/[id] PUT to support status restrictions by role and assignedToId assignment
+- Completely rewrote stock management in ProductsSection: stock alert banner, color-coded stock (red when low), Gérer le stock button, dialog with entry/exit, reason dropdown, min alert threshold editing
+- Created /api/stock/[productId] POST route for stock adjustment with StockHistory creation
+- Rewrote CatchphraseSection as full CMS: position filter, position explanation card, up/down reorder arrows, toggle active/inactive button, stats cards
+- Updated /api/catchphrases GET to support ?all=true for admin to see inactive catchphrases
+- Updated StockHistorySection to remove emerald, use green/red for variation
+- Added role-based section visibility in admin page: super_admin=all, admin=all except limited team, staff=dashboard/products/orders/messages/contact/reviews/stock, livreur=dashboard/orders only
+- Added Order type fields: assignedToId, assignedBy, deliverer
+- ESLint: 0 errors
+
+Stage Summary:
+- Super admin can manage all roles (create/edit/delete)
+- Admin can create/edit staff and livreur accounts
+- Staff can only view/edit their own profile
+- Livreurs see only assigned orders
+- Staff cannot mark orders as delivered
+- Stock management with alerts, entry/exit tracking, reasons, and history
+- Catchphrase CMS with reorder, toggle, position filtering
+- Admin login redesigned to clean dark/white (no AI look)
+- All emerald/teal/amber removed from admin panel
+---
+Task ID: 5
+Agent: full-stack-developer
+Task: LLM customer chat widget
+
+Work Log:
+- Created /api/ai-chat API route with z-ai-web-dev-sdk
+- Created ChatWidget component with clean minimal design
+- Integrated into page.tsx
+- System prompt includes all product/pricing/delivery info
+- ESLint: 0 errors
+
+Stage Summary:
+- AI chat responds in French about CongoClean products
+- Clean #1a1a1a/white design
+- Session-based conversations with context
+
+---
+Task ID: 6
+Agent: frontend-styling-expert
+Task: Product preview improvements
+
+Work Log:
+- Updated ProductType with images and minStockAlert fields
+- Updated product cards with hover zoom (scale 1.03) and quick view overlay button
+- Added SVG package placeholder for cards without images
+- Added stock indicators using minStockAlert (Rupture/Derniers exemplaires)
+- Rebuilt product detail dialog with 60/40 desktop layout
+- Added multi-image gallery with thumbnails and navigation arrows
+- Added zoom-on-hover panel for desktop
+- Improved quantity selector and reviews section in product detail
+- Applied same card improvements to FlashSaleSection
+- ESLint: 0 errors
+
+Stage Summary:
+- Professional product cards with hover effects and quick view
+- Multi-image gallery with zoom in product detail
+- Stock status indicators using minStockAlert threshold
+- Clean 60/40 split layout in product detail dialog
+
+---
+Task ID: 11
+Agent: main (coordinator) + 3 subagents
+Task: Complete redesign + Super Admin roles + Stock management + Catchphrase CMS + LLM Chat + Product previews + Responsive
+
+Work Log:
+- **Redesign (Task 1)**: Updated 19 storefront components + helpers.ts. Removed ALL emerald/teal/amber/cyan colors. Applied clean #1a1a1a/white/#e5e5e5 palette. Removed emojis, shimmer, gradient text, floating bubbles, TypingEffect, PulseDot. Clean professional e-commerce look.
+- **Super Admin + Roles (Task 2-b)**: Redesigned admin login (solid #1a1a1a, no bubbles). Updated TeamSection with full role CRUD (super_admin/admin/staff/livreur). OrdersSection filters by role (livreur sees only assigned orders). Admin page section visibility by role. Created /api/admin/users/[id] for CRUD.
+- **Stock Management (Task 2-b)**: Added stock management dialog in ProductsSection (adjust stock, set min alert threshold, reason tracking). Stock alert banner for low-stock products. Created /api/stock/[productId] endpoint.
+- **Catchphrase CMS (Task 2-b)**: Updated CatchphraseSection with position filter, reorder arrows, toggle active/inactive, stats cards.
+- **LLM Chat (Task 5)**: Created /api/ai-chat with z-ai-web-dev-sdk. System prompt includes full product catalog, pricing, delivery zones, payment methods. Created ChatWidget component (minimal #1a1a1a/white design, session-based conversations).
+- **Product Previews (Task 6)**: Added hover scale(1.03) + "Voir les details" overlay on product cards. Image gallery/carousel in product detail with thumbnails and arrows. Zoom-on-hover panel (desktop only). Quantity selector. Stock indicators (Rupture/Derniers exemplaires). SVG placeholder for missing images.
+- **Responsive (Task 7)**: Verified all components work on mobile (375px), tablet, desktop. Grid breakpoints: 1col mobile, 2col tablet, 3-4col desktop. Mobile nav with hamburger menu. Stacked layouts for hero, about, contact.
+- **Bug Fix**: Fixed "Too many re-renders" caused by setState during render in CartSheet. Used key={selectedProduct.id} on Dialog for clean state reset.
+
+Stage Summary:
+- ALL 7 tasks completed
+- Design: clean, professional, natural (no AI look)
+- Super admin can manage all 4 roles
+- Livreurs see only assigned orders
+- Stock management with alerts and history
+- Catchphrase CMS for all positions
+- LLM chat responds in French about CongoClean
+- Product cards with hover effects, image gallery, zoom
+- Responsive across all devices
+- ESLint: 0 errors
+- Browser verified: desktop + mobile

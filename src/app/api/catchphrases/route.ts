@@ -10,8 +10,27 @@ const catchphraseSchema = z.object({
   sortOrder: z.number().optional(),
 })
 
-export async function GET() {
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const showAll = searchParams.get('all') === 'true'
+
+    const session = await getSession(request)
+    if (session && showAll) {
+      // Admin: return all catchphrases
+      const catchphrases = await db.catchphrase.findMany({
+        orderBy: [{ position: 'asc' }, { sortOrder: 'asc' }],
+      })
+      return NextResponse.json({ success: true, data: catchphrases })
+    }
+
+    // Public: return only active
     const catchphrases = await db.catchphrase.findMany({
       where: { isActive: true },
       orderBy: [{ position: 'asc' }, { sortOrder: 'asc' }],
@@ -25,7 +44,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || (session.role !== 'super_admin' && session.role !== 'admin')) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -35,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
     }
     const cp = await db.catchphrase.create({ data: validated.data })
-    await logActivity(session.adminId, 'create_catchphrase', `Phrase créée: ${cp.text.slice(0, 50)}`)
+    await logActivity(session.id, 'create_catchphrase', `Phrase créée: ${cp.text.slice(0, 50)}`)
     return NextResponse.json({ success: true, data: cp }, { status: 201 })
   } catch (error) {
     console.error('Create catchphrase error:', error)

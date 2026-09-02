@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {}
 
+    // Role-based filtering
+    if (admin.role === 'livreur') {
+      // Livreur: only see orders assigned to them via assignedToId
+      where.assignedToId = admin.id
+    }
+
     if (query.status) {
       where.status = query.status
     }
@@ -60,7 +66,9 @@ export async function GET(request: NextRequest) {
       db.order.findMany({
         where,
         include: {
-          items: { include: { product: { select: { name: true, image: true } } } },
+          items: { include: { product: { select: { name: true, image: true, volume: true } } } },
+          assignedBy: { select: { id: true, name: true, email: true, role: true } },
+          deliverer: { select: { id: true, name: true, phone: true, zone: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (query.page - 1) * query.limit,

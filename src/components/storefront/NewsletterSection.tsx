@@ -30,23 +30,23 @@ export function NewsletterSection({
 
   if (newsletterSuccess) {
     return (
-      <section className="py-14 bg-white border-y border-[#e2e8f0]">
+      <section className="py-14 bg-white border-y border-[#e5e5e5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-lg mx-auto text-center">
-            <div className="w-14 h-14 rounded-full bg-[#fafafa] border border-[#e2e8f0] flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 rounded-full bg-gray-50 border border-[#e5e5e5] flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-[#16a34a]" />
             </div>
-            <h2 className="text-2xl font-bold text-[#1a1a2e] mb-2">Merci pour votre inscription !</h2>
-            <p className="text-[#64748b] text-sm mb-6">Utilisez le code pour 10% de reduction sur votre premiere commande.</p>
-            <div className="inline-flex items-center gap-2 bg-[#fafafa] border border-[#e2e8f0] rounded-lg px-4 py-3">
-              <Gift className="w-4 h-4 text-[#c8a951]" />
-              <code className="text-sm font-mono font-bold text-[#1a1a2e] tracking-wider">CONGOCLEAN10</code>
+            <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">Merci pour votre inscription !</h2>
+            <p className="text-[#555555] text-sm mb-6">Utilisez le code pour 10% de reduction sur votre premiere commande.</p>
+            <div className="inline-flex items-center gap-2 bg-gray-50 border border-[#e5e5e5] rounded-lg px-4 py-3">
+              <Gift className="w-4 h-4 text-[#888888]" />
+              <code className="text-sm font-mono font-bold text-[#1a1a1a] tracking-wider">CONGOCLEAN10</code>
               <button
                 onClick={handleCopyCode}
                 className="w-8 h-8 rounded-md hover:bg-gray-200 flex items-center justify-center transition-colors duration-150"
                 aria-label="Copier le code"
               >
-                {copied ? <Check className="w-4 h-4 text-[#16a34a]" /> : <Copy className="w-4 h-4 text-[#64748b]" />}
+                {copied ? <Check className="w-4 h-4 text-[#16a34a]" /> : <Copy className="w-4 h-4 text-[#888888]" />}
               </button>
             </div>
           </div>
@@ -56,14 +56,14 @@ export function NewsletterSection({
   }
 
   return (
-    <section className="py-14 bg-white border-y border-[#e2e8f0]">
+    <section className="py-14 bg-white border-y border-[#e5e5e5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-lg mx-auto text-center">
-          <div className="w-12 h-12 rounded-full bg-[#fafafa] border border-[#e2e8f0] flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-5 h-5 text-[#64748b]" />
+          <div className="w-12 h-12 rounded-full bg-gray-50 border border-[#e5e5e5] flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-5 h-5 text-[#888888]" />
           </div>
-          <h2 className="text-2xl font-bold text-[#1a1a2e] mb-2">Restez Informe</h2>
-          <p className="text-[#64748b] text-sm mb-6">
+          <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">Restez Informe</h2>
+          <p className="text-[#555555] text-sm mb-6">
             Inscrivez-vous pour recevoir nos offres speciales et nouveautes
           </p>
           <form
@@ -71,20 +71,20 @@ export function NewsletterSection({
             className="flex flex-col sm:flex-row gap-3"
           >
             <div className="relative flex-1">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748b] pointer-events-none" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
               <Input
                 type="email"
                 placeholder="Votre adresse email"
                 value={newsletterEmail}
                 onChange={(e) => setNewsletterEmail(e.target.value)}
                 required
-                className="pl-10 bg-white border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+                className="pl-10 bg-white border-[#e5e5e5] focus-visible:ring-[#1a1a1a]/10 focus-visible:border-[#1a1a1a]"
               />
             </div>
             <Button
               type="submit"
               disabled={newsletterLoading}
-              className="bg-[#c8a951] hover:bg-[#c8a951]/90 text-[#1a1a2e] font-semibold px-8"
+              className="bg-[#1a1a1a] hover:bg-[#333] text-white font-semibold px-8"
             >
               {newsletterLoading ? '...' : "S'abonner"}
               <Send className="w-4 h-4 ml-2" />

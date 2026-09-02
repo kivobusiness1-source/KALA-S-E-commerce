@@ -125,31 +125,31 @@ export function SocialProofToast({ products }: { products: ProductType[] | undef
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -280, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="relative bg-white rounded-lg border border-[#e2e8f0] shadow-sm p-3 w-64 overflow-hidden"
+            className="relative bg-white rounded-lg border border-[#e5e5e5] shadow-sm p-3 w-64 overflow-hidden"
           >
             <button
               onClick={handleDismiss}
-              className="absolute top-2 right-2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-[#1a1a2e] transition-colors duration-150"
+              className="absolute top-2 right-2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-[#1a1a1a] transition-colors duration-150"
               aria-label="Fermer"
             >
               <X className="w-3 h-3" />
             </button>
 
             <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#fafafa] border border-[#e2e8f0] flex items-center justify-center shrink-0">
-                <span className="text-[#1a1a2e] font-semibold text-[10px]">
+              <div className="w-8 h-8 rounded-full bg-[#fafafa] border border-[#e5e5e5] flex items-center justify-center shrink-0">
+                <span className="text-[#1a1a1a] font-semibold text-[10px]">
                   {getInitials(notification.buyerName)}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-[#16a34a] shrink-0" />
-                  <span className="text-[11px] text-[#64748b] font-medium">Achat verifie</span>
+                  <span className="text-[11px] text-[#888888] font-medium">Achat verifie</span>
                 </div>
-                <p className="text-xs font-semibold text-[#1a1a2e] mt-0.5 truncate">
+                <p className="text-xs font-semibold text-[#1a1a1a] mt-0.5 truncate">
                   {notification.buyerName}
                 </p>
-                <p className="text-[11px] text-[#64748b] truncate">
+                <p className="text-[11px] text-[#888888] truncate">
                   {notification.productName}
                 </p>
                 <p className="text-[10px] text-gray-400 mt-0.5">{notification.timeAgo}</p>

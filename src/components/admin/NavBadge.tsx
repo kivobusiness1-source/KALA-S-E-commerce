@@ -28,7 +28,7 @@ export default function NavBadge({ itemKey, activeSection }: { itemKey: Section;
 
   if (count === 0) return null
   return (
-    <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${activeSection === itemKey ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
+    <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold ${activeSection === itemKey ? 'bg-[#1a1a1a] text-white' : 'bg-red-500 text-white'}`}>
       {count}
     </span>
   )

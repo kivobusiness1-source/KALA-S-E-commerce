@@ -5,7 +5,11 @@ import { validateSession } from '@/lib/auth'
 // GET /api/stock-history - Admin: get stock history
 export async function GET(request: NextRequest) {
   try {
-    const session = await validateSession()
+    const token = request.cookies.get('admin_token')?.value
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
+    }
+    const session = await validateSession(token)
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
     }

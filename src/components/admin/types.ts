@@ -52,9 +52,12 @@ export interface Order {
   status: string
   totalAmount: number
   notes: string | null
+  assignedToId: string | null
   createdAt: string
   items: OrderItem[]
   orderNotes?: OrderNote[]
+  assignedBy?: { id: string; name: string; email: string; role: string }
+  deliverer?: { id: string; name: string; phone: string; zone: string | null }
 }
 
 export interface OrderItem {

@@ -17,7 +17,8 @@ const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'deliver
 const updateOrderSchema = z.object({
   status: z.enum(validStatuses as [string, ...string[]], {
     errorMap: () => ({ message: `Status must be one of: ${validStatuses.join(', ')}` }),
-  }),
+  }).optional(),
+  assignedToId: z.string().optional().nullable(),
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,10 +31,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       where: { id },
       include: {
         items: { include: { product: { select: { name: true, image: true, volume: true } } } },
+        assignedBy: { select: { id: true, name: true, email: true, role: true } },
+        deliverer: { select: { id: true, name: true, phone: true, zone: true } },
       },
     })
 
     if (!order) return err('Order not found', 404)
+
+    // Livreur: can only see orders assigned to them
+    if (admin.role === 'livreur' && order.assignedToId !== admin.id) {
+      return err('Order not found', 404)
+    }
 
     return ok(order)
   } catch (error) {
@@ -49,19 +57,44 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const body = await request.json()
-    const { status } = updateOrderSchema.parse(body)
+    const parsed = updateOrderSchema.parse(body)
 
     const existingOrder = await db.order.findUnique({ where: { id } })
     if (!existingOrder) return err('Order not found', 404)
 
+    // Livreur: can only update their own assigned orders
+    if (admin.role === 'livreur' && existingOrder.assignedToId !== admin.id) {
+      return err('Accès refusé', 403)
+    }
+
+    // Staff: cannot set status to 'delivered'
+    if (admin.role === 'staff' && parsed.status === 'delivered') {
+      return err('Le staff ne peut pas marquer une commande comme livrée', 403)
+    }
+
+    // Only super_admin/admin can reassign orders
+    const updateData: Record<string, unknown> = {}
+    if (parsed.status) {
+      updateData.status = parsed.status
+    }
+    if (parsed.assignedToId !== undefined) {
+      if (admin.role === 'super_admin' || admin.role === 'admin') {
+        updateData.assignedToId = parsed.assignedToId
+      }
+    }
+
     const order = await db.order.update({
       where: { id },
-      data: { status },
-      include: { items: true },
+      data: updateData,
+      include: {
+        items: true,
+        assignedBy: { select: { id: true, name: true, email: true, role: true } },
+        deliverer: { select: { id: true, name: true, phone: true, zone: true } },
+      },
     })
 
     // If cancelled, restore stock
-    if (status === 'cancelled' && existingOrder.status !== 'cancelled') {
+    if (parsed.status === 'cancelled' && existingOrder.status !== 'cancelled') {
       for (const item of existingOrder.items) {
         await db.product.update({
           where: { id: item.productId },
@@ -70,17 +103,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    const details = []
+    if (parsed.status) details.push(`status: ${existingOrder.status} → ${parsed.status}`)
+    if (parsed.assignedToId !== undefined) details.push(`assigned to: ${parsed.assignedToId || 'none'}`)
+
     await logActivity(
       admin.id,
-      'UPDATE_ORDER_STATUS',
-      `Order ${existingOrder.orderNumber} status changed: ${existingOrder.status} → ${status}`,
+      'UPDATE_ORDER',
+      `Order ${existingOrder.orderNumber}: ${details.join(', ')}`,
       request.headers.get('x-forwarded-for') ?? undefined,
     )
 
     return ok(order)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return err('Invalid input data', 400)
+      return err(error.errors.map(e => e.message).join(', '), 400)
     }
     console.error('Order PUT error:', error)
     return err('Failed to update order', 500)

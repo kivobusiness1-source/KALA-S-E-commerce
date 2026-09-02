@@ -47,9 +47,9 @@ export function Footer({
   ]
 
   const recentlyViewedSection = recentlyViewed.length > 0 ? (
-    <section className="py-8 bg-white border-t border-[#e2e8f0]">
+    <section className="py-8 bg-white border-t border-[#e5e5e5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h3 className="text-sm font-semibold text-[#1a1a2e] mb-4">Recemment consultes</h3>
+        <h3 className="text-sm font-semibold text-[#1a1a1a] mb-4">Recemment consultes</h3>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {recentlyViewed.map((product) => (
             <button
@@ -66,8 +66,8 @@ export function Footer({
                   </div>
                 )}
               </div>
-              <p className="text-sm font-medium text-[#1a1a2e] line-clamp-1 group-hover:text-[#c8a951] transition-colors duration-150">{product.name}</p>
-              <p className="text-sm font-semibold text-[#1a1a2e]">{formatPrice(product.price)}</p>
+              <p className="text-sm font-medium text-[#1a1a1a] line-clamp-1 group-hover:underline">{product.name}</p>
+              <p className="text-sm font-semibold text-[#1a1a1a]">{formatPrice(product.price)}</p>
             </button>
           ))}
         </div>
@@ -79,7 +79,7 @@ export function Footer({
     <>
       {recentlyViewedSection}
 
-      <footer className="mt-auto bg-[#1a1a2e] text-gray-400">
+      <footer className="mt-auto bg-[#1a1a1a] text-gray-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
             {/* Company Info */}
@@ -178,13 +178,13 @@ export function Footer({
             <TooltipTrigger asChild>
               <button
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="fixed bottom-6 right-6 z-40 w-11 h-11 bg-white border border-[#e2e8f0] text-[#1a1a2e] rounded-full shadow-sm flex items-center justify-center hover:shadow-md transition-shadow duration-150"
+                className="fixed bottom-6 right-6 z-40 w-11 h-11 bg-[#333] border border-[#e5e5e5] text-white rounded-full shadow-sm flex items-center justify-center hover:shadow-md hover:bg-[#1a1a1a] transition-shadow duration-150"
                 aria-label="Retour en haut"
               >
                 <ChevronUp className="w-5 h-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="bg-[#1a1a2e] text-white text-xs border-none">
+            <TooltipContent side="left" className="bg-[#1a1a1a] text-white text-xs border-none">
               Retour en haut
             </TooltipContent>
           </Tooltip>
@@ -197,17 +197,17 @@ export function Footer({
       {/* Cookie Consent Banner */}
       {cookieConsentVisible && (
         <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="bg-white border-t border-[#e2e8f0] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          <div className="bg-white border-t border-[#e5e5e5] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                  <Lock className="w-4 h-4 text-[#64748b]" />
+                  <Lock className="w-4 h-4 text-[#888888]" />
                 </div>
                 <div>
-                  <p className="text-sm text-[#1a1a2e] font-medium">Nous utilisons des cookies pour ameliorer votre experience.</p>
+                  <p className="text-sm text-[#1a1a1a] font-medium">Nous utilisons des cookies pour ameliorer votre experience.</p>
                   <button
                     onClick={() => setPrivacyOpen(true)}
-                    className="text-xs text-[#64748b] hover:text-[#1a1a2e] hover:underline inline-flex items-center gap-1 mt-0.5"
+                    className="text-xs text-[#888888] hover:text-[#1a1a1a] hover:underline inline-flex items-center gap-1 mt-0.5"
                   >
                     <Info className="w-3 h-3" />
                     En savoir plus
@@ -220,7 +220,7 @@ export function Footer({
                     localStorage.setItem('congoclean_cookie_consent', 'rejected')
                     setCookieConsentVisible(false)
                   }}
-                  className="text-sm text-[#64748b] hover:text-[#1a1a2e] px-4 py-2 transition-colors duration-150"
+                  className="text-sm text-[#888888] hover:text-[#1a1a1a] px-4 py-2 transition-colors duration-150"
                 >
                   Refuser
                 </button>
@@ -229,7 +229,7 @@ export function Footer({
                     localStorage.setItem('congoclean_cookie_consent', 'accepted')
                     setCookieConsentVisible(false)
                   }}
-                  className="text-sm bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white px-5 py-2 rounded-lg font-medium transition-colors duration-150"
+                  className="text-sm bg-[#1a1a1a] hover:bg-[#333] text-white px-5 py-2 rounded-lg font-medium transition-colors duration-150"
                 >
                   Accepter
                 </button>

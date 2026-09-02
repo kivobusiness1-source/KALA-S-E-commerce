@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { ShoppingCart, Eye } from 'lucide-react'
+import { ShoppingCart } from 'lucide-react'
 import { formatPrice } from './helpers'
 import type { ProductType } from './types'
 
@@ -69,13 +69,13 @@ export function FlashSaleSection({ products, onAddToCart, onViewProduct }: Flash
   if (discountedProducts.length === 0) return null
 
   return (
-    <section className="py-14 bg-[#fafafa]">
+    <section className="py-14 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a2e]">Promotions</h2>
-            <p className="text-sm text-[#64748b] mt-1">Offres limitees</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Promotions</h2>
+            <p className="text-sm text-[#555555] mt-1">Offres limitees</p>
           </div>
         </div>
 
@@ -94,52 +94,60 @@ export function FlashSaleSection({ products, onAddToCart, onViewProduct }: Flash
                   key={product.id}
                   className="flex-shrink-0 w-64 sm:w-72 snap-start"
                 >
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden group hover:shadow-md transition-shadow duration-200">
+                  <div className="bg-white border border-[#e5e5e5] rounded-xl overflow-hidden group hover:shadow-sm transition-shadow duration-200 shadow-sm">
                     {/* Product image area */}
-                    <div className="relative h-44 overflow-hidden bg-gray-100">
+                    <div className="relative h-44 overflow-hidden bg-[#f5f5f5]">
                       {product.image ? (
                         <img
                           src={product.image}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <ShoppingCart className="w-8 h-8 text-gray-300" />
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4d4d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                         </div>
                       )}
 
                       {/* Discount badge */}
-                      <div className="absolute top-3 left-3 bg-[#1a1a2e] text-white text-[11px] font-medium px-2 py-0.5 rounded">
+                      <div className="absolute top-3 left-3 bg-[#dc2626] text-white text-[11px] font-medium px-2 py-0.5 rounded">
                         -{discount}%
                       </div>
 
                       {/* Quick view overlay */}
                       <button
                         onClick={() => onViewProduct(product)}
-                        className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-150 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        className="absolute inset-0 flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                       >
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <Eye className="w-5 h-5 text-[#1a1a2e]" />
-                        </div>
+                        <span className="bg-white/90 text-[#1a1a1a] text-xs font-medium px-4 py-2 rounded-lg border border-[#e5e5e5]">
+                          Voir les details
+                        </span>
                       </button>
                     </div>
 
                     {/* Product info */}
                     <div className="p-4">
-                      <h3 className="text-[#1a1a2e] font-medium text-sm mb-1 truncate">
+                      <h3 className="text-[#1a1a1a] font-medium text-sm mb-1 truncate">
                         {product.name}
                       </h3>
                       {product.volume && (
-                        <p className="text-[#64748b] text-xs mb-3">{product.volume}</p>
+                        <p className="text-[#888888] text-xs mb-2">{product.volume}</p>
+                      )}
+
+                      {/* Stock indicator */}
+                      {!product.inStock && (
+                        <p className="text-xs text-[#dc2626] font-medium mb-2">Rupture de stock</p>
+                      )}
+                      {product.inStock && product.stockQty > 0 && product.stockQty <= (product.minStockAlert || 10) && (
+                        <p className="text-xs text-[#888888] mb-2">Derniers exemplaires</p>
                       )}
 
                       {/* Prices */}
                       <div className="flex items-center gap-2 mb-4">
-                        <span className="text-lg font-bold text-[#1a1a2e]">
+                        <span className="text-lg font-bold text-[#1a1a1a]">
                           {formatPrice(product.price)}
                         </span>
-                        <span className="text-sm text-[#64748b] line-through">
+                        <span className="text-sm text-[#888888] line-through">
                           {formatPrice(product.comparePrice!)}
                         </span>
                       </div>
@@ -147,7 +155,8 @@ export function FlashSaleSection({ products, onAddToCart, onViewProduct }: Flash
                       {/* Add to cart button */}
                       <button
                         onClick={() => onAddToCart(product)}
-                        className="w-full py-2.5 bg-[#c8a951] hover:bg-[#c8a951]/90 text-[#1a1a2e] text-sm font-semibold rounded-lg transition-colors duration-150"
+                        disabled={!product.inStock}
+                        className="w-full py-2.5 bg-[#1a1a1a] hover:bg-[#333] text-white text-sm font-semibold rounded-lg transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <ShoppingCart className="w-4 h-4 inline-block mr-1.5" />
                         Ajouter au panier

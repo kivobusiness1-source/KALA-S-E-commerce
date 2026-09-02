@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useEffect } from 'react'
-import { Star, Package, Search, SlidersHorizontal, RotateCcw, Check, Heart, Eye } from 'lucide-react'
+import { Star, Package, Search, SlidersHorizontal, RotateCcw, Check, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -41,13 +41,13 @@ function StarRating({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md
       {Array.from({ length: 5 }).map((_, i) => {
         const diff = rating - i
         if (diff >= 1) {
-          return <Star key={i} className={`${iconClass} text-[#c8a951] fill-[#c8a951]`} />
+          return <Star key={i} className={`${iconClass} text-[#f59e0b] fill-[#f59e0b]`} />
         } else if (diff >= 0.5) {
           return (
             <span key={i} className="relative inline-block">
               <Star className={`${iconClass} text-gray-200`} />
               <span className="absolute inset-0 overflow-hidden w-1/2">
-                <Star className={`${iconClass} text-[#c8a951] fill-[#c8a951]`} />
+                <Star className={`${iconClass} text-[#f59e0b] fill-[#f59e0b]`} />
               </span>
             </span>
           )
@@ -63,7 +63,7 @@ function ProductsLoadingSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="rounded-xl overflow-hidden border border-[#e2e8f0] bg-white">
+        <div key={i} className="rounded-xl overflow-hidden border border-[#e5e5e5] bg-white shadow-sm">
           <div className="h-56 bg-gray-100">
             <Skeleton className="w-full h-full rounded-none" style={{ animationDelay: `${i * 80}ms` }} />
           </div>
@@ -160,23 +160,23 @@ export function ProductsSection({
   const productCount = sortedProducts?.length || 0
 
   return (
-    <section id="products" className="py-16 sm:py-20 bg-[#fafafa]">
+    <section id="products" className="py-16 sm:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a2e] mb-2">Nos Produits</h2>
-          <p className="text-[#64748b] max-w-xl">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] mb-2">Nos Produits</h2>
+          <p className="text-[#555555] max-w-xl">
             Decouvrez notre gamme de produits d'hygiene de qualite industrielle, fabriques avec soin au Congo-Brazzaville.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
           <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full sm:w-auto">
-            <TabsList className="bg-white border border-[#e2e8f0] shadow-none w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1">
+            <TabsList className="bg-white border border-[#e5e5e5] shadow-none w-full sm:w-auto flex flex-wrap h-auto gap-1 p-1">
               {categoryTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="data-[state=active]:bg-[#c8a951] data-[state=active]:text-[#1a1a2e] text-[#64748b] text-xs sm:text-sm rounded-full data-[state=active]:shadow-none px-3 py-1.5"
+                  className="data-[state=active]:bg-[#1a1a1a] data-[state=active]:text-white text-[#555555] text-xs sm:text-sm rounded-full data-[state=active]:shadow-none px-3 py-1.5"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -186,19 +186,19 @@ export function ProductsSection({
 
           <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
             <div className="relative flex-1 sm:flex-none sm:w-60">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748b]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888]" />
               <Input
                 ref={searchInputRef}
                 id="product-search-input"
                 placeholder="Rechercher un produit..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30 transition-colors duration-150 w-full"
+                className="pl-10 bg-white border-[#e5e5e5] focus-visible:ring-[#1a1a1a]/10 focus-visible:border-[#1a1a1a] transition-colors duration-150 w-full"
               />
             </div>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[170px] bg-white border-[#e2e8f0] focus:ring-[#1a1a2e]/10 focus:border-[#1a1a2e]/30 transition-colors duration-150">
-                <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5 text-[#64748b]" />
+              <SelectTrigger className="w-full sm:w-[170px] bg-white border-[#e5e5e5] focus:ring-[#1a1a1a]/10 focus:border-[#1a1a1a] transition-colors duration-150">
+                <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5 text-[#888888]" />
                 <SelectValue placeholder="Trier par" />
               </SelectTrigger>
               <SelectContent>
@@ -214,8 +214,8 @@ export function ProductsSection({
 
         {!productsLoading && (
           <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-[#64748b]">
-              <span className="font-semibold text-[#1a1a2e]">{productCount}</span>{' '}
+            <p className="text-sm text-[#555555]">
+              <span className="font-semibold text-[#1a1a1a]">{productCount}</span>{' '}
               {productCount === 1 ? 'produit trouve' : 'produits trouves'}
             </p>
             {isFiltered && (
@@ -224,7 +224,7 @@ export function ProductsSection({
                   setActiveCategory('all')
                   setSearchQuery('')
                 }}
-                className="text-sm text-[#1a1a2e] hover:text-[#c8a951] font-medium flex items-center gap-1 transition-colors duration-150"
+                className="text-sm text-[#1a1a1a] hover:underline font-medium flex items-center gap-1 transition-colors duration-150"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Voir tout
@@ -246,30 +246,30 @@ export function ProductsSection({
               return (
                 <div
                   key={product.id}
-                  className={`group bg-white border border-[#e2e8f0] rounded-xl overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col cursor-pointer ${isAdded ? 'ring-1 ring-[#c8a951]' : ''}`}
+                  className={`group bg-white border border-[#e5e5e5] rounded-xl overflow-hidden hover:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer shadow-sm ${isAdded ? 'ring-1 ring-[#1a1a1a]' : ''}`}
                   onClick={() => onQuickAdd(product)}
                 >
-                  <div className="relative h-56 bg-gray-100 overflow-hidden">
+                  <div className="relative h-56 bg-[#f5f5f5] overflow-hidden">
                     {product.image ? (
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                        <Package className="w-12 h-12 text-gray-300" />
+                      <div className="w-full h-full bg-[#f5f5f5] flex items-center justify-center">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4d4d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                       </div>
                     )}
 
                     <button
                       onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
-                      className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-black/5"
+                      className="absolute inset-0 flex items-end justify-center pb-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                       aria-label="Voir les details"
                     >
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                        <Eye className="w-5 h-5 text-[#1a1a2e]" />
-                      </div>
+                      <span className="bg-white/90 text-[#1a1a1a] text-xs font-medium px-4 py-2 rounded-lg border border-[#e5e5e5]">
+                        Voir les details
+                      </span>
                     </button>
 
                     <button
@@ -277,11 +277,11 @@ export function ProductsSection({
                       className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-white"
                       aria-label="Favori"
                     >
-                      <Heart className={`w-4 h-4 transition-colors duration-150 ${isWishlisted(product.id) ? 'text-red-500 fill-red-500' : 'text-[#64748b]'}`} />
+                      <Heart className={`w-4 h-4 transition-colors duration-150 ${isWishlisted(product.id) ? 'text-[#dc2626] fill-[#dc2626]' : 'text-[#555555]'}`} />
                     </button>
 
                     {discount > 0 && (
-                      <span className="absolute top-3 left-3 bg-[#1a1a2e] text-white text-[11px] font-medium px-2 py-0.5 rounded">
+                      <span className="absolute top-3 left-3 bg-[#dc2626] text-white text-[11px] font-medium px-2 py-0.5 rounded">
                         -{discount}%
                       </span>
                     )}
@@ -294,54 +294,51 @@ export function ProductsSection({
                         checked={comparisonIds.includes(product.id)}
                         onCheckedChange={() => handleCompareToggle(product.id)}
                       />
-                      <span className="text-[11px] text-[#64748b] font-medium">Comparer</span>
+                      <span className="text-[11px] text-[#555555] font-medium">Comparer</span>
                     </label>
                   </div>
 
                   <div className="p-4 flex flex-col flex-1">
                     {product.category && (
-                      <span className="text-xs text-[#64748b] mb-1">{product.category.name}</span>
+                      <span className="text-xs text-[#888888] mb-1">{product.category.name}</span>
                     )}
                     <h3
                       onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
-                      className="font-medium text-[#1a1a2e] text-sm mb-1 line-clamp-2 cursor-pointer hover:text-[#c8a951] transition-colors duration-150"
+                      className="font-medium text-[#1a1a1a] text-sm mb-1 line-clamp-2 cursor-pointer hover:underline transition-colors duration-150"
                     >
                       {product.name}
                     </h3>
                     {product.volume && (
-                      <p className="text-xs text-[#64748b] mb-2">{product.volume}</p>
+                      <p className="text-xs text-[#888888] mb-2">{product.volume}</p>
                     )}
 
                     <div className="flex items-center gap-1.5 mb-2">
                       <StarRating rating={product.averageRating || 0} size="sm" />
                       {product.reviewCount && product.reviewCount > 0 && (
-                        <span className="text-xs text-[#64748b]">({product.reviewCount})</span>
+                        <span className="text-xs text-[#888888]">({product.reviewCount})</span>
                       )}
                     </div>
 
                     {!product.inStock && (
-                      <span className="text-xs text-[#dc2626] mb-2">Rupture de stock</span>
+                      <span className="text-xs text-[#dc2626] mb-2 font-medium">Rupture de stock</span>
                     )}
-                    {product.inStock && product.stockQty <= 10 && (
-                      <span className="text-xs text-[#c8a951] mb-2">Plus que {product.stockQty} en stock</span>
+                    {product.inStock && product.stockQty > 0 && product.stockQty <= (product.minStockAlert || 10) && (
+                      <span className="text-xs text-[#888888] mb-2">Derniers exemplaires</span>
                     )}
 
                     <div className="flex-1" />
 
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-lg font-bold text-[#1a1a2e]">{formatPrice(product.price)}</span>
+                      <span className="text-lg font-bold text-[#1a1a1a]">{formatPrice(product.price)}</span>
                       {product.comparePrice && product.comparePrice > product.price && (
-                        <span className="text-sm text-[#64748b] line-through">{formatPrice(product.comparePrice)}</span>
+                        <span className="text-sm text-[#888888] line-through">{formatPrice(product.comparePrice)}</span>
                       )}
                     </div>
 
                     <Button
                       onClick={(e) => { e.stopPropagation(); onAddToCart(product) }}
                       disabled={!product.inStock}
-                      className={`w-full font-medium h-10 text-sm ${isAdded
-                        ? 'bg-[#16a34a] hover:bg-[#16a34a]/90 text-white'
-                        : 'bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white'
-                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                      className="w-full font-medium h-10 text-sm bg-[#1a1a1a] hover:bg-[#333] text-white disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {isAdded ? (
                         <>
@@ -360,15 +357,15 @@ export function ProductsSection({
         ) : (
           <div className="text-center py-20">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-[#1a1a2e] font-medium text-lg mb-2">Aucun produit trouve</p>
-            <p className="text-[#64748b] text-sm mb-6">Essayez de modifier vos criteres de recherche</p>
+            <p className="text-[#1a1a1a] font-medium text-lg mb-2">Aucun produit trouve</p>
+            <p className="text-[#555555] text-sm mb-6">Essayez de modifier vos criteres de recherche</p>
             <Button
               variant="outline"
               onClick={() => {
                 setActiveCategory('all')
                 setSearchQuery('')
               }}
-              className="font-medium border-[#e2e8f0] text-[#1a1a2e] hover:bg-gray-50"
+              className="font-medium border-[#e5e5e5] text-[#1a1a1a] hover:bg-gray-50"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reinitialiser les filtres

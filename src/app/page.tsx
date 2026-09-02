@@ -9,6 +9,7 @@ import { useCartStore } from '@/stores/cart-store'
 import { useWishlistStore } from '@/stores/wishlist-store'
 
 import { Navbar } from '@/components/storefront/Navbar'
+import ChatWidget from '@/components/storefront/ChatWidget'
 import { HeroSection } from '@/components/storefront/HeroSection'
 import { FeaturesBar } from '@/components/storefront/FeaturesBar'
 import { ProductsSection } from '@/components/storefront/ProductsSection'
@@ -33,7 +34,7 @@ import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
 
 export default function Home() {
   // Promo bar state
-  const [promoText, setPromoText] = useState('🎉 Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567 🎉')
+  const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
   const [promoBarVisible, setPromoBarVisible] = useState(true)
 
   // Navigation scroll state
@@ -464,23 +465,22 @@ export default function Home() {
 
       {/* Promotional Banner Bar */}
       {promoBarVisible && (
-        <div className="relative w-full bg-gradient-to-r from-emerald-600 to-emerald-700 h-10 flex items-center overflow-hidden border-l-2 border-emerald-300">
+        <div className="relative w-full bg-[#1a1a1a] h-10 flex items-center overflow-hidden">
           <div className="flex items-center pl-3 pr-2 shrink-0">
-            <Megaphone className="w-4 h-4 text-amber-300" />
+            <Megaphone className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 overflow-hidden">
             <MarqueeText speed={25} className="py-2">
-              <span className="mx-8 text-white text-xs sm:text-sm bg-gradient-to-r from-white via-amber-100 to-white bg-[length:200%_100%] bg-clip-text text-transparent animate-[shimmer_3s_linear_infinite]">{promoText}</span>
+              <span className="mx-8 text-white text-xs sm:text-sm">{promoText}</span>
             </MarqueeText>
           </div>
           <button
             onClick={() => setPromoBarVisible(false)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-emerald-800/60 rounded-full transition-all duration-200 hover:scale-110"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
             aria-label="Fermer la bannière"
           >
             <X className="w-3.5 h-3.5" />
           </button>
-          <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes breathing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
         </div>
       )}
 
@@ -589,6 +589,7 @@ export default function Home() {
         products={products || []}
       />
 
+      <ChatWidget />
       <SocialProofToast products={products} />
     </div>
   )

@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale'
 import { toast } from 'sonner'
 import {
   ShoppingCart, Search, Eye, ChevronLeft, ChevronRight, MoreVertical, FileDown, Printer,
-  MessageSquare, Send, Trash2, Clock, Shield, Bot, Reply, Paperclip,
+  MessageSquare, Send, Trash2, Clock, Shield, Bot, Reply, Paperclip, UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -30,11 +30,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { formatPrice, formatDate, getInitials, statusLabels, StatusBadge } from './helpers'
-import type { Order, OrderStatus, OrderNote } from './types'
+import { useAdminStore } from '@/stores/admin-store'
+import type { Order, OrderStatus, OrderNote, AdminUser } from './types'
 
 const MAX_REPLY_LENGTH = 2000
 
 export default function OrdersSection() {
+  const { admin } = useAdminStore()
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -46,8 +48,20 @@ export default function OrdersSection() {
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
   const [loadingNotes, setLoadingNotes] = useState(false)
+  const [assigneeId, setAssigneeId] = useState<string>('none')
   const notesEndRef = useRef<HTMLDivElement>(null)
   const limit = 20
+
+  const role = admin?.role || ''
+  const isLivreur = role === 'livreur'
+  const isStaff = role === 'staff'
+  const isSuperAdmin = role === 'super_admin'
+  const canAssign = isSuperAdmin || role === 'admin'
+
+  // Staff cannot set delivered
+  const allowedStatuses = isStaff
+    ? ['pending', 'confirmed', 'processing', 'shipped', 'cancelled'] as OrderStatus[]
+    : ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['admin-orders', statusFilter, search, page],
@@ -57,6 +71,13 @@ export default function OrdersSection() {
       if (search) params.set('search', search)
       return fetch(`/api/orders?${params}`).then(r => r.json()).then(d => d.data)
     },
+  })
+
+  // Fetch admins/livreurs for assignment dropdown
+  const { data: adminUsers } = useQuery({
+    queryKey: ['admin-users-for-assignment'],
+    queryFn: () => fetch('/api/admin/users').then(r => r.json()).then(d => d.data as AdminUser[]),
+    enabled: canAssign,
   })
 
   const orders = ordersData?.orders ?? []
@@ -83,6 +104,7 @@ export default function OrdersSection() {
       const data = await res.json()
       if (data.success) {
         setOrderDetail(data.data)
+        setAssigneeId(data.data.assignedToId || 'none')
         setDetailOpen(true)
         setShowNotes(false)
         setReplyText('')
@@ -101,6 +123,11 @@ export default function OrdersSection() {
   }, [orderNotes, showNotes])
 
   const updateStatus = async (orderId: string, newStatus: string) => {
+    // Staff cannot deliver
+    if (isStaff && newStatus === 'delivered') {
+      toast.error('Le staff ne peut pas marquer comme livré')
+      return
+    }
     const oldStatus = orderDetail?.status
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -132,6 +159,27 @@ export default function OrdersSection() {
             // silent
           }
         }
+      } else {
+        toast.error(data.error || 'Erreur')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    }
+  }
+
+  const handleAssign = async () => {
+    if (!orderDetail) return
+    try {
+      const res = await fetch(`/api/orders/${orderDetail.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedToId: assigneeId === 'none' ? null : assigneeId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Commande réassignée')
+        setOrderDetail(data.data)
+        queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
       } else {
         toast.error(data.error || 'Erreur')
       }
@@ -229,7 +277,7 @@ export default function OrdersSection() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {statusTabs.map(s => (
-            <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" className={`shrink-0 ${statusFilter === s ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`} onClick={() => { setStatusFilter(s); setPage(1) }}>
+            <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" className={`shrink-0 ${statusFilter === s ? 'bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white' : ''}`} onClick={() => { setStatusFilter(s); setPage(1) }}>
               {s === 'all' ? 'Tous' : statusLabels[s]}
             </Button>
           ))}
@@ -245,6 +293,13 @@ export default function OrdersSection() {
           </Button>
         </div>
       </div>
+
+      {/* Livreur info banner */}
+      {isLivreur && (
+        <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-600">
+          Vous ne voyez que les commandes qui vous sont assignées.
+        </div>
+      )}
 
       {/* Table */}
       <Card>
@@ -263,25 +318,18 @@ export default function OrdersSection() {
                     <TableHead className="text-right">Montant</TableHead>
                     <TableHead>Articles</TableHead>
                     <TableHead>Statut</TableHead>
+                    {canAssign && <TableHead className="hidden lg:table-cell">Assigné à</TableHead>}
                     <TableHead className="w-28">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((o: Order, i: number) => {
-                    const statusBorderMap: Record<string, string> = {
-                      pending: 'border-l-amber-400',
-                      confirmed: 'border-l-teal-400',
-                      processing: 'border-l-violet-400',
-                      shipped: 'border-l-cyan-400',
-                      delivered: 'border-l-emerald-400',
-                      cancelled: 'border-l-red-400',
-                    }
+                  {orders.map((o: Order & { assignedBy?: { name: string; role: string } }, i: number) => {
                     return (
-                    <TableRow key={o.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} border-l-2 ${statusBorderMap[o.status] || 'border-l-transparent'} hover:bg-emerald-50/30 transition-colors duration-150`}>
+                    <TableRow key={o.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50 transition-colors duration-150`}>
                       <TableCell className="font-mono text-xs font-medium">{o.orderNumber}</TableCell>
                       <TableCell className="text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-semibold shrink-0">
                             {getInitials(o.customerName)}
                           </div>
                           {o.customerName}
@@ -291,20 +339,25 @@ export default function OrdersSection() {
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(o.totalAmount)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                        <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
                           {o.items?.length ?? 0} art.
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={o.status} />
                       </TableCell>
+                      {canAssign && (
+                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                          {(o as unknown as { assignedBy?: { name: string } }).assignedBy?.name || '—'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(o.id)}><Eye className="h-4 w-4" /></Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]).map(s => (
+                              {allowedStatuses.map(s => (
                                 <DropdownMenuItem key={s} onClick={() => updateStatus(o.id, s)} disabled={o.status === s}>
                                   {statusLabels[s]}
                                 </DropdownMenuItem>
@@ -347,13 +400,13 @@ export default function OrdersSection() {
           {orderDetail && (
             <>
               <DialogHeader className="pb-4 border-b border-gray-100">
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 rounded-t-xl" />
+                <div className="absolute inset-x-0 top-0 h-1 bg-[#1a1a1a] rounded-t-xl" />
                 <div className="flex items-center justify-between pr-6">
                   <div>
                     <DialogTitle className="flex items-center gap-2">
                       Commande {orderDetail.orderNumber}
                       {orderNotes.length > 0 && (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs gap-1">
+                        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs gap-1">
                           <MessageSquare className="h-3 w-3" />
                           {orderNotes.length}
                         </Badge>
@@ -365,13 +418,13 @@ export default function OrdersSection() {
                     <Button
                       variant={showNotes ? 'default' : 'outline'}
                       size="sm"
-                      className={showNotes ? 'bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5' : 'gap-1.5'}
+                      className={showNotes ? 'bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white gap-1.5' : 'gap-1.5'}
                       onClick={() => setShowNotes(!showNotes)}
                     >
                       <Reply className="w-4 h-4" />
                       Répondre
                       {orderNotes.length > 0 && (
-                        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${showNotes ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${showNotes ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700'}`}>
                           {orderNotes.length}
                         </span>
                       )}
@@ -396,8 +449,8 @@ export default function OrdersSection() {
                   </CardContent>
                 </Card>
 
-                {/* Status */}
-                <div className="flex items-center justify-between">
+                {/* Status + Assignment */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Statut:</span>
                     <StatusBadge status={orderDetail.status} />
@@ -405,12 +458,38 @@ export default function OrdersSection() {
                   <Select value={orderDetail.status} onValueChange={v => updateStatus(orderDetail.id, v)}>
                     <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[]).map(s => (
+                      {allowedStatuses.map(s => (
                         <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Assignment (admin/super_admin only) */}
+                {canAssign && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        Assigner à
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <Select value={assigneeId} onValueChange={setAssigneeId}>
+                          <SelectTrigger className="flex-1"><SelectValue placeholder="Non assigné" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— Non assigné —</SelectItem>
+                            {adminUsers?.filter(u => u.isActive).map(u => (
+                              <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" onClick={handleAssign} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">Assigner</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Items */}
                 <Card>
@@ -440,7 +519,7 @@ export default function OrdersSection() {
                     <div className="flex justify-end">
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Total</p>
-                        <p className="text-xl font-bold text-emerald-700">{formatPrice(orderDetail.totalAmount)}</p>
+                        <p className="text-xl font-bold text-gray-900">{formatPrice(orderDetail.totalAmount)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -454,20 +533,20 @@ export default function OrdersSection() {
                 )}
 
                 {/* ====== NOTES / REPLIES SECTION ====== */}
-                <Card className="border-l-4 border-l-emerald-500 overflow-hidden">
-                  <CardHeader className="pb-3 bg-gradient-to-r from-emerald-50/80 to-transparent">
+                <Card className="border-l-4 border-l-gray-400 overflow-hidden">
+                  <CardHeader className="pb-3 bg-gray-50/80">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-emerald-600" />
+                        <MessageSquare className="h-4 w-4 text-gray-600" />
                         Historique des Réponses
                         {orderNotes.length > 0 && (
-                          <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">
+                          <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-700">
                             {orderNotes.length} message(s)
                           </Badge>
                         )}
                       </CardTitle>
                       {!showNotes && orderNotes.length > 0 && (
-                        <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => setShowNotes(true)}>
+                        <Button variant="ghost" size="sm" className="text-gray-500 text-xs" onClick={() => setShowNotes(true)}>
                           Voir tout ↓
                         </Button>
                       )}
@@ -490,9 +569,8 @@ export default function OrdersSection() {
                       <>
                         {/* Notes timeline */}
                         <div className="relative space-y-0">
-                          {/* Vertical line */}
                           {orderNotes.length > 1 && (
-                            <div className="absolute left-[18px] top-2 bottom-2 w-0.5 bg-emerald-100" />
+                            <div className="absolute left-[18px] top-2 bottom-2 w-0.5 bg-gray-200" />
                           )}
 
                           {(showNotes ? orderNotes : orderNotes.slice(-2)).map((note, idx) => {
@@ -502,25 +580,19 @@ export default function OrdersSection() {
 
                             return (
                               <div key={note.id} className={`relative flex gap-3 ${!isLast ? 'pb-4' : ''}`}>
-                                {/* Timeline dot */}
                                 <div className="relative z-10 mt-1 shrink-0">
                                   <div className={`w-[36px] h-[36px] rounded-full flex items-center justify-center ${
-                                    isSystem
-                                      ? 'bg-gray-100 text-gray-500'
-                                      : 'bg-emerald-100 text-emerald-700'
+                                    isSystem ? 'bg-gray-100 text-gray-500' : 'bg-gray-200 text-gray-700'
                                   }`}>
                                     {isSystem ? <Bot className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                                   </div>
                                 </div>
 
-                                {/* Content */}
                                 <div className={`flex-1 min-w-0 rounded-lg border p-3 ${
-                                  isSystem
-                                    ? 'bg-gray-50/80 border-gray-200/60'
-                                    : 'bg-emerald-50/60 border-emerald-200/60'
+                                  isSystem ? 'bg-gray-50/80 border-gray-200/60' : 'bg-white border-gray-200/60'
                                 }`}>
                                   <div className="flex items-center justify-between mb-1">
-                                    <span className={`text-xs font-semibold ${isSystem ? 'text-gray-500' : 'text-emerald-700'}`}>
+                                    <span className={`text-xs font-semibold ${isSystem ? 'text-gray-500' : 'text-gray-700'}`}>
                                       {isSystem ? 'Système' : 'Admin'}
                                     </span>
                                     <div className="flex items-center gap-2">
@@ -566,7 +638,7 @@ export default function OrdersSection() {
                               onChange={e => setReplyText(e.target.value)}
                               placeholder="Écrivez votre réponse au client ici..."
                               rows={3}
-                              className="resize-none focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+                              className="resize-none"
                               onKeyDown={e => {
                                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                                   e.preventDefault()
@@ -583,7 +655,7 @@ export default function OrdersSection() {
                               </p>
                               <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shadow-emerald-600/20"
+                                className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white gap-2"
                                 onClick={sendReply}
                                 disabled={sendingReply || !replyText.trim()}
                               >

@@ -16,7 +16,8 @@ const createAdminSchema = z.object({
   email: z.string().email('Email invalide'),
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
-  role: z.enum(['super_admin', 'admin', 'staff']).optional().default('staff'),
+  role: z.enum(['super_admin', 'admin', 'staff', 'livreur']).optional().default('staff'),
+  phone: z.string().optional().nullable(),
 })
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,17 @@ export async function GET(request: NextRequest) {
     const admin = await getAdmin(request)
     if (!admin) return err('Non autorisé', 401)
 
+    // staff/livreur can only see their own profile
+    if (admin.role === 'staff' || admin.role === 'livreur') {
+      const self = await db.admin.findUnique({
+        where: { id: admin.id },
+        select: { id: true, email: true, name: true, phone: true, role: true, isActive: true, createdAt: true },
+      })
+      return ok(self ? [self] : [])
+    }
+
+    // admin can see all except super_admins' details (but can see them in list)
+    // super_admin sees everything
     const admins = await db.admin.findMany({
       select: {
         id: true,
@@ -37,6 +49,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
+    // For admin role, hide super_admin passwords (already hidden) — just filter is fine
+    // No password is returned regardless
+
     return ok(admins)
   } catch (error) {
     console.error('Admin users GET error:', error)
@@ -49,13 +64,26 @@ export async function POST(request: NextRequest) {
     const admin = await getAdmin(request)
     if (!admin) return err('Non autorisé', 401)
 
-    // Only super_admin can create new admins
-    if (admin.role !== 'super_admin') {
-      return err('Accès refusé. Seul un super administrateur peut créer des comptes.', 403)
+    // super_admin can create any role
+    // admin can create staff and livreur only
+    if (admin.role === 'admin') {
+      // Will validate role below
+    } else if (admin.role !== 'super_admin') {
+      return err('Accès refusé', 403)
     }
 
     const body = await request.json()
     const data = createAdminSchema.parse(body)
+
+    // admin cannot create super_admin or admin
+    if (admin.role === 'admin' && (data.role === 'super_admin' || data.role === 'admin')) {
+      return err('Vous ne pouvez créer que des comptes staff ou livreur', 403)
+    }
+
+    // Only super_admin can create super_admin
+    if (data.role === 'super_admin' && admin.role !== 'super_admin') {
+      return err('Accès refusé', 403)
+    }
 
     // Check if email already exists
     const existing = await db.admin.findUnique({ where: { email: data.email } })
@@ -71,12 +99,15 @@ export async function POST(request: NextRequest) {
         name: data.name,
         password: passwordHash,
         role: data.role,
+        phone: data.phone || null,
       },
       select: {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
     })

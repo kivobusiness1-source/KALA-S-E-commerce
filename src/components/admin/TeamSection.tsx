@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Trash2, ShieldAlert } from 'lucide-react'
+import { Plus, Trash2, ShieldAlert, Edit, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,58 +29,88 @@ import type { AdminUser } from './types'
 function RoleBadge({ role }: { role: string }) {
   if (role === 'super_admin') {
     return (
-      <Badge className="bg-[#1a1a2e] text-white hover:bg-[#1a1a2e]/90">
+      <Badge className="bg-[#1a1a1a] text-white hover:bg-[#1a1a1a]/90">
         Super Admin
       </Badge>
     )
   }
   if (role === 'admin') {
     return (
-      <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-100">
+      <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-200">
         Admin
       </Badge>
     )
   }
+  if (role === 'staff') {
+    return (
+      <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+        Staff
+      </Badge>
+    )
+  }
   return (
-    <Badge variant="outline" className="text-gray-600">
-      Staff
+    <Badge variant="outline" className="text-gray-500">
+      Livreur
     </Badge>
   )
 }
 
+interface FormData {
+  name: string
+  email: string
+  password: string
+  phone: string
+  role: string
+  isActive: boolean
+}
+
+const emptyForm: FormData = { name: '', email: '', password: '', phone: '', role: 'staff', isActive: true }
+
 export default function TeamSection() {
   const { admin } = useAdminStore()
   const queryClient = useQueryClient()
-  const isSuperAdmin = admin?.role === 'super_admin'
+  const role = admin?.role || ''
+
+  const isSuperAdmin = role === 'super_admin'
+  const isAdmin = role === 'admin'
+  const canCreate = isSuperAdmin || isAdmin
+  const canDelete = isSuperAdmin
+  const canEdit = isSuperAdmin || isAdmin || role === 'staff' || role === 'livreur'
+
+  // staff/livreur can only see their own profile
+  const canSeeAll = isSuperAdmin || isAdmin
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null)
-
-  // Create form state
-  const [formName, setFormName] = useState('')
-  const [formEmail, setFormEmail] = useState('')
-  const [formPassword, setFormPassword] = useState('')
-  const [formRole, setFormRole] = useState('staff')
-  const [formPhone, setFormPhone] = useState('')
+  const [form, setForm] = useState<FormData>(emptyForm)
   const [formLoading, setFormLoading] = useState(false)
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => fetch('/api/admin/users').then(r => r.json()).then(d => d.data as AdminUser[]),
-    enabled: isSuperAdmin,
+    enabled: !!admin,
   })
 
-  const resetForm = () => {
-    setFormName('')
-    setFormEmail('')
-    setFormPassword('')
-    setFormRole('staff')
-    setFormPhone('')
+  const resetForm = () => setForm(emptyForm)
+
+  const openEdit = (u: AdminUser) => {
+    setForm({
+      name: u.name,
+      email: u.email,
+      password: '',
+      phone: u.phone || '',
+      role: u.role,
+      isActive: u.isActive,
+    })
+    setEditingUser(u)
+    setEditOpen(true)
   }
 
   const handleCreate = async () => {
-    if (!formName.trim() || !formEmail.trim() || !formPassword.trim()) {
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
       toast.error('Veuillez remplir tous les champs obligatoires')
       return
     }
@@ -90,11 +120,11 @@ export default function TeamSection() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formName.trim(),
-          email: formEmail.trim(),
-          password: formPassword,
-          role: formRole,
-          phone: formPhone.trim() || null,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+          phone: form.phone.trim() || null,
         }),
       })
       const data = await res.json()
@@ -105,6 +135,50 @@ export default function TeamSection() {
         resetForm()
       } else {
         toast.error(data.error || 'Erreur lors de la création')
+      }
+    } catch {
+      toast.error('Erreur serveur')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleEdit = async () => {
+    if (!editingUser || !form.name.trim() || !form.email.trim()) {
+      toast.error('Nom et email sont obligatoires')
+      return
+    }
+    setFormLoading(true)
+    try {
+      const body: Record<string, unknown> = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        isActive: form.isActive,
+      }
+      // Only super_admin/admin can change roles (with restrictions)
+      if (canSeeAll && form.role !== editingUser.role) {
+        body.role = form.role
+      }
+      // Password change (optional)
+      if (form.password.trim()) {
+        body.password = form.password.trim()
+      }
+
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Utilisateur modifié')
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+        setEditOpen(false)
+        setEditingUser(null)
+        resetForm()
+      } else {
+        toast.error(data.error || 'Erreur lors de la modification')
       }
     } catch {
       toast.error('Erreur serveur')
@@ -132,18 +206,71 @@ export default function TeamSection() {
     }
   }
 
-  if (!isSuperAdmin) {
+  // staff/livreur can only see their own profile
+  if (!canSeeAll && admin) {
+    const self = users?.find(u => u.id === admin.id)
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <ShieldAlert className="h-16 w-16 text-gray-300 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Accès restreint</h3>
-        <p className="text-sm text-muted-foreground max-w-sm">
-          Cette section est réservée aux super administrateurs.
-        </p>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Mon Profil</h3>
+          <p className="text-sm text-muted-foreground">Consultez et modifiez vos informations.</p>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            {isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : self ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div><p className="text-sm text-muted-foreground">Nom</p><p className="font-medium">{self.name}</p></div>
+                  <div><p className="text-sm text-muted-foreground">Email</p><p className="font-medium">{self.email}</p></div>
+                  <div><p className="text-sm text-muted-foreground">Téléphone</p><p className="font-medium">{self.phone || '—'}</p></div>
+                  <div><p className="text-sm text-muted-foreground">Rôle</p><RoleBadge role={self.role} /></div>
+                </div>
+                <div className="pt-2">
+                  <Button variant="outline" onClick={() => openEdit(self)}>
+                    <Edit className="h-4 w-4 mr-2" />Modifier mon profil
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* Edit self dialog */}
+        <Dialog open={editOpen} onOpenChange={(open) => { if (!open) { setEditingUser(null); resetForm() }; setEditOpen(open) }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier mon profil</DialogTitle>
+              <DialogDescription>Mettez à jour vos informations personnelles.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Nom *</Label>
+                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nom complet" />
+              </div>
+              <div className="space-y-2">
+                <Label>Téléphone</Label>
+                <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+242 06 123 4567" />
+              </div>
+              <div className="space-y-2">
+                <Label>Nouveau mot de passe (laisser vide pour ne pas changer)</Label>
+                <Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setEditingUser(null); resetForm(); setEditOpen(false) }}>Annuler</Button>
+              <Button onClick={handleEdit} disabled={formLoading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
+                {formLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
 
+  // Full team management for super_admin/admin
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -154,13 +281,15 @@ export default function TeamSection() {
             {users?.length ?? 0} membre{((users?.length ?? 0) > 1) ? 's' : ''}
           </p>
         </div>
-        <Button
-          onClick={() => { resetForm(); setCreateOpen(true) }}
-          className="bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => { resetForm(); setCreateOpen(true) }}
+            className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter un membre
+          </Button>
+        )}
       </div>
 
       {/* Users table */}
@@ -181,12 +310,17 @@ export default function TeamSection() {
                     <TableHead>Rôle</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="hidden md:table-cell">Créé le</TableHead>
-                    <TableHead className="w-16">Actions</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((u, i) => {
                     const isSelf = admin?.id === u.id
+                    // admin cannot edit super_admins or other admins
+                    const canEditThisUser = isSuperAdmin
+                      || (isAdmin && u.role !== 'super_admin' && u.role !== 'admin')
+                      || isSelf
+                    // admin cannot see super_admin role in dropdown (handled in form)
                     return (
                       <TableRow key={u.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50`}>
                         <TableCell className="text-sm font-medium text-gray-900">
@@ -210,17 +344,30 @@ export default function TeamSection() {
                           {formatDate(u.createdAt)}
                         </TableCell>
                         <TableCell>
-                          {!isSelf && u.role !== 'super_admin' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500 hover:text-red-700"
-                              onClick={() => { setDeletingUser(u); setDeleteOpen(true) }}
-                              title="Supprimer"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {canEditThisUser && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                                onClick={() => openEdit(u)}
+                                title="Modifier"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && !isSelf && u.role !== 'super_admin' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-700"
+                                onClick={() => { setDeletingUser(u); setDeleteOpen(true) }}
+                                title="Supprimer"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     )
@@ -230,6 +377,7 @@ export default function TeamSection() {
             </div>
           ) : (
             <div className="p-12 text-center">
+              <UserCog className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
             </div>
           )}
@@ -240,43 +388,110 @@ export default function TeamSection() {
       <Dialog open={createOpen} onOpenChange={(open) => { if (!open) resetForm(); setCreateOpen(open) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajouter un utilisateur</DialogTitle>
-            <DialogDescription>Créer un nouveau compte pour l'équipe d'administration.</DialogDescription>
+            <DialogTitle>Ajouter un membre</DialogTitle>
+            <DialogDescription>Créer un nouveau compte pour l'équipe.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="team-name">Nom *</Label>
-              <Input id="team-name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nom complet" />
+              <Input id="team-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nom complet" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-email">Email *</Label>
-              <Input id="team-email" type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="email@congosoap.cg" />
+              <Input id="team-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@congosoap.cg" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-password">Mot de passe *</Label>
-              <Input id="team-password" type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="••••••••" />
+              <Input id="team-password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-role">Rôle</Label>
-              <Select value={formRole} onValueChange={setFormRole}>
+              <Select value={form.role} onValueChange={setForm}>
                 <SelectTrigger id="team-role" className="w-full">
                   <SelectValue placeholder="Sélectionner un rôle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                  {isSuperAdmin && <SelectItem value="admin">Admin</SelectItem>}
                   <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="livreur">Livreur</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-phone">Téléphone</Label>
-              <Input id="team-phone" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="+242 06 123 4567" />
+              <Input id="team-phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+242 06 123 4567" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setCreateOpen(false) }}>Annuler</Button>
-            <Button onClick={handleCreate} disabled={formLoading} className="bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white">
+            <Button onClick={handleCreate} disabled={formLoading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
               {formLoading ? 'Création...' : 'Créer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { if (!open) { setEditingUser(null); resetForm() }; setEditOpen(open) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le membre</DialogTitle>
+            <DialogDescription>Mettre à jour les informations.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nom *</Label>
+              <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nom complet" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@congosoap.cg" />
+            </div>
+            {/* Password only when editing — optional */}
+            <div className="space-y-2">
+              <Label>Nouveau mot de passe (laisser vide pour ne pas changer)</Label>
+              <Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
+            </div>
+            {/* Role dropdown — only for super_admin/admin and not editing self */}
+            {canSeeAll && editingUser && admin?.id !== editingUser.id && (
+              <div className="space-y-2">
+                <Label>Rôle</Label>
+                <Select value={form.role} onValueChange={setForm}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="admin">Admin</SelectItem>}
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="livreur">Livreur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+242 06 123 4567" />
+            </div>
+            {/* Active toggle — only for super_admin */}
+            {isSuperAdmin && editingUser && admin?.id !== editingUser.id && (
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="team-active"
+                  checked={form.isActive}
+                  onChange={e => setForm({ ...form, isActive: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="team-active" className="cursor-pointer">Compte actif</Label>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditingUser(null); resetForm(); setEditOpen(false) }}>Annuler</Button>
+            <Button onClick={handleEdit} disabled={formLoading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
+              {formLoading ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -7,10 +7,13 @@ export interface ProductType {
   comparePrice: number | null
   categoryId: string
   image: string | null
+  images: string
   volume: string | null
   isFeatured: boolean
+  isActive: boolean
   inStock: boolean
   stockQty: number
+  minStockAlert: number
   longDescription?: string | null
   category?: { id: string; name: string; slug: string }
   createdAt?: string | null

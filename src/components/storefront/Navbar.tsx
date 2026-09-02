@@ -36,15 +36,15 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-[#e2e8f0]">
+    <header className="sticky top-0 z-50 bg-white border-b border-[#e5e5e5]">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button onClick={() => scrollToSection('hero')} className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity duration-150">
-            <div className="w-9 h-9 rounded-lg bg-[#1a1a2e] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <span className="text-white text-sm font-bold tracking-tight">CC</span>
             </div>
-            <span className="text-xl font-bold text-[#1a1a2e] tracking-tight">CongoClean</span>
+            <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">CongoClean</span>
           </button>
 
           {/* Desktop Nav Links */}
@@ -53,7 +53,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
               <button
                 key={link.id}
                 onClick={() => scrollToSection(link.id)}
-                className="relative text-sm font-medium text-[#1a1a2e] hover:text-[#c8a951] transition-colors duration-150 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-[#c8a951] after:transition-all after:duration-150 hover:after:w-full"
+                className="relative text-sm font-medium text-[#1a1a1a] hover:text-[#1a1a1a] transition-colors duration-150 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-[#1a1a1a] after:transition-all after:duration-150 hover:after:w-full"
               >
                 {link.label}
               </button>
@@ -64,7 +64,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
           <div className="flex items-center gap-1">
             <button
               onClick={handleSearchClick}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150 text-[#64748b] hover:text-[#1a1a2e]"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150 text-[#888888] hover:text-[#1a1a1a]"
               aria-label="Rechercher"
             >
               <Search className="w-5 h-5" />
@@ -74,9 +74,9 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
               className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
               aria-label="Panier"
             >
-              <ShoppingCart className="w-5 h-5 text-[#64748b]" />
+              <ShoppingCart className="w-5 h-5 text-[#888888]" />
               {cartTotalItems > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[#1a1a2e] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[#1a1a1a] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {cartTotalItems}
                 </span>
               )}
@@ -86,7 +86,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
               aria-label="Menu"
             >
-              <Menu className="w-5 h-5 text-[#64748b]" />
+              <Menu className="w-5 h-5 text-[#888888]" />
             </button>
           </div>
         </div>
@@ -100,8 +100,8 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
         >
           <div className="flex items-center justify-between px-5 pt-6 pb-4">
             <SheetHeader className="p-0">
-              <SheetTitle className="flex items-center gap-2.5 text-[#1a1a2e]">
-                <div className="w-8 h-8 rounded-lg bg-[#1a1a2e] flex items-center justify-center">
+              <SheetTitle className="flex items-center gap-2.5 text-[#1a1a1a]">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
                   <span className="text-white text-xs font-bold">CC</span>
                 </div>
                 <span className="text-lg font-bold tracking-tight">CongoClean</span>
@@ -113,7 +113,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
               className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors duration-150"
               aria-label="Fermer le menu"
             >
-              <X className="w-4 h-4 text-[#64748b]" />
+              <X className="w-4 h-4 text-[#888888]" />
             </button>
           </div>
 
@@ -124,9 +124,9 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                 <button
                   key={link.id}
                   onClick={() => scrollToSection(link.id)}
-                  className="text-left px-4 py-3 rounded-lg text-[#1a1a2e] hover:bg-gray-50 transition-colors duration-150 font-medium flex items-center gap-3"
+                  className="text-left px-4 py-3 rounded-lg text-[#1a1a1a] hover:bg-gray-50 transition-colors duration-150 font-medium flex items-center gap-3"
                 >
-                  <Icon className="w-4 h-4 text-[#64748b]" />
+                  <Icon className="w-4 h-4 text-[#888888]" />
                   <span>{link.label}</span>
                 </button>
               )
@@ -134,10 +134,10 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
           </div>
 
           {/* Contact button at bottom */}
-          <div className="px-5 pt-4 pb-6 border-t border-[#e2e8f0]">
+          <div className="px-5 pt-4 pb-6 border-t border-[#e5e5e5]">
             <Button
               onClick={() => scrollToSection('contact')}
-              className="w-full bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-medium"
+              className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white font-medium"
             >
               <Phone className="w-4 h-4 mr-2" />
               Contacter

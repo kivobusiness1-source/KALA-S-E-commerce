@@ -1,0 +1,728 @@
+     1→'use client'
+     2→
+     3→import { useMemo, useState } from 'react'
+     4→import { AnimatePresence } from 'framer-motion'
+     5→import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, Truck, Star, Heart } from 'lucide-react'
+     6→import { Button } from '@/components/ui/button'
+     7→import { ScrollArea } from '@/components/ui/scroll-area'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import {
+    10→  Sheet,
+    11→  SheetContent,
+    12→  SheetHeader,
+    13→  SheetTitle,
+    14→  SheetDescription,
+    15→  SheetFooter,
+    16→} from '@/components/ui/sheet'
+    17→import {
+    18→  Dialog,
+    19→  DialogContent,
+    20→  DialogFooter,
+    21→  DialogHeader,
+    22→  DialogTitle,
+    23→  DialogDescription,
+    24→} from '@/components/ui/dialog'
+    25→import {
+    26→  Select,
+    27→  SelectContent,
+    28→  SelectItem,
+    29→  SelectTrigger,
+    30→  SelectValue,
+    31→} from '@/components/ui/select'
+    32→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    33→import { Label } from '@/components/ui/label'
+    34→import { Input } from '@/components/ui/input'
+    35→import { Textarea } from '@/components/ui/textarea'
+    36→import { formatPrice, getInitials } from './helpers'
+    37→import type { CartItem } from '@/stores/cart-store'
+    38→import type { ProductType, ReviewType } from './types'
+    39→
+    40→export const DELIVERY_ZONES = [
+    41→  { id: 'centre-ville', label: 'Centre-ville (Pointe-Noire)', fee: 0, freeThreshold: 0 },
+    42→  { id: 'peripherique', label: 'Quartiers peripheriques', fee: 1500, freeThreshold: 25000 },
+    43→  { id: 'loango-tchimbamba', label: 'Loango / Tchimbamba', fee: 3000, freeThreshold: 25000 },
+    44→  { id: 'hopital-diosso', label: 'Hopital / Diosso', fee: 5000, freeThreshold: 25000 },
+    45→  { id: 'autres', label: 'Autres zones', fee: 8000, freeThreshold: 25000 },
+    46→] as const
+    47→
+    48→export type DeliveryZoneId = (typeof DELIVERY_ZONES)[number]['id']
+    49→
+    50→interface OrderForm {
+    51→  customerName: string
+    52→  customerEmail: string
+    53→  customerPhone: string
+    54→  address: string
+    55→}
+    56→
+    57→interface ReviewForm {
+    58→  customerName: string
+    59→  rating: number
+    60→  comment: string
+    61→}
+    62→
+    63→interface CartSheetProps {
+    64→  // Cart
+    65→  items: CartItem[]
+    66→  cartIsOpen: boolean
+    67→  setCartOpen: (open: boolean) => void
+    68→  totalItems: number
+    69→  totalPrice: number
+    70→  updateQuantity: (id: string, qty: number) => void
+    71→  removeItem: (id: string) => void
+    72→  clearCart: () => void
+    73→  scrollToSection: (id: string) => void
+    74→  // Delivery zone
+    75→  deliveryZone: DeliveryZoneId
+    76→  setDeliveryZone: (zone: DeliveryZoneId) => void
+    77→  // Order dialog
+    78→  orderDialogOpen: boolean
+    79→  setOrderDialogOpen: (open: boolean) => void
+    80→  orderForm: OrderForm
+    81→  setOrderForm: (form: OrderForm) => void
+    82→  orderLoading: boolean
+    83→  onOrderSubmit: (e: React.FormEvent) => void
+    84→  // Product detail dialog
+    85→  selectedProduct: ProductType | null
+    86→  setSelectedProduct: (product: ProductType | null) => void
+    87→  onAddToCart: (product: ProductType, quantity?: number) => void
+    88→  // Reviews
+    89→  reviews: ReviewType[]
+    90→  avgRating: number
+    91→  totalReviews: number
+    92→  reviewForm: ReviewForm
+    93→  setReviewForm: (form: ReviewForm) => void
+    94→  reviewLoading: boolean
+    95→  showReviewForm: boolean
+    96→  setShowReviewForm: (show: boolean) => void
+    97→  onReviewSubmit: (e: React.FormEvent) => void
+    98→  // Loyalty
+    99→  earnedPoints: number
+   100→  // Related products
+   101→  products: ProductType[]
+   102→}
+   103→
+   104→function QuantityControl({
+   105→  quantity,
+   106→  onDecrease,
+   107→  onIncrease,
+   108→}: {
+   109→  quantity: number
+   110→  onDecrease: () => void
+   111→  onIncrease: () => void
+   112→}) {
+   113→  return (
+   114→    <div className="inline-flex items-center rounded-lg border border-[#e2e8f0] bg-white overflow-hidden">
+   115→      <button
+   116→        onClick={onDecrease}
+   117→        className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150 text-[#64748b]"
+   118→        aria-label="Diminuer"
+   119→      >
+   120→        <Minus className="w-3 h-3" />
+   121→      </button>
+   122→      <span className="w-8 text-center text-sm font-medium tabular-nums select-none text-[#1a1a2e]">{quantity}</span>
+   123→      <button
+   124→        onClick={onIncrease}
+   125→        className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150 text-[#64748b]"
+   126→        aria-label="Augmenter"
+   127→        disabled={quantity >= 99}
+   128→      >
+   129→        <Plus className={`w-3 h-3 ${quantity >= 99 ? 'opacity-30' : ''}`} />
+   130→      </button>
+   131→    </div>
+   132→  )
+   133→}
+   134→
+   135→export function CartSheet({
+   136→  items,
+   137→  cartIsOpen,
+   138→  setCartOpen,
+   139→  totalItems,
+   140→  totalPrice,
+   141→  updateQuantity,
+   142→  removeItem,
+   143→  scrollToSection,
+   144→  deliveryZone,
+   145→  setDeliveryZone,
+   146→  orderDialogOpen,
+   147→  setOrderDialogOpen,
+   148→  orderForm,
+   149→  setOrderForm,
+   150→  orderLoading,
+   151→  onOrderSubmit,
+   152→  selectedProduct,
+   153→  setSelectedProduct,
+   154→  onAddToCart,
+   155→  reviews,
+   156→  avgRating,
+   157→  totalReviews,
+   158→  reviewForm,
+   159→  setReviewForm,
+   160→  reviewLoading,
+   161→  showReviewForm,
+   162→  setShowReviewForm,
+   163→  onReviewSubmit,
+   164→  earnedPoints,
+   165→  products: allProducts,
+   166→}: CartSheetProps) {
+   167→  const [productQty, setProductQty] = useState(1)
+   168→  const [isFavorited, setIsFavorited] = useState(false)
+   169→  const zone = DELIVERY_ZONES.find((z) => z.id === deliveryZone) || DELIVERY_ZONES[0]
+   170→  const deliveryFee = useMemo(() => {
+   171→    if (zone.freeThreshold === 0) return 0
+   172→    if (totalPrice >= zone.freeThreshold) return 0
+   173→    return zone.fee
+   174→  }, [zone, totalPrice])
+   175→  const freeThreshold = zone.freeThreshold
+   176→  const progressPct = freeThreshold > 0 ? Math.min((totalPrice / freeThreshold) * 100, 100) : 100
+   177→
+   178→  const handleUpdateQty = (id: string, qty: number) => {
+   179→    if (qty < 1) return
+   180→    if (qty > 99) return
+   181→    updateQuantity(id, qty)
+   182→  }
+   183→
+   184→  return (
+   185→    <>
+   186→      <Sheet open={cartIsOpen} onOpenChange={setCartOpen}>
+   187→        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white">
+   188→          {/* Header */}
+   189→          <div className="px-4 pt-5 pb-4 border-b border-[#e2e8f0]">
+   190→            <SheetHeader>
+   191→              <SheetTitle className="flex items-center gap-2 text-[#1a1a2e]">
+   192→                <ShoppingCart className="w-5 h-5" />
+   193→                Panier
+   194→                {totalItems > 0 && (
+   195→                  <span className="text-sm font-normal text-[#64748b]">({totalItems})</span>
+   196→                )}
+   197→              </SheetTitle>
+   198→              <SheetDescription className="text-[#64748b]">Vos produits selectionnes</SheetDescription>
+   199→            </SheetHeader>
+   200→          </div>
+   201→
+   202→          {/* Delivery zone selector */}
+   203→          {items.length > 0 && (
+   204→            <div className="px-4 py-3 border-b border-[#e2e8f0]">
+   205→              <div className="flex items-center gap-2 mb-1.5">
+   206→                <Truck className="w-3.5 h-3.5 text-[#64748b]" />
+   207→                <span className="text-xs font-medium text-[#1a1a2e]">Zone de livraison</span>
+   208→              </div>
+   209→              <Select value={deliveryZone} onValueChange={(v) => setDeliveryZone(v as DeliveryZoneId)}>
+   210→                <SelectTrigger className="w-full h-8 text-xs bg-white border-[#e2e8f0]">
+   211→                  <SelectValue />
+   212→                </SelectTrigger>
+   213→                <SelectContent>
+   214→                  {DELIVERY_ZONES.map((z) => (
+   215→                    <SelectItem key={z.id} value={z.id} className="text-xs">
+   216→                      {z.label} {z.fee === 0 ? '(Gratuit)' : `— ${z.fee.toLocaleString('fr-FR')} FCFA`}
+   217→                    </SelectItem>
+   218→                  ))}
+   219→                </SelectContent>
+   220→              </Select>
+   221→            </div>
+   222→          )}
+   223→
+   224→          {/* Free delivery progress */}
+   225→          {items.length > 0 && freeThreshold > 0 && (
+   226→            <div className="px-4 py-2.5 border-b border-[#e2e8f0] bg-[#fafafa]">
+   227→              <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
+   228→                <div
+   229→                  className="h-full bg-[#1a1a2e] rounded-full transition-all duration-300"
+   230→                  style={{ width: `${progressPct}%` }}
+   231→                />
+   232→              </div>
+   233→              <p className="text-xs text-[#64748b] mt-1.5">
+   234→                {totalPrice >= freeThreshold ? (
+   235→                  <span className="text-[#16a34a] font-medium">Livraison gratuite !</span>
+   236→                ) : (
+   237→                  <>Plus que <span className="font-semibold text-[#1a1a2e]">{(freeThreshold - totalPrice).toLocaleString('fr-FR')} FCFA</span> pour la livraison gratuite</>
+   238→                )}
+   239→              </p>
+   240→            </div>
+   241→          )}
+   242→
+   243→          {items.length === 0 ? (
+   244→            <div className="flex-1 flex items-center justify-center p-6">
+   245→              <div className="text-center">
+   246→                <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+   247→                <p className="text-[#1a1a2e] font-semibold">Votre panier est vide</p>
+   248→                <p className="text-[#64748b] text-sm mt-1 max-w-[200px] mx-auto">Ajoutez des produits pour commencer vos achats</p>
+   249→                <Button
+   250→                  className="mt-5 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-medium"
+   251→                  onClick={() => {
+   252→                    setCartOpen(false)
+   253→                    scrollToSection('products')
+   254→                  }}
+   255→                >
+   256→                  Decouvrez nos produits
+   257→                  <ChevronRight className="w-4 h-4 ml-1.5" />
+   258→                </Button>
+   259→              </div>
+   260→            </div>
+   261→          ) : (
+   262→            <>
+   263→              <ScrollArea className="flex-1 px-4" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+   264→                <div className="space-y-0 py-2">
+   265→                  {items.map((item) => (
+   266→                    <div
+   267→                      key={item.id}
+   268→                      className="flex gap-3 py-3 border-b border-[#e2e8f0] last:border-0"
+   269→                    >
+   270→                      {/* Item image */}
+   271→                      <div className="w-14 h-14 rounded-lg shrink-0 overflow-hidden bg-gray-100">
+   272→                        {item.image ? (
+   273→                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+   274→                        ) : (
+   275→                          <div className="w-full h-full flex items-center justify-center">
+   276→                            <Package className="w-5 h-5 text-gray-300" />
+   277→                          </div>
+   278→                        )}
+   279→                      </div>
+   280→                      <div className="flex-1 min-w-0">
+   281→                        <h4 className="font-medium text-[#1a1a2e] text-sm truncate">{item.name}</h4>
+   282→                        {item.volume && (
+   283→                          <p className="text-xs text-[#64748b]">{item.volume}</p>
+   284→                        )}
+   285→                        <div className="flex items-center gap-1.5 mt-0.5">
+   286→                          <span className="text-xs text-[#64748b]">{formatPrice(item.price)} x {item.quantity}</span>
+   287→                          <span className="text-xs text-gray-300">=</span>
+   288→                          <span className="text-sm font-bold text-[#1a1a2e]">{formatPrice(item.price * item.quantity)}</span>
+   289→                        </div>
+   290→                        <div className="flex items-center gap-3 mt-1.5">
+   291→                          <QuantityControl
+   292→                            quantity={item.quantity}
+   293→                            onDecrease={() => handleUpdateQty(item.id, item.quantity - 1)}
+   294→                            onIncrease={() => handleUpdateQty(item.id, item.quantity + 1)}
+   295→                          />
+   296→                          <button
+   297→                            onClick={() => removeItem(item.id)}
+   298→                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50 text-gray-400 hover:text-[#dc2626] transition-colors duration-150 ml-auto"
+   299→                            aria-label="Supprimer"
+   300→                          >
+   301→                            <Trash2 className="w-3.5 h-3.5" />
+   302→                          </button>
+   303→                        </div>
+   304→                      </div>
+   305→                    </div>
+   306→                  ))}
+   307→                </div>
+   308→              </ScrollArea>
+   309→
+   310→              <SheetFooter className="border-t border-[#e2e8f0] bg-white p-4 gap-3">
+   311→                <div className="w-full space-y-2">
+   312→                  <div className="flex items-center justify-between text-sm">
+   313→                    <span className="text-[#64748b]">Sous-total</span>
+   314→                    <span className="text-[#1a1a2e] font-medium">{formatPrice(totalPrice)}</span>
+   315→                  </div>
+   316→                  <div className="flex items-center justify-between text-sm">
+   317→                    <span className="text-[#64748b]">Livraison ({zone.label})</span>
+   318→                    <span className={deliveryFee === 0 ? 'text-[#16a34a] font-medium' : 'text-[#1a1a2e] font-medium'}>
+   319→                      {deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}
+   320→                    </span>
+   321→                  </div>
+   322→                  {earnedPoints > 0 && (
+   323→                    <div className="flex items-center justify-between text-sm">
+   324→                      <span className="text-[#c8a951]">Points fidelite gagnes</span>
+   325→                      <span className="text-[#c8a951] font-medium">+{earnedPoints}</span>
+   326→                    </div>
+   327→                  )}
+   328→                  <Separator className="bg-[#e2e8f0]" />
+   329→                  <div className="flex items-center justify-between">
+   330→                    <span className="text-[#1a1a2e] font-semibold">Total</span>
+   331→                    <span className="text-xl font-bold text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
+   332→                  </div>
+   333→                  <Button
+   334→                    onClick={() => { setOrderDialogOpen(true) }}
+   335→                    className="w-full bg-[#c8a951] hover:bg-[#c8a951]/90 text-[#1a1a2e] font-semibold h-11"
+   336→                  >
+   337→                    Commander
+   338→                    <ChevronRight className="w-4 h-4 ml-1" />
+   339→                  </Button>
+   340→                </div>
+   341→              </SheetFooter>
+   342→            </>
+   343→          )}
+   344→        </SheetContent>
+   345→      </Sheet>
+   346→
+   347→      {/* Order Dialog */}
+   348→      <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
+   349→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   350→          <DialogHeader>
+   351→            <DialogTitle className="text-xl">Passer la commande</DialogTitle>
+   352→            <DialogDescription>
+   353→              Total : <span className="font-semibold text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
+   354→              {deliveryFee > 0 && (
+   355→                <span className="text-[#64748b]"> (dont {formatPrice(deliveryFee)} de livraison)</span>
+   356→              )}
+   357→            </DialogDescription>
+   358→          </DialogHeader>
+   359→          <div className="flex flex-col md:flex-row gap-6">
+   360→            {/* Main form */}
+   361→            <form onSubmit={onOrderSubmit} className="flex-1 space-y-4">
+   362→              <div className="space-y-2">
+   363→                <Label htmlFor="order-name">Nom complet <span className="text-[#dc2626]">*</span></Label>
+   364→                <Input
+   365→                  id="order-name"
+   366→                  placeholder="Votre nom"
+   367→                  value={orderForm.customerName}
+   368→                  onChange={(e) => setOrderForm({ ...orderForm, customerName: e.target.value })}
+   369→                  required
+   370→                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   371→                />
+   372→              </div>
+   373→              <div className="space-y-2">
+   374→                <Label htmlFor="order-email">Email <span className="text-[#dc2626]">*</span></Label>
+   375→                <Input
+   376→                  id="order-email"
+   377→                  type="email"
+   378→                  placeholder="votre@email.com"
+   379→                  value={orderForm.customerEmail}
+   380→                  onChange={(e) => setOrderForm({ ...orderForm, customerEmail: e.target.value })}
+   381→                  required
+   382→                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   383→                />
+   384→              </div>
+   385→              <div className="space-y-2">
+   386→                <Label htmlFor="order-phone">Telephone <span className="text-[#dc2626]">*</span></Label>
+   387→                <Input
+   388→                  id="order-phone"
+   389→                  placeholder="+242 06 XXX XXXX"
+   390→                  value={orderForm.customerPhone}
+   391→                  onChange={(e) => setOrderForm({ ...orderForm, customerPhone: e.target.value })}
+   392→                  required
+   393→                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   394→                />
+   395→              </div>
+   396→              <div className="space-y-2">
+   397→                <Label htmlFor="order-address">Adresse de livraison <span className="text-[#dc2626]">*</span></Label>
+   398→                <Input
+   399→                  id="order-address"
+   400→                  placeholder="Votre adresse complete"
+   401→                  value={orderForm.address}
+   402→                  onChange={(e) => setOrderForm({ ...orderForm, address: e.target.value })}
+   403→                  required
+   404→                  className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   405→                />
+   406→              </div>
+   407→              <div className="flex gap-3">
+   408→                <Button
+   409→                  type="button"
+   410→                  variant="outline"
+   411→                  className="flex-1 border-[#e2e8f0] text-[#1a1a2e]"
+   412→                  onClick={() => setOrderDialogOpen(false)}
+   413→                >
+   414→                  Annuler
+   415→                </Button>
+   416→                <Button
+   417→                  type="submit"
+   418→                  disabled={orderLoading}
+   419→                  className="flex-1 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-semibold"
+   420→                >
+   421→                  {orderLoading ? 'Envoi en cours...' : 'Confirmer la commande'}
+   422→                </Button>
+   423→              </div>
+   424→            </form>
+   425→
+   426→            {/* Summary sidebar */}
+   427→            <div className="md:w-56 shrink-0">
+   428→              <div className="bg-[#fafafa] rounded-xl p-4 border border-[#e2e8f0] sticky top-0">
+   429→                <h4 className="text-sm font-semibold text-[#1a1a2e] mb-3">Recapitulatif</h4>
+   430→                <div className="space-y-2.5 max-h-48 overflow-y-auto">
+   431→                  {items.map((item) => (
+   432→                    <div key={item.id} className="flex items-center gap-2.5">
+   433→                      <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 bg-gray-100">
+   434→                        {item.image ? (
+   435→                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+   436→                        ) : (
+   437→                          <div className="w-full h-full flex items-center justify-center">
+   438→                            <Package className="w-3 h-3 text-gray-300" />
+   439→                          </div>
+   440→                        )}
+   441→                      </div>
+   442→                      <div className="flex-1 min-w-0">
+   443→                        <p className="text-xs font-medium text-[#1a1a2e] truncate">{item.name}</p>
+   444→                        <p className="text-[11px] text-[#64748b]">x{item.quantity}</p>
+   445→                      </div>
+   446→                      <span className="text-xs font-semibold text-[#1a1a2e]">{formatPrice(item.price * item.quantity)}</span>
+   447→                    </div>
+   448→                  ))}
+   449→                </div>
+   450→                <Separator className="my-3 bg-[#e2e8f0]" />
+   451→                <div className="space-y-1.5">
+   452→                  <div className="flex justify-between text-xs text-[#64748b]">
+   453→                    <span>Sous-total</span>
+   454→                    <span>{formatPrice(totalPrice)}</span>
+   455→                  </div>
+   456→                  <div className="flex justify-between text-xs text-[#64748b]">
+   457→                    <span>Livraison</span>
+   458→                    <span className={deliveryFee === 0 ? 'text-[#16a34a]' : ''}>{deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}</span>
+   459→                  </div>
+   460→                  <Separator className="bg-[#e2e8f0]" />
+   461→                  <div className="flex justify-between font-bold text-sm">
+   462→                    <span className="text-[#1a1a2e]">Total</span>
+   463→                    <span className="text-[#1a1a2e]">{formatPrice(totalPrice + deliveryFee)}</span>
+   464→                  </div>
+   465→                </div>
+   466→              </div>
+   467→            </div>
+   468→          </div>
+   469→        </DialogContent>
+   470→      </Dialog>
+   471→
+   472→      {/* Product Detail Dialog */}
+   473→      <Dialog open={!!selectedProduct} onOpenChange={(open) => { if (!open) { setSelectedProduct(null); setProductQty(1); setIsFavorited(false) } }}>
+   474→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+   475→          <DialogHeader>
+   476→            <div className="flex items-center gap-2">
+   477→              {selectedProduct?.category && (
+   478→                <span className="text-xs text-[#64748b]">{selectedProduct.category.name}</span>
+   479→              )}
+   480→              {selectedProduct?.volume && <span className="text-xs text-[#64748b]">{selectedProduct.volume}</span>}
+   481→            </div>
+   482→            <DialogTitle className="text-xl">{selectedProduct?.name}</DialogTitle>
+   483→          </DialogHeader>
+   484→          <div className="space-y-4">
+   485→            {/* Rating summary */}
+   486→            {selectedProduct && (
+   487→              <div className="flex items-center gap-2">
+   488→                <div className="flex gap-0.5">
+   489→                  {Array.from({ length: 5 }).map((_, si) => (
+   490→                    <Star key={si} className={`w-4 h-4 ${si < Math.round(avgRating) ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-200'}`} />
+   491→                  ))}
+   492→                </div>
+   493→                <span className="text-sm text-[#64748b]">
+   494→                  {avgRating > 0 ? `${avgRating}/5` : 'Pas encore d\'avis'}
+   495→                  {totalReviews > 0 && ` (${totalReviews})`}
+   496→                </span>
+   497→              </div>
+   498→            )}
+   499→            {/* Image */}
+   500→            <div className="h-56 rounded-xl bg-gray-100 overflow-hidden">
+   501→              {selectedProduct?.image ? (
+   502→                <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+   503→              ) : (
+   504→                <div className="w-full h-full flex items-center justify-center">
+   505→                  <Package className="w-12 h-12 text-gray-300" />
+   506→                </div>
+   507→              )}
+   508→            </div>
+   509→            <div className="flex items-baseline gap-3">
+   510→              <span className="text-2xl font-bold text-[#1a1a2e]">{selectedProduct ? formatPrice(selectedProduct.price) : ''}</span>
+   511→              {selectedProduct?.comparePrice && selectedProduct.comparePrice > selectedProduct.price && (
+   512→                <span className="text-lg text-[#64748b] line-through">{formatPrice(selectedProduct.comparePrice)}</span>
+   513→              )}
+   514→            </div>
+   515→            <div className="flex items-center gap-2">
+   516→              <div className={`w-2 h-2 rounded-full ${selectedProduct?.inStock ? 'bg-[#16a34a]' : 'bg-[#dc2626]'}`} />
+   517→              <span className="text-sm text-[#64748b]">{selectedProduct?.inStock ? 'En stock' : 'Rupture de stock'}</span>
+   518→            </div>
+   519→
+   520→            {/* Quantity selector */}
+   521→            {selectedProduct?.inStock && (
+   522→              <div className="flex items-center gap-3">
+   523→                <span className="text-sm font-medium text-[#1a1a2e]">Quantite :</span>
+   524→                <div className="inline-flex items-center rounded-lg border border-[#e2e8f0] bg-white overflow-hidden">
+   525→                  <button
+   526→                    onClick={() => setProductQty(Math.max(1, productQty - 1))}
+   527→                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150"
+   528→                    aria-label="Diminuer"
+   529→                  >
+   530→                    <Minus className="w-3.5 h-3.5" />
+   531→                  </button>
+   532→                  <span className="w-10 text-center text-sm font-semibold tabular-nums">{productQty}</span>
+   533→                  <button
+   534→                    onClick={() => setProductQty(Math.min(99, productQty + 1))}
+   535→                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors duration-150"
+   536→                    aria-label="Augmenter"
+   537→                  >
+   538→                    <Plus className="w-3.5 h-3.5" />
+   539→                  </button>
+   540→                </div>
+   541→              </div>
+   542→            )}
+   543→
+   544→            {/* Tabs: Description & Avis */}
+   545→            {selectedProduct && (
+   546→              <Tabs defaultValue="description" className="w-full">
+   547→                <TabsList className="w-full bg-gray-100 h-auto p-0.5">
+   548→                  <TabsTrigger value="description" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md">
+   549→                    Description
+   550→                  </TabsTrigger>
+   551→                  <TabsTrigger value="reviews" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md">
+   552→                    Avis clients ({totalReviews})
+   553→                  </TabsTrigger>
+   554→                </TabsList>
+   555→                <TabsContent value="description" className="mt-3">
+   556→                  <div className="bg-[#fafafa] rounded-lg p-4 border border-[#e2e8f0]">
+   557→                    <p className="text-[#64748b] leading-relaxed text-sm">
+   558→                      {selectedProduct.longDescription || selectedProduct.description || 'Aucune description disponible pour ce produit.'}
+   559→                    </p>
+   560→                  </div>
+   561→                </TabsContent>
+   562→                <TabsContent value="reviews" className="mt-3">
+   563→                  {reviews.length > 0 ? (
+   564→                    <div className="space-y-3 max-h-64 overflow-y-auto">
+   565→                      {reviews.map((review) => (
+   566→                        <div key={review.id} className="bg-[#fafafa] rounded-lg p-3 border border-[#e2e8f0]">
+   567→                          <div className="flex items-center justify-between mb-1">
+   568→                            <div className="flex items-center gap-2">
+   569→                              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
+   570→                                <span className="text-[#1a1a2e] font-semibold text-xs">{getInitials(review.customerName)}</span>
+   571→                              </div>
+   572→                              <span className="text-sm font-medium text-[#1a1a2e]">{review.customerName}</span>
+   573→                            </div>
+   574→                            <span className="text-xs text-[#64748b]">
+   575→                              {new Date(review.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+   576→                            </span>
+   577→                          </div>
+   578→                          <div className="flex gap-0.5 mb-1">
+   579→                            {Array.from({ length: 5 }).map((_, si) => (
+   580→                              <Star key={si} className={`w-3 h-3 ${si < review.rating ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-200'}`} />
+   581→                            ))}
+   582→                          </div>
+   583→                          {review.comment && (
+   584→                            <p className="text-sm text-[#64748b] leading-relaxed">{review.comment}</p>
+   585→                          )}
+   586→                        </div>
+   587→                      ))}
+   588→                    </div>
+   589→                  ) : (
+   590→                    <div className="text-center py-6 text-[#64748b]">
+   591→                      <Star className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+   592→                      <p className="text-sm">Aucun avis pour le moment</p>
+   593→                    </div>
+   594→                  )}
+   595→
+   596→                  <Button
+   597→                    variant="outline"
+   598→                    className="w-full mt-3 border-[#e2e8f0] text-[#1a1a2e]"
+   599→                    onClick={() => setShowReviewForm(!showReviewForm)}
+   600→                  >
+   601→                    <Star className="w-4 h-4 mr-2" />
+   602→                    {showReviewForm ? 'Fermer le formulaire' : 'Laisser un avis'}
+   603→                  </Button>
+   604→
+   605→                  <AnimatePresence>
+   606→                    {showReviewForm && (
+   607→                      <form
+   608→                        initial={{ opacity: 0, height: 0 }}
+   609→                        animate={{ opacity: 1, height: 'auto' }}
+   610→                        exit={{ opacity: 0, height: 0 }}
+   611→                        transition={{ duration: 0.15 }}
+   612→                        onSubmit={onReviewSubmit}
+   613→                        className="space-y-3 border border-[#e2e8f0] rounded-lg p-4 mt-3 overflow-hidden"
+   614→                      >
+   615→                        <div className="space-y-2">
+   616→                          <Label htmlFor="review-name">Nom <span className="text-[#dc2626]">*</span></Label>
+   617→                          <Input
+   618→                            id="review-name"
+   619→                            placeholder="Votre nom"
+   620→                            value={reviewForm.customerName}
+   621→                            onChange={(e) => setReviewForm({ ...reviewForm, customerName: e.target.value })}
+   622→                            required
+   623→                            className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   624→                          />
+   625→                        </div>
+   626→                        <div className="space-y-2">
+   627→                          <Label>Note</Label>
+   628→                          <div className="flex gap-1">
+   629→                            {Array.from({ length: 5 }).map((_, si) => (
+   630→                              <button
+   631→                                key={si}
+   632→                                type="button"
+   633→                                onClick={() => setReviewForm({ ...reviewForm, rating: si + 1 })}
+   634→                                className="p-0.5"
+   635→                                aria-label={`${si + 1} etoile(s)`}
+   636→                              >
+   637→                                <Star className={`w-6 h-6 ${si < reviewForm.rating ? 'text-[#c8a951] fill-[#c8a951]' : 'text-gray-300'}`} />
+   638→                              </button>
+   639→                            ))}
+   640→                          </div>
+   641→                        </div>
+   642→                        <div className="space-y-2">
+   643→                          <Label htmlFor="review-comment">Commentaire (optionnel)</Label>
+   644→                          <Textarea
+   645→                            id="review-comment"
+   646→                            placeholder="Votre avis sur ce produit..."
+   647→                            rows={3}
+   648→                            value={reviewForm.comment}
+   649→                            onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+   650→                            maxLength={500}
+   651→                            className="border-[#e2e8f0] focus-visible:ring-[#1a1a2e]/10 focus-visible:border-[#1a1a2e]/30"
+   652→                          />
+   653→                        </div>
+   654→                        <Button
+   655→                          type="submit"
+   656→                          disabled={reviewLoading}
+   657→                          className="w-full bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white font-semibold"
+   658→                        >
+   659→                          {reviewLoading ? 'Envoi en cours...' : 'Publier l\'avis'}
+   660→                        </Button>
+   661→                      </form>
+   662→                    )}
+   663→                  </AnimatePresence>
+   664→                </TabsContent>
+   665→              </Tabs>
+   666→            )}
+   667→          </div>
+   668→          <DialogFooter>
+   669→            {selectedProduct?.inStock && (
+   670→              <div className="flex gap-2 w-full">
+   671→                <Button
+   672→                  onClick={() => setIsFavorited(!isFavorited)}
+   673→                  variant="outline"
+   674→                  className="shrink-0 border-[#e2e8f0] hover:bg-red-50 hover:border-red-200 hover:text-[#dc2626] transition-colors duration-150"
+   675→                  aria-label="Favoris"
+   676→                >
+   677→                  <Heart className={`w-4 h-4 mr-0 ${isFavorited ? 'fill-[#dc2626] text-[#dc2626]' : ''}`} />
+   678→                </Button>
+   679→                <Button
+   680→                  onClick={() => { if (selectedProduct) { onAddToCart(selectedProduct, productQty); setSelectedProduct(null); setProductQty(1) } }}
+   681→                  className="flex-1 bg-[#1a1a2e] hover:bg-[#1a1a2e]/90 text-white"
+   682→                >
+   683→                  <ShoppingCart className="w-4 h-4 mr-2" />
+   684→                  Ajouter au panier
+   685→                </Button>
+   686→              </div>
+   687→            )}
+   688→          </DialogFooter>
+   689→
+   690→          {/* Produits similaires */}
+   691→          {selectedProduct && (() => {
+   692→            const related = allProducts
+   693→              .filter((p) => p.id !== selectedProduct.id && p.categoryId === selectedProduct.categoryId)
+   694→              .slice(0, 3)
+   695→            if (related.length === 0) return null
+   696→            return (
+   697→              <div className="border-t border-[#e2e8f0] mt-4 pt-4">
+   698→                <p className="text-sm font-semibold text-[#1a1a2e] mb-3">Produits similaires</p>
+   699→                <div className="grid grid-cols-3 gap-2">
+   700→                  {related.map((rp) => (
+   701→                    <button
+   702→                      key={rp.id}
+   703→                      onClick={() => { setSelectedProduct(rp); setProductQty(1); setIsFavorited(false) }}
+   704→                      className="text-left group"
+   705→                    >
+   706→                      <div className="h-16 rounded-lg overflow-hidden bg-gray-100 mb-1.5">
+   707→                        {rp.image ? (
+   708→                          <img src={rp.image} alt={rp.name} className="w-full h-full object-cover" />
+   709→                        ) : (
+   710→                          <div className="w-full h-full flex items-center justify-center">
+   711→                            <Package className="w-5 h-5 text-gray-300" />
+   712→                          </div>
+   713→                        )}
+   714→                      </div>
+   715→                      <p className="text-xs font-medium text-[#1a1a2e] line-clamp-1 group-hover:text-[#c8a951] transition-colors duration-150">{rp.name}</p>
+   716→                      <p className="text-xs font-bold text-[#1a1a2e]">{formatPrice(rp.price)}</p>
+   717→                    </button>
+   718→                  ))}
+   719→                </div>
+   720→              </div>
+   721→            )
+   722→          })()}
+   723→        </DialogContent>
+   724→      </Dialog>
+   725→    </>
+   726→  )
+   727→}
+   728→

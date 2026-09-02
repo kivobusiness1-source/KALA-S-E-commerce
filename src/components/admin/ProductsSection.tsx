@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 import {
   Package, Plus, Edit, Trash2, Search, Filter, X, RefreshCw, FileDown, Eye,
-  ImagePlus, Star, ChevronLeft, ChevronRight, Upload, Link,
+  ImagePlus, Star, ChevronLeft, ChevronRight, Upload, Link, AlertTriangle, PackagePlus, PackageMinus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,10 +56,14 @@ export default function ProductsSection() {
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false)
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
-  const [stockAdjustProduct, setStockAdjustProduct] = useState<Product | null>(null)
-  const [stockAdjustQty, setStockAdjustQty] = useState('')
-  const [stockAdjustLoading, setStockAdjustLoading] = useState(false)
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
+
+  // Stock dialog state
+  const [stockProduct, setStockProduct] = useState<Product | null>(null)
+  const [stockChangeQty, setStockChangeQty] = useState('')
+  const [stockReason, setStockReason] = useState('')
+  const [stockMinAlert, setStockMinAlert] = useState('')
+  const [stockLoading, setStockLoading] = useState(false)
 
   // Product form state
   const [pForm, setPForm] = useState({
@@ -91,6 +95,9 @@ export default function ProductsSection() {
     queryKey: ['categories'],
     queryFn: () => fetch('/api/categories').then(r => r.json()).then(d => d.data as Category[]),
   })
+
+  // Low stock products
+  const lowStockProducts = products?.filter(p => p.stockQty <= p.minStockAlert) ?? []
 
   // Cleanup gallery save timer on unmount
   useEffect(() => {
@@ -297,28 +304,54 @@ export default function ProductsSection() {
     }
   }
 
-  const handleStockAdjust = async () => {
-    if (!stockAdjustProduct) return
-    const qty = parseInt(stockAdjustQty)
-    if (isNaN(qty) || qty < 0) { toast.error('Quantité invalide'); return }
-    setStockAdjustLoading(true)
+  // Stock management
+  const openStockDialog = (product: Product) => {
+    setStockProduct(product)
+    setStockChangeQty('')
+    setStockReason('')
+    setStockMinAlert(String(product.minStockAlert))
+  }
+
+  const handleStockAdjust = async (type: 'entry' | 'exit') => {
+    if (!stockProduct) return
+    const qty = parseInt(stockChangeQty)
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Quantité invalide')
+      return
+    }
+    if (type === 'exit' && qty > stockProduct.stockQty) {
+      toast.error('Quantité insuffisante en stock')
+      return
+    }
+    setStockLoading(true)
     try {
-      const res = await fetch(`/api/products/${stockAdjustProduct.id}`, {
-        method: 'PUT',
+      const change = type === 'entry' ? qty : -qty
+      const body: Record<string, unknown> = {
+        change,
+        reason: stockReason.trim() || undefined,
+      }
+      if (parseInt(stockMinAlert) !== stockProduct.minStockAlert) {
+        body.newMinAlert = parseInt(stockMinAlert)
+      }
+      const res = await fetch(`/api/stock/${stockProduct.id}`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stockQty: qty, inStock: qty > 0 }),
+        body: JSON.stringify(body),
       })
-      if (res.ok) {
-        toast.success(`Stock mis à jour: ${qty} unités`)
-        setStockAdjustProduct(null)
+      const data = await res.json()
+      if (data.success) {
+        toast.success(type === 'entry' ? `+${qty} unités ajoutées` : `-${qty} unités retirées`)
+        setStockProduct(null)
         queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+        queryClient.invalidateQueries({ queryKey: ['stock-history'] })
+        queryClient.invalidateQueries({ queryKey: ['stats'] })
       } else {
-        toast.error('Erreur lors de la mise à jour')
+        toast.error(data.error || 'Erreur lors de l\'ajustement')
       }
     } catch {
       toast.error('Erreur serveur')
     } finally {
-      setStockAdjustLoading(false)
+      setStockLoading(false)
     }
   }
 
@@ -440,6 +473,21 @@ export default function ProductsSection() {
 
   return (
     <div className="space-y-6">
+      {/* Stock Alert Banner */}
+      {lowStockProducts.length > 0 && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4">
+          <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-700">
+              Alerte de stock bas ({lowStockProducts.length} produit{lowStockProducts.length > 1 ? 's' : ''})
+            </p>
+            <p className="text-sm text-red-600 mt-1">
+              {lowStockProducts.slice(0, 5).map(p => p.name).join(', ')}{lowStockProducts.length > 5 ? '...' : ''}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <h3 className="text-xl font-semibold text-gray-900">Produits</h3>
@@ -459,7 +507,7 @@ export default function ProductsSection() {
           <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(!showCategoryManager)}>
             <Filter className="h-4 w-4 mr-1" />Catégories
           </Button>
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => openProductDialog()}>
+          <Button size="sm" className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white" onClick={() => openProductDialog()}>
             <Plus className="h-4 w-4 mr-1" />Ajouter
           </Button>
         </div>
@@ -471,7 +519,7 @@ export default function ProductsSection() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Gestion des Catégories</CardTitle>
-              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setEditingCategory(null); setNewCategoryName(''); setNewCategorySlug(''); setCategoryDialogOpen(true) }}>
+              <Button size="sm" className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white" onClick={() => { setEditingCategory(null); setNewCategoryName(''); setNewCategorySlug(''); setCategoryDialogOpen(true) }}>
                 <Plus className="h-4 w-4 mr-1" />Nouvelle Catégorie
               </Button>
             </div>
@@ -511,13 +559,13 @@ export default function ProductsSection() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-gray-50/90 to-gray-50/60">
+                  <TableRow className="bg-gray-50/80">
                     <TableHead className="w-10">
                       <input
                         type="checkbox"
                         checked={products.length > 0 && selectedProducts.size === products.length}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
                       />
                     </TableHead>
                     <TableHead className="w-16">Image</TableHead>
@@ -527,18 +575,20 @@ export default function ProductsSection() {
                     <TableHead className="text-right">Stock</TableHead>
                     <TableHead>Vedette</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((p, i) => (
-                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'} ${selectedProducts.has(p.id) ? 'bg-emerald-50/50' : ''} hover:bg-emerald-50/30 transition-colors duration-150`}>
+                  {products.map((p, i) => {
+                    const isLowStock = p.stockQty <= p.minStockAlert
+                    return (
+                    <TableRow key={p.id} className={`${!p.isActive ? 'opacity-50' : ''} ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'} ${selectedProducts.has(p.id) ? 'bg-gray-100/50' : ''} hover:bg-gray-50 transition-colors duration-150`}>
                       <TableCell>
                         <input
                           type="checkbox"
                           checked={selectedProducts.has(p.id)}
                           onChange={() => toggleSelectProduct(p.id)}
-                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a] cursor-pointer"
                         />
                       </TableCell>
                       <TableCell>
@@ -546,8 +596,8 @@ export default function ProductsSection() {
                           {p.image ? (
                             <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
-                              <Package className="h-4 w-4 text-emerald-300" />
+                            <div className="w-full h-full rounded-xl bg-gray-100 flex items-center justify-center">
+                              <Package className="h-4 w-4 text-gray-300" />
                             </div>
                           )}
                         </div>
@@ -561,27 +611,34 @@ export default function ProductsSection() {
                       <TableCell className="text-sm">{p.category?.name}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatPrice(p.price)}</TableCell>
                       <TableCell className="text-right">
-                        <button
-                          className={`text-sm font-medium hover:underline cursor-pointer ${p.stockQty < p.minStockAlert ? 'text-red-600 font-bold' : 'text-gray-900'}`}
-                          onClick={() => { setStockAdjustProduct(p); setStockAdjustQty(String(p.stockQty)) }}
-                        >
-                          {p.stockQty}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className={`text-sm font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+                            {p.stockQty}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 px-2 text-xs ${isLowStock ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                            onClick={() => openStockDialog(p)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Stock
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <button
                           onClick={() => toggleFeatured(p)}
-                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${p.isFeatured ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${p.isFeatured ? 'bg-[#1a1a1a]' : 'bg-gray-200'}`}
                         >
                           <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${p.isFeatured ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={p.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}>
+                          <Badge variant="outline" className={p.isActive ? 'bg-gray-50 text-gray-700 border-gray-200' : 'bg-gray-50 text-gray-500 border-gray-200'}>
                             {p.isActive ? 'Actif' : 'Inactif'}
                           </Badge>
-                          {p.isFeatured && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">★</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -596,7 +653,8 @@ export default function ProductsSection() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -616,7 +674,7 @@ export default function ProductsSection() {
             <Trash2 className="h-4 w-4 mr-1" />
             Supprimer la sélection
           </Button>
-          <Button size="sm" variant="ghost" className="text-emerald-300 hover:text-emerald-200 hover:bg-emerald-900/50" onClick={exportSelectedCSV}>
+          <Button size="sm" variant="ghost" className="text-gray-300 hover:text-white hover:bg-white/10" onClick={exportSelectedCSV}>
             <FileDown className="h-4 w-4 mr-1" />
             Exporter CSV
           </Button>
@@ -680,31 +738,31 @@ export default function ProductsSection() {
               <div className="sm:col-span-2 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-semibold text-emerald-700">Galerie Photos Promo</Label>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-medium">
+                    <Label className="text-sm font-semibold text-gray-700">Galerie Photos Promo</Label>
+                    <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs font-medium">
                       {galleryImages.length} photo{galleryImages.length !== 1 ? 's' : ''}
                     </Badge>
                   </div>
                 </div>
 
-                <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50/30 space-y-4">
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/30 space-y-4">
                   {/* Upload area */}
                   <div
-                    className="relative flex flex-col items-center justify-center gap-2 border-2 border-dashed border-emerald-300 rounded-xl p-4 cursor-pointer hover:bg-emerald-50/60 transition-colors"
+                    className="relative flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => galleryFileInputRef.current?.click()}
                   >
                     {galleryUploading ? (
                       <>
-                        <RefreshCw className="h-6 w-6 text-emerald-500 animate-spin" />
-                        <p className="text-xs text-emerald-600 font-medium">Téléchargement en cours...</p>
+                        <RefreshCw className="h-6 w-6 text-gray-400 animate-spin" />
+                        <p className="text-xs text-gray-500 font-medium">Téléchargement en cours...</p>
                       </>
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                          <ImagePlus className="h-5 w-5 text-emerald-600" />
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          <ImagePlus className="h-5 w-5 text-gray-500" />
                         </div>
-                        <p className="text-sm text-emerald-700 font-medium">Ajouter des photos</p>
-                        <p className="text-xs text-emerald-600/70">Cliquez ou glissez vos images ici</p>
+                        <p className="text-sm text-gray-600 font-medium">Ajouter des photos</p>
+                        <p className="text-xs text-gray-400">Cliquez ou glissez vos images ici</p>
                       </>
                     )}
                     <input
@@ -725,13 +783,13 @@ export default function ProductsSection() {
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleAddImageUrl() }}
-                        placeholder="Coller l'URL d'une image..."
+                        placeholder="Coller l\'URL d\'une image..."
                         className="pl-8 h-8 text-sm"
                       />
                     </div>
                     <Button
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3"
+                      className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white h-8 px-3"
                       onClick={handleAddImageUrl}
                       disabled={!urlInput.trim()}
                     >
@@ -749,7 +807,7 @@ export default function ProductsSection() {
                           <div
                             key={`${url}-${index}`}
                             className={`group relative w-full aspect-square rounded-xl overflow-hidden ${
-                              isMain ? 'ring-2 ring-emerald-500' : 'ring-1 ring-gray-200'
+                              isMain ? 'ring-2 ring-[#1a1a1a]' : 'ring-1 ring-gray-200'
                             }`}
                           >
                             <img
@@ -758,29 +816,25 @@ export default function ProductsSection() {
                               className="w-full h-full object-cover"
                             />
 
-                            {/* Main image badge */}
                             {isMain && (
-                              <div className="absolute top-1 left-1 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-tight">
+                              <div className="absolute top-1 left-1 bg-[#1a1a1a] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-tight">
                                 Principale
                               </div>
                             )}
 
-                            {/* Hover overlay */}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200">
                               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-1">
-                                {/* Set as main */}
                                 {!isMain && (
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleSetAsMain(url) }}
-                                    className="p-1.5 bg-white/90 hover:bg-emerald-100 rounded-full transition-colors"
+                                    className="p-1.5 bg-white/90 hover:bg-gray-100 rounded-full transition-colors"
                                     title="Définir comme image principale"
                                   >
-                                    <Star className="h-3.5 w-3.5 text-emerald-600" />
+                                    <Star className="h-3.5 w-3.5 text-gray-700" />
                                   </button>
                                 )}
                                 <div className="flex items-center gap-1">
-                                  {/* Move left */}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleMoveGalleryImage(index, 'left') }}
@@ -790,7 +844,6 @@ export default function ProductsSection() {
                                   >
                                     <ChevronLeft className="h-3.5 w-3.5 text-gray-700" />
                                   </button>
-                                  {/* Move right */}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleMoveGalleryImage(index, 'right') }}
@@ -800,7 +853,6 @@ export default function ProductsSection() {
                                   >
                                     <ChevronRight className="h-3.5 w-3.5 text-gray-700" />
                                   </button>
-                                  {/* Delete */}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleDeleteGalleryImage(index) }}
@@ -819,7 +871,7 @@ export default function ProductsSection() {
                   )}
 
                   {galleryImages.length === 0 && !galleryUploading && (
-                    <p className="text-xs text-center text-emerald-600/60 py-2">
+                    <p className="text-xs text-center text-gray-400 py-2">
                       Aucune photo promo. Ajoutez des images ci-dessus.
                     </p>
                   )}
@@ -879,7 +931,7 @@ export default function ProductsSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Annuler</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveProduct} disabled={saving}>
+            <Button className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white" onClick={saveProduct} disabled={saving}>
               {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
               {editingProduct ? 'Enregistrer' : 'Créer'}
             </Button>
@@ -921,7 +973,7 @@ export default function ProductsSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>Annuler</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveCategory} disabled={saving}>
+            <Button className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white" onClick={saveCategory} disabled={saving}>
               {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}{editingCategory ? 'Enregistrer' : 'Créer'}
             </Button>
           </DialogFooter>
@@ -944,39 +996,110 @@ export default function ProductsSection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Stock Adjustment Dialog */}
-      <Dialog open={!!stockAdjustProduct} onOpenChange={() => setStockAdjustProduct(null)}>
-        <DialogContent className="max-w-sm">
+      {/* Stock Management Dialog */}
+      <Dialog open={!!stockProduct} onOpenChange={() => setStockProduct(null)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Ajuster le stock</DialogTitle>
-            <DialogDescription>{stockAdjustProduct?.name}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Gérer le stock
+            </DialogTitle>
+            <DialogDescription>{stockProduct?.name}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Quantité en stock</Label>
-              <Input
-                type="number"
-                value={stockAdjustQty}
-                onChange={(e) => setStockAdjustQty(e.target.value)}
-                min="0"
-              />
+          {stockProduct && (
+            <div className="space-y-5">
+              {/* Current stock info */}
+              <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Stock actuel</p>
+                  <p className={`text-3xl font-bold ${stockProduct.stockQty <= stockProduct.minStockAlert ? 'text-red-600' : 'text-gray-900'}`}>
+                    {stockProduct.stockQty}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Seuil d'alerte</p>
+                  <p className="text-lg font-medium text-gray-600">{stockProduct.minStockAlert}</p>
+                </div>
+              </div>
+
+              {/* Min stock alert threshold */}
+              <div className="space-y-2">
+                <Label>Seuil d'alerte minimum</Label>
+                <Input
+                  type="number"
+                  value={stockMinAlert}
+                  onChange={e => setStockMinAlert(e.target.value)}
+                  min="0"
+                />
+              </div>
+
+              {/* Quick actions */}
+              <div className="space-y-2">
+                <Label>Quantité à ajuster</Label>
+                <Input
+                  type="number"
+                  value={stockChangeQty}
+                  onChange={e => setStockChangeQty(e.target.value)}
+                  placeholder="Ex: 50"
+                  min="1"
+                />
+                <div className="flex items-center gap-2">
+                  {['10', '25', '50', '100'].map(v => (
+                    <Button
+                      key={v}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setStockChangeQty(v)}
+                    >
+                      +{v}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-2">
+                <Label>Raison (optionnel)</Label>
+                <Select value={stockReason} onValueChange={setStockReason}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner une raison" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Livraison fournisseur">Livraison fournisseur</SelectItem>
+                    <SelectItem value="Vente">Vente</SelectItem>
+                    <SelectItem value="Ajustement">Ajustement</SelectItem>
+                    <SelectItem value="Retour client">Retour client</SelectItem>
+                    <SelectItem value="Casse/Perte">Casse/Perte</SelectItem>
+                    <SelectItem value="Inventaire">Inventaire</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={stockReason}
+                  onChange={e => setStockReason(e.target.value)}
+                  placeholder="Ou saisir une raison personnalisée..."
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-3">
+                <Button
+                  className="flex-1 bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white"
+                  onClick={() => handleStockAdjust('entry')}
+                  disabled={stockLoading || !stockChangeQty || parseInt(stockChangeQty) <= 0}
+                >
+                  {stockLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <PackagePlus className="h-4 w-4 mr-2" />}
+                  Entrée
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => handleStockAdjust('exit')}
+                  disabled={stockLoading || !stockChangeQty || parseInt(stockChangeQty) <= 0 || parseInt(stockChangeQty) > stockProduct.stockQty}
+                >
+                  {stockLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <PackageMinus className="h-4 w-4 mr-2" />}
+                  Sortie
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              {["+10", "+50", "+100", "-10", "Reset"].map(btn => (
-                <Button key={btn} variant="outline" size="sm" onClick={() => {
-                  if (btn === 'Reset') setStockAdjustQty(String(stockAdjustProduct?.stockQty || 0))
-                  else setStockAdjustQty(String(Math.max(0, parseInt(stockAdjustQty || '0') + parseInt(btn))))
-                }}>{btn}</Button>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStockAdjustProduct(null)}>Annuler</Button>
-            <Button onClick={handleStockAdjust} disabled={stockAdjustLoading}>
-              {stockAdjustLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-              Enregistrer
-            </Button>
-          </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>
