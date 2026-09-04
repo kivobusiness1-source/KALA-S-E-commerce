@@ -1612,3 +1612,34 @@ Stage Summary:
 - Responsive across all devices
 - ESLint: 0 errors
 - Browser verified: desktop + mobile
+
+---
+Task ID: redesign-hero-section
+Agent: main
+Task: Redesign hero section - remove black, professional design, add configurable hero image from admin
+
+Work Log:
+- Created `/api/upload/route.ts` endpoint (was missing) with auth, file validation, and cleanup
+- Added "Apparence" tab in admin SettingsSection with:
+  - Hero image upload via file picker
+  - Hero image URL input field
+  - Preview of current hero image
+  - Save to site settings (`hero_image_url` key)
+- Redesigned HeroSection completely:
+  - Removed black background (`bg-[#1a1a1a]`) → gradient emerald-50/white/teal-50
+  - Removed two buttons "Voir nos Produits" and "Nous Contacter"
+  - Added badge "Qualité industrielle · Brazzaville" 
+  - Added trust indicators (100% Qualité, Livraison 24-48h) instead of CTA buttons
+  - Dynamic hero image from site settings on right side
+  - Decorative background blur elements for depth
+  - Floating badge "Pointe-Noire 🇨🇬"
+  - Smooth fade-in animations
+  - Fallback placeholder when no image configured
+
+Stage Summary:
+- Hero section fully redesigned with clean, professional look
+- No more black color anywhere in hero
+- No more CTA buttons in hero
+- Hero image configurable from admin (super_admin + admin) via Settings > Apparence
+- Upload endpoint working for image uploads
+- Tested and verified via agent-browser: image shows on main page, admin tab works

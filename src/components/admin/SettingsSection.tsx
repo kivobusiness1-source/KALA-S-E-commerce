@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Settings, ShieldCheck, Megaphone, Truck, Plus, RefreshCw, Users, MapPin } from 'lucide-react'
+import { Settings, ShieldCheck, Megaphone, Truck, Plus, RefreshCw, Users, MapPin, Image, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +54,11 @@ export default function SettingsSection() {
   // Delivery zones state
   const [deliveryZones, setDeliveryZones] = useState('Centre-ville, Pointe-Noire\nMboukou\nLoango\nTchinouka')
   const [deliveryZonesSaving, setDeliveryZonesSaving] = useState(false)
+
+  // Hero image state
+  const [heroImageUrl, setHeroImageUrl] = useState('')
+  const [heroUploading, setHeroUploading] = useState(false)
+  const [heroSaving, setHeroSaving] = useState(false)
 
   const saveDeliveryZones = async () => {
     setDeliveryZonesSaving(true)
@@ -143,6 +148,7 @@ export default function SettingsSection() {
       setPromoEnabled(settings.promo_banner_enabled === 'true')
       setPromoText(settings.promo_banner_text || 'Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
       if (settings.delivery_zones) setDeliveryZones(settings.delivery_zones)
+      setHeroImageUrl(settings.hero_image_url || '')
       setLoading(false)
     }
   }, [settings])
@@ -252,6 +258,7 @@ export default function SettingsSection() {
           <TabsTrigger value="security" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><ShieldCheck className="h-3.5 w-3.5" />Sécurité</TabsTrigger>
           <TabsTrigger value="banner" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Megaphone className="h-3.5 w-3.5" />Bannière</TabsTrigger>
           <TabsTrigger value="delivery" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Truck className="h-3.5 w-3.5" />Livraison</TabsTrigger>
+          <TabsTrigger value="appearance" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Image className="h-3.5 w-3.5" />Apparence</TabsTrigger>
         </TabsList>
 
         {/* Général Tab */}
@@ -379,6 +386,107 @@ export default function SettingsSection() {
                   <div className="pt-2">
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
                       {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Apparence Tab */}
+        <TabsContent value="appearance">
+          <div className="max-w-2xl">
+            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+              <CardHeader>
+                <CardTitle>Image Hero (Page d&apos;accueil)</CardTitle>
+                <CardDescription>Image affichée à droite dans la section hero de la page principale.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {heroImageUrl ? (
+                    <div className="relative group rounded-xl overflow-hidden border border-gray-200">
+                      <img src={heroImageUrl} alt="Hero image" className="w-full h-48 object-cover" />
+                      <button
+                        onClick={() => setHeroImageUrl('')}
+                        className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="h-48 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50/50">
+                      <div className="text-center">
+                        <Image className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm text-gray-400">Aucune image hero configurée</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-sm font-medium text-gray-600 hover:text-emerald-700">
+                        {heroUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {heroUploading ? 'Upload en cours...' : 'Uploader une image'}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setHeroUploading(true)
+                          try {
+                            const formData = new FormData()
+                            formData.append('image', file)
+                            const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                            const data = await res.json()
+                            if (data.data?.url) {
+                              setHeroImageUrl(data.data.url)
+                              toast.success('Image uploadée')
+                            } else {
+                              toast.error(data.error || 'Erreur upload')
+                            }
+                          } catch {
+                            toast.error('Erreur de connexion')
+                          } finally {
+                            setHeroUploading(false)
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ou URL de l&apos;image</Label>
+                    <Input
+                      value={heroImageUrl}
+                      onChange={(e) => setHeroImageUrl(e.target.value)}
+                      placeholder="/uploads/hero.png ou https://..."
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={async () => {
+                      setHeroSaving(true)
+                      try {
+                        const res = await fetch('/api/site-settings', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ settings: [{ key: 'hero_image_url', value: heroImageUrl }] }),
+                        })
+                        const data = await res.json()
+                        if (data.success) {
+                          toast.success('Image hero sauvegardée')
+                        } else {
+                          toast.error(data.error || 'Erreur')
+                        }
+                      } catch {
+                        toast.error('Erreur serveur')
+                      } finally {
+                        setHeroSaving(false)
+                      }
+                    }} disabled={heroSaving}>
+                      {heroSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
                       Sauvegarder
                     </Button>
                   </div>
