@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminStore } from '@/stores/admin-store'
 import { toast } from 'sonner'
 import {
-  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, RefreshCw, History, Star, Inbox, Users, Bike, Megaphone,
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, RefreshCw, History, Star, Inbox, Users, Bike, Megaphone, Warehouse,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -26,6 +26,7 @@ import ReviewsSection from '@/components/admin/ReviewsSection'
 import TeamSection from '@/components/admin/TeamSection'
 import LivreursSection from '@/components/admin/LivreursSection'
 import CatchphraseSection from '@/components/admin/CatchphraseSection'
+import WholesaleSection from '@/components/admin/WholesaleSection'
 
 const ALL_NAV_ITEMS: { key: Section; label: string; icon: React.ReactNode; roles: string[] }[] = [
   { key: 'dashboard', label: 'Tableau de Bord', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff', 'livreur'] },
@@ -40,6 +41,7 @@ const ALL_NAV_ITEMS: { key: Section; label: string; icon: React.ReactNode; roles
   { key: 'team', label: 'Équipe', icon: <Users className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff'] },
   { key: 'livreurs', label: 'Livreurs', icon: <Bike className="h-5 w-5" />, roles: ['super_admin', 'admin'] },
   { key: 'catchphrases', label: 'Publicité', icon: <Megaphone className="h-5 w-5" />, roles: ['super_admin', 'admin'] },
+  { key: 'wholesale', label: 'Vente en Gros', icon: <Warehouse className="h-5 w-5" />, roles: ['super_admin', 'admin'] },
 ]
 
 export default function AdminPage() {
@@ -295,6 +297,7 @@ export default function AdminPage() {
           {section === 'team' && <TeamSection />}
           {section === 'livreurs' && <LivreursSection />}
           {section === 'catchphrases' && <CatchphraseSection />}
+          {section === 'wholesale' && <WholesaleSection />}
         </div>
       </main>
     </div>

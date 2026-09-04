@@ -30,6 +30,7 @@ const CartSheet = dynamic(() => import('@/components/storefront/CartSheet').then
 const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => ({ default: m.Footer })), { ssr: false })
 const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
 const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
+const WholesaleSection = dynamic(() => import('@/components/storefront/WholesaleSection'), { ssr: false })
 import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
 
 export default function Home() {
@@ -507,6 +508,7 @@ export default function Home() {
           wishlistToggle={wishlist.toggleItem}
           isWishlisted={wishlist.isInWishlist}
         />
+        <WholesaleSection />
         <FlashSaleSection products={products} onAddToCart={handleAddToCart} onViewProduct={setSelectedProduct} />
         <AboutSection />
         <TestimonialsSection

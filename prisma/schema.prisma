@@ -22,6 +22,7 @@ model Admin {
   sessions       AdminSession[]
   stockHistories StockHistory[]
   createdOrders  Order[]       @relation("assignedBy")
+  createdWholesaleOrders WholesaleOrder[] @relation("wholesaleAssignedBy")
 }
 
 model AdminSession {
@@ -264,6 +265,7 @@ model Deliverer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   orders      Order[]
+  wholesaleOrders WholesaleOrder[]
 
   @@index([zone])
   @@index([isActive])
@@ -281,6 +283,116 @@ model Catchphrase {
   updatedAt DateTime @updatedAt
 
   @@index([position])
+  @@index([isActive])
+}
+
+// ==================== WHOLESALE (COMMANDES EN GROS) ====================
+
+model WholesaleProduct {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  lotSize       Int      // Number of units per lot (e.g., 10 bottles for liquid soap)
+  lotUnit       String   @default("bouteilles") // Unit name: bouteilles, bidons, sachets, etc.
+  pricePerLot   Float    // Price per lot in FCFA
+  comparePrice  Float?   // Compare/strikethrough price per lot
+  image         String?
+  isActive      Boolean  @default(true)
+  minLots       Int      @default(5) // Minimum number of lots per order
+  stockLots     Int      @default(0) // Available stock in lots
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orderItems    WholesaleOrderItem[]
+
+  @@index([isActive])
+}
+
+model WholesaleOrder {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique // e.g., GRO-XXXXXX
+  trackingCode    String      @unique // Code for customer to track order
+  // Customer info
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  companyName     String?     // Company / business name
+  nif             String?     // NIF (Numéro d'Identification Fiscale)
+  stat            String?     // STAT
+  address         String
+  city            String      @default("Brazzaville")
+  quartier        String?     // Neighborhood
+  // Order details
+  status          String      @default("pending") // pending, confirmed, processing, ready, shipped, delivered, cancelled
+  totalAmount     Float
+  notes           String?
+  // Payment
+  paymentMethodId String?
+  paymentMethod   WholesalePaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  paymentStatus   String      @default("unpaid") // unpaid, partial, paid
+  paymentRef      String?     // Payment reference/transaction ID
+  paymentProof    String?     // Uploaded proof of payment (image URL)
+  // Delivery
+  deliveryAddress String?     // If different from address
+  deliveryZone    String?
+  delivererId     String?
+  deliverer       Deliverer?  @relation(fields: [delivererId], references: [id])
+  // Admin
+  assignedToId    String?
+  assignedBy      Admin?      @relation("wholesaleAssignedBy", fields: [assignedToId], references: [id])
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           WholesaleOrderItem[]
+  orderNotes      WholesaleOrderNote[]
+
+  @@index([trackingCode])
+  @@index([status])
+  @@index([paymentMethodId])
+  @@index([assignedToId])
+}
+
+model WholesaleOrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  wholesaleProductId  String
+  productName         String
+  lotsQuantity        Int      // Number of lots
+  lotSize             Int      // Units per lot (snapshot)
+  lotUnit             String   // Unit name (snapshot)
+  totalUnits          Int      // lotsQuantity * lotSize
+  pricePerLot         Float    // Price per lot (snapshot)
+  totalPrice          Float    // lotsQuantity * pricePerLot
+  order               WholesaleOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product             WholesaleProduct      @relation(fields: [wholesaleProductId], references: [id])
+
+  @@index([orderId])
+}
+
+model WholesaleOrderNote {
+  id         String   @id @default(cuid())
+  orderId    String
+  content    String
+  senderType String   @default("admin") // admin, system, customer
+  createdAt  DateTime @default(now())
+  order      WholesaleOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+model WholesalePaymentMethod {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "M-Pesa", "Airtel Money", "Espèces"
+  description String?  // Instructions or details
+  accountInfo String?  // Phone number or account for mobile money
+  icon        String?  // Icon name or emoji
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  isCash      Boolean  @default(false) // Whether this is cash payment
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      WholesaleOrder[]
+
   @@index([isActive])
 }
 

@@ -1,4 +1,4 @@
-export type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews' | 'team' | 'livreurs' | 'catchphrases'
+export type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews' | 'team' | 'livreurs' | 'catchphrases' | 'wholesale'
 
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 

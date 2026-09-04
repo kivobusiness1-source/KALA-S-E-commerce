@@ -220,6 +220,123 @@ async function seed() {
   }
   console.log(`Created ${sampleEmails.length} sample emails`)
 
+  // Wholesale products
+  const wholesaleProducts = [
+    {
+      name: 'CongoClean Savon Liquide 1L',
+      description: 'Savon liquide doux pour le nettoyage quotidien — format 1L',
+      lotSize: 10,
+      lotUnit: 'bouteilles',
+      pricePerLot: 12000,
+      comparePrice: 15000,
+      isActive: true,
+      minLots: 5,
+      stockLots: 100,
+    },
+    {
+      name: 'CongoClean Savon Liquide 5L',
+      description: 'Savon liquide format familial — bidon 5L',
+      lotSize: 6,
+      lotUnit: 'bidons',
+      pricePerLot: 27000,
+      comparePrice: 33000,
+      isActive: true,
+      minLots: 3,
+      stockLots: 60,
+    },
+    {
+      name: 'ProWash Détergent Poudre 500g',
+      description: 'Détergent en poudre haute performance — sachet 500g',
+      lotSize: 20,
+      lotUnit: 'sachets',
+      pricePerLot: 35000,
+      comparePrice: 40000,
+      isActive: true,
+      minLots: 5,
+      stockLots: 80,
+    },
+    {
+      name: 'ProWash Détergent Liquide 1L',
+      description: 'Détergent liquide pour lavage doux et efficace — 1L',
+      lotSize: 10,
+      lotUnit: 'bouteilles',
+      pricePerLot: 22000,
+      comparePrice: 28000,
+      isActive: true,
+      minLots: 5,
+      stockLots: 50,
+    },
+    {
+      name: 'JavelCongo Eau de Javel 1L',
+      description: 'Eau de Javel qualité industrielle — 1L',
+      lotSize: 12,
+      lotUnit: 'bouteilles',
+      pricePerLot: 7200,
+      comparePrice: 9600,
+      isActive: true,
+      minLots: 5,
+      stockLots: 120,
+    },
+    {
+      name: 'JavelCongo Eau de Javel 5L',
+      description: 'Eau de Javel format professionnel — bidon 5L',
+      lotSize: 6,
+      lotUnit: 'bidons',
+      pricePerLot: 15000,
+      comparePrice: 18000,
+      isActive: true,
+      minLots: 3,
+      stockLots: 40,
+    },
+  ]
+
+  for (const wp of wholesaleProducts) {
+    const existing = await db.wholesaleProduct.findFirst({ where: { name: wp.name } })
+    if (!existing) {
+      await db.wholesaleProduct.create({ data: wp })
+    }
+  }
+  console.log(`Created ${wholesaleProducts.length} wholesale products`)
+
+  // Wholesale payment methods
+  const paymentMethods = [
+    {
+      name: 'M-Pesa',
+      description: 'Envoyez le montant au numéro ci-dessous, puis saisissez la référence de la transaction.',
+      accountInfo: '+242 06 600 0000',
+      icon: '📱',
+      isActive: true,
+      isCash: false,
+      sortOrder: 1,
+    },
+    {
+      name: 'Airtel Money',
+      description: 'Envoyez le montant au numéro ci-dessous, puis saisissez la référence de la transaction.',
+      accountInfo: '+242 05 500 0000',
+      icon: '📱',
+      isActive: true,
+      isCash: false,
+      sortOrder: 2,
+    },
+    {
+      name: 'Espèces',
+      description: 'Payez en espèces à la livraison de votre commande.',
+      accountInfo: null,
+      icon: '💵',
+      isActive: true,
+      isCash: true,
+      sortOrder: 3,
+    },
+  ]
+
+  for (const pm of paymentMethods) {
+    const existing = await db.wholesalePaymentMethod.findFirst({ where: { name: pm.name } })
+    if (!existing) {
+      await db.wholesalePaymentMethod.create({ data: pm })
+    }
+  }
+  console.log(`Created ${paymentMethods.length} wholesale payment methods`)
+
   console.log('Seeding complete!')
 }
 
