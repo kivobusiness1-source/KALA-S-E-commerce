@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true, data: { message: 'Logged out' } })
     response.cookies.set('admin_token', '', {
       httpOnly: true,
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       maxAge: 0,
       path: '/',
     })

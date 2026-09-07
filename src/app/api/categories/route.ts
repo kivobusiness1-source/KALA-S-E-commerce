@@ -13,10 +13,10 @@ async function getAdmin(request: NextRequest) {
 }
 
 const createCategorySchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  slug: z.string().min(1, 'Slug is required'),
-  description: z.string().optional(),
-  image: z.string().optional().nullable(),
+  name: z.string().min(1, 'Name is required').max(200),
+  slug: z.string().min(1, 'Slug is required').max(200),
+  description: z.string().max(5000).optional(),
+  image: z.string().max(500).optional().nullable(),
   sortOrder: z.number().int().optional(),
 })
 

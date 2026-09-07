@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
-import { randomUUID } from 'crypto'
+import { randomBytes } from 'crypto'
+import bcrypt from 'bcryptjs'
 
 const SESSION_DURATION_HOURS = 24
 
@@ -10,21 +11,30 @@ export interface AdminPayload {
   role: string
 }
 
+const BCRYPT_ROUNDS = 12
+
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return bcrypt.hash(password, BCRYPT_ROUNDS)
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const passwordHash = await hashPassword(password)
-  return passwordHash === hash
+  // Support legacy SHA-256 hashes for migration
+  if (hash.length === 64 && /^[a-f0-9]{64}$/.test(hash)) {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const sha256Hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+    if (sha256Hash === hash) {
+      // Migrate to bcrypt on next use
+      return true
+    }
+    return false
+  }
+  return bcrypt.compare(password, hash)
 }
 
 export async function createSession(adminId: string, clientIp?: string): Promise<string> {
-  const token = randomUUID() + randomUUID()
+  const token = randomBytes(64).toString('hex') // 512-bit cryptographically random
   const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000)
 
   await db.adminSession.create({

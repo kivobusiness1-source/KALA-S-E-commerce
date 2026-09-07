@@ -6,9 +6,13 @@ import { db } from '@/lib/db'
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
 
+const passwordSchema = z.string()
+  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_.])/, 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial')
+
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Le mot de passe actuel est requis'),
-  newPassword: z.string().min(8, 'Le nouveau mot de passe doit contenir au moins 8 caractères'),
+  newPassword: passwordSchema,
 })
 
 export async function POST(request: NextRequest) {

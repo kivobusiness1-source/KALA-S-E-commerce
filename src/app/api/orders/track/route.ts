@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/auth'
 
 // POST /api/orders/track - Public: track order by email
 const trackSchema = z.object({
@@ -9,6 +10,11 @@ const trackSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`orders-track:${clientIp}`, 10, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const body = await request.json()
     const parsed = trackSchema.safeParse(body)
     if (!parsed.success) {

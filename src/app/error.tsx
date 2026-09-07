@@ -25,11 +25,9 @@ export default function Error({
         <h2 className="text-xl font-semibold text-gray-900">
           Une erreur est survenue
         </h2>
-        <p className="text-sm text-gray-500 break-all font-mono bg-gray-50 p-4 rounded-lg text-left overflow-auto max-h-40">
-          {error.message || 'Erreur inconnue'}
-        </p>
+        <p className="text-gray-600">Une erreur inattendue s'est produite. Veuillez réessayer.</p>
         {error.digest && (
-          <p className="text-xs text-gray-400">Digest: {error.digest}</p>
+          <p className="text-xs text-gray-400 mt-2">Référence: {error.digest}</p>
         )}
         <button
           onClick={reset}

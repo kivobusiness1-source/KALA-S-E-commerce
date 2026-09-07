@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/auth'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
@@ -24,6 +25,11 @@ const statusTimeline: Record<string, { label: string; step: number }> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`wholesale-track:${clientIp}`, 10, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const body = await request.json()
     const parsed = trackSchema.safeParse(body)
     if (!parsed.success) {

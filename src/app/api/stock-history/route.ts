@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { validateSession } from '@/lib/auth'
+import { z } from 'zod'
 
 // GET /api/stock-history - Admin: get stock history
 export async function GET(request: NextRequest) {
@@ -16,8 +17,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('productId')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+
+    const querySchema = z.object({
+      page: z.coerce.number().int().positive().default(1),
+      limit: z.coerce.number().int().positive().max(100).default(20),
+    })
+    const { page, limit } = querySchema.parse(Object.fromEntries(searchParams))
 
     const where = productId ? { productId } : {}
 

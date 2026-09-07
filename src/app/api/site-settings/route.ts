@@ -21,13 +21,39 @@ const updateSettingsSchema = z.object({
   settings: z.array(settingItemSchema).min(1),
 })
 
-export async function GET() {
+const PUBLIC_SETTINGS_KEYS = new Set([
+  'site_name',
+  'site_tagline',
+  'site_description',
+  'contact_phone',
+  'contact_email',
+  'contact_address',
+  'whatsapp_number',
+  'currency',
+  'free_shipping_threshold',
+  'hero_image_url',
+  'promo_banner_text',
+  'promo_banner_enabled',
+])
+
+export async function GET(request: NextRequest) {
   try {
     const settings = await db.siteSetting.findMany()
 
+    // Check if authenticated as admin
+    const token = request.cookies.get('admin_token')?.value
+    let isAdmin = false
+    if (token) {
+      const admin = await validateSession(token)
+      isAdmin = !!admin
+    }
+
     const kv: Record<string, string> = {}
     for (const s of settings) {
-      kv[s.key] = s.value
+      // Admin sees all, public sees only whitelisted keys
+      if (isAdmin || PUBLIC_SETTINGS_KEYS.has(s.key)) {
+        kv[s.key] = s.value
+      }
     }
 
     return ok(kv)

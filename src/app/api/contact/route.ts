@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, checkRateLimit } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
 
 const contactSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
-  subject: z.string().optional(),
-  message: z.string().min(1, 'Message is required'),
+  name: z.string().min(1, 'Name is required').max(200),
+  email: z.string().email('Invalid email address').max(254),
+  phone: z.string().max(20).optional(),
+  subject: z.string().max(200).optional(),
+  message: z.string().min(1, 'Message is required').max(5000),
+})
+
+const contactUpdateSchema = z.object({
+  id: z.string().min(1, 'ID is required'),
+  isRead: z.boolean().optional(),
+  isReplied: z.boolean().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -64,15 +70,23 @@ export async function PUT(request: NextRequest) {
     if (!admin) return err('Unauthorized', 401)
 
     const body = await request.json()
-    const { id, isRead } = body
-    if (!id) return err('ID is required')
+    const { id, isRead, isReplied } = contactUpdateSchema.parse(body)
+
+    const updateData: Record<string, unknown> = {}
+    if (isRead !== undefined) updateData.isRead = isRead
+    if (isReplied !== undefined) updateData.isReplied = isReplied
+    if (Object.keys(updateData).length === 0) updateData.isRead = true
 
     const submission = await db.contactSubmission.update({
       where: { id },
-      data: { isRead: isRead !== undefined ? isRead : true },
+      data: updateData,
     })
     return ok(submission)
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(e => e.message).join(', ')
+      return err(messages, 400)
+    }
     console.error('Contact PUT error:', error)
     return err('Failed to update contact submission', 500)
   }
@@ -99,6 +113,11 @@ export async function DELETE(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`contact:${clientIp}`, 5, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const body = await request.json()
     const data = contactSchema.parse(body)
 

@@ -14,10 +14,10 @@ async function getAdmin(request: NextRequest) {
 
 const querySchema = z.object({
   categoryId: z.string().optional(),
-  search: z.string().optional(),
+  search: z.string().max(200).optional(),
   featured: z.enum(['true', 'false']).optional(),
   all: z.enum(['true', 'false']).optional(),
-  slug: z.string().optional(),
+  slug: z.string().max(200).optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -104,15 +104,15 @@ export async function GET(request: NextRequest) {
 }
 
 const createProductSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
-  longDescription: z.string().optional(),
+  name: z.string().min(1, 'Name is required').max(200),
+  description: z.string().max(5000).optional(),
+  longDescription: z.string().max(5000).optional(),
   price: z.number().positive('Price must be positive'),
   comparePrice: z.number().positive().optional().nullable(),
   categoryId: z.string().min(1, 'Category is required'),
-  image: z.string().optional().nullable(),
-  images: z.string().optional(),
-  volume: z.string().optional().nullable(),
+  image: z.string().max(500).optional().nullable(),
+  images: z.string().max(5000).optional(),
+  volume: z.string().max(20).optional().nullable(),
   isActive: z.boolean().optional().default(true),
   isFeatured: z.boolean().optional().default(false),
   inStock: z.boolean().optional().default(true),

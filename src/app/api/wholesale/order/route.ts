@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/auth'
+import { randomInt } from 'crypto'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
@@ -8,13 +10,21 @@ function err(message: string, status = 400) { return NextResponse.json({ success
 // ─── Helpers ───
 
 function generateOrderNumber(): string {
-  const digits = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join('')
-  return `GRO-${digits}`
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let result = 'GRO-'
+  for (let i = 0; i < 6; i++) {
+    result += chars[randomInt(0, chars.length)]
+  }
+  return result
 }
 
 function generateTrackingCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  let result = ''
+  for (let i = 0; i < 8; i++) {
+    result += chars[randomInt(0, chars.length)]
+  }
+  return result
 }
 
 // ─── Validation ───
@@ -26,30 +36,35 @@ const orderItemSchema = z.object({
 
 const createWholesaleOrderSchema = z.object({
   // Customer info
-  customerName: z.string().min(1, 'Customer name is required'),
-  customerEmail: z.string().email('Invalid email address'),
-  customerPhone: z.string().min(1, 'Phone number is required'),
-  companyName: z.string().nullable().optional(),
-  nif: z.string().nullable().optional(),
-  stat: z.string().nullable().optional(),
-  address: z.string().min(1, 'Address is required'),
-  city: z.string().optional().default('Brazzaville'),
-  quartier: z.string().nullable().optional(),
+  customerName: z.string().min(1, 'Customer name is required').max(200),
+  customerEmail: z.string().email('Invalid email address').max(254),
+  customerPhone: z.string().min(1, 'Phone number is required').max(20),
+  companyName: z.string().max(200).nullable().optional(),
+  nif: z.string().max(50).nullable().optional(),
+  stat: z.string().max(50).nullable().optional(),
+  address: z.string().min(1, 'Address is required').max(500),
+  city: z.string().max(200).optional().default('Brazzaville'),
+  quartier: z.string().max(200).nullable().optional(),
   // Order items
   items: z.array(orderItemSchema).min(1, 'At least one item is required'),
   // Payment
   paymentMethodId: z.string().nullable().optional(),
   // Delivery
-  deliveryAddress: z.string().nullable().optional(),
-  deliveryZone: z.string().nullable().optional(),
+  deliveryAddress: z.string().max(500).nullable().optional(),
+  deliveryZone: z.string().max(200).nullable().optional(),
   // Notes
-  notes: z.string().nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 })
 
 // ─── POST: Public - Place a wholesale order ───
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`wholesale-order:${clientIp}`, 5, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const body = await request.json()
     const data = createWholesaleOrderSchema.parse(body)
 

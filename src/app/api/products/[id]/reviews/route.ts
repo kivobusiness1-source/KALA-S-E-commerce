@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/auth'
 
 // GET /api/products/[id]/reviews - Public: get reviews for a product
 export async function GET(
@@ -50,6 +51,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`reviews:${clientIp}`, 5, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const { id } = await params
 
     // Check product exists

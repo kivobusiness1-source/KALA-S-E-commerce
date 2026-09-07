@@ -32,12 +32,13 @@ const updateProductSchema = z.object({
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const admin = await getAdmin(request)
     const product = await db.product.findUnique({
       where: { id },
       include: { category: true },
     })
 
-    if (!product) {
+    if (!product || (!admin && !product.isActive)) {
       return err('Product not found', 404)
     }
 

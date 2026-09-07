@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, checkRateLimit } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -18,12 +18,12 @@ const orderItemSchema = z.object({
 })
 
 const createOrderSchema = z.object({
-  customerName: z.string().min(1, 'Customer name is required'),
-  customerEmail: z.string().email('Invalid email address'),
-  customerPhone: z.string().optional(),
-  address: z.string().min(1, 'Address is required'),
-  city: z.string().optional().default('Pointe-Noire'),
-  notes: z.string().optional(),
+  customerName: z.string().min(1, 'Customer name is required').max(200),
+  customerEmail: z.string().email('Invalid email address').max(254),
+  customerPhone: z.string().max(20).optional(),
+  address: z.string().min(1, 'Address is required').max(500),
+  city: z.string().max(200).optional().default('Pointe-Noire'),
+  notes: z.string().max(5000).optional(),
   items: z.array(orderItemSchema).min(1, 'At least one item is required'),
 })
 
@@ -31,7 +31,7 @@ const listOrdersQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
   status: z.string().optional(),
-  search: z.string().optional(),
+  search: z.string().max(200).optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -89,6 +89,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`orders:${clientIp}`, 10, 60 * 1000)) {
+      return NextResponse.json({ success: false, error: 'Trop de requêtes. Veuillez réessayer plus tard.' }, { status: 429 })
+    }
+
     const body = await request.json()
     const data = createOrderSchema.parse(body)
 

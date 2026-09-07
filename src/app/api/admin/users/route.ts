@@ -12,10 +12,14 @@ async function getAdmin(request: NextRequest) {
   return await validateSession(token)
 }
 
+const passwordSchema = z.string()
+  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_.])/, 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial')
+
 const createAdminSchema = z.object({
   email: z.string().email('Email invalide'),
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
-  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+  password: passwordSchema,
   role: z.enum(['super_admin', 'admin', 'staff', 'livreur']).optional().default('staff'),
   phone: z.string().optional().nullable(),
 })
