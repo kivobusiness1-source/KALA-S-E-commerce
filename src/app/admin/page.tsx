@@ -128,10 +128,8 @@ export default function AdminPage() {
         {/* Left panel — solid dark bg, white text */}
         <div className="hidden lg:flex flex-col items-center justify-center p-12" style={{ backgroundColor: '#1a1a1a' }}>
           <div className="relative z-10 text-center max-w-md">
-            {/* Logo: white box with CC */}
-            <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8">
-              <span className="text-2xl font-black" style={{ color: '#1a1a1a' }}>CC</span>
-            </div>
+            {/* Logo */}
+            <img src="/logo.jpeg" alt="KALA'S" className="mx-auto w-20 h-20 rounded-2xl object-cover mb-8" />
             <h1 className="text-4xl font-bold text-white mb-4">KALA'S</h1>
             <p className="text-gray-300 text-lg mb-2">Produits d&apos;hygiène de qualité</p>
             <p className="text-gray-500 text-sm">Administration · Gestion · Suivi</p>
@@ -141,10 +139,8 @@ export default function AdminPage() {
         <div className="flex items-center justify-center bg-white p-4 lg:p-0">
           <Card className="w-full max-w-md shadow-xl border border-gray-200/80">
             <CardHeader className="text-center pb-2">
-              {/* Mobile: dark bg with logo */}
-              <div className="lg:hidden mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: '#1a1a1a' }}>
-                <span className="text-xl font-black text-white">CC</span>
-              </div>
+              {/* Mobile: logo image */}
+              <img src="/logo.jpeg" alt="KALA'S" className="lg:hidden mx-auto w-16 h-16 rounded-2xl object-cover mb-4" />
               <CardTitle className="text-2xl font-bold text-gray-900">KALA'S</CardTitle>
               <CardDescription>Administration</CardDescription>
             </CardHeader>
@@ -211,9 +207,7 @@ export default function AdminPage() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#1a1a1a' }}>
-              <span className="text-white text-xs font-bold">CC</span>
-            </div>
+            <img src="/logo.jpeg" alt="KALA'S" className="w-9 h-9 rounded-lg object-cover shrink-0" />
             <div className="min-w-0">
               <h1 className="font-bold text-gray-900 text-lg leading-tight truncate">KALA'S</h1>
               <p className="text-xs text-muted-foreground">Administration</p>
