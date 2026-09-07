@@ -1,0 +1,648 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useEffect } from 'react'
+     4→     4→import { useQuery, useQueryClient } from '@tanstack/react-query'
+     5→     5→import { toast } from 'sonner'
+     6→     6→import { Settings, ShieldCheck, Megaphone, Truck, Plus, RefreshCw, Users, MapPin, Image, Upload, X } from 'lucide-react'
+     7→     7→import { Button } from '@/components/ui/button'
+     8→     8→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     9→     9→import { Badge } from '@/components/ui/badge'
+    10→    10→import { Input } from '@/components/ui/input'
+    11→    11→import { Textarea } from '@/components/ui/textarea'
+    12→    12→import { Label } from '@/components/ui/label'
+    13→    13→import { Switch } from '@/components/ui/switch'
+    14→    14→import { Skeleton } from '@/components/ui/skeleton'
+    15→    15→import {
+    16→    16→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    17→    17→} from '@/components/ui/dialog'
+    18→    18→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+    19→    19→import {
+    20→    20→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    21→    21→} from '@/components/ui/table'
+    22→    22→import { useAdminStore } from '@/stores/admin-store'
+    23→    23→import { formatDate } from './helpers'
+    24→    24→import type { AdminUser } from './types'
+    25→    25→
+    26→    26→export default function SettingsSection() {
+    27→    27→  const queryClient = useQueryClient()
+    28→    28→  const { admin: currentAdmin } = useAdminStore()
+    29→    29→  const isSuperAdmin = currentAdmin?.role === 'super_admin'
+    30→    30→
+    31→    31→  // Site settings state
+    32→    32→  const [form, setForm] = useState<Record<string, string>>({
+    33→    33→    site_name: '', site_tagline: '', site_description: '',
+    34→    34→    contact_phone: '', contact_email: '', contact_address: '',
+    35→    35→    whatsapp_number: '', currency: '', free_shipping_threshold: '',
+    36→    36→  })
+    37→    37→  const [loading, setLoading] = useState(true)
+    38→    38→  const [saving, setSaving] = useState(false)
+    39→    39→
+    40→    40→  // Admin users state
+    41→    41→  const [adminDialogOpen, setAdminDialogOpen] = useState(false)
+    42→    42→  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+    43→    43→  const [creatingAdmin, setCreatingAdmin] = useState(false)
+    44→    44→
+    45→    45→  // Password change state
+    46→    46→  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    47→    47→  const [changingPw, setChangingPw] = useState(false)
+    48→    48→
+    49→    49→  // Promo banner state
+    50→    50→  const [promoEnabled, setPromoEnabled] = useState(false)
+    51→    51→  const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+    52→    52→  const [promoSaving, setPromoSaving] = useState(false)
+    53→    53→
+    54→    54→  // Delivery zones state
+    55→    55→  const [deliveryZones, setDeliveryZones] = useState('Centre-ville, Pointe-Noire\nMboukou\nLoango\nTchinouka')
+    56→    56→  const [deliveryZonesSaving, setDeliveryZonesSaving] = useState(false)
+    57→    57→
+    58→    58→  // Hero image state
+    59→    59→  const [heroImageUrl, setHeroImageUrl] = useState('')
+    60→    60→  const [heroUploading, setHeroUploading] = useState(false)
+    61→    61→  const [heroSaving, setHeroSaving] = useState(false)
+    62→    62→
+    63→    63→  const saveDeliveryZones = async () => {
+    64→    64→    setDeliveryZonesSaving(true)
+    65→    65→    try {
+    66→    66→      const res = await fetch('/api/site-settings', {
+    67→    67→        method: 'PUT',
+    68→    68→        headers: { 'Content-Type': 'application/json' },
+    69→    69→        body: JSON.stringify({
+    70→    70→          settings: [
+    71→    71→            { key: 'delivery_zones', value: deliveryZones },
+    72→    72→          ],
+    73→    73→        }),
+    74→    74→      })
+    75→    75→      const data = await res.json()
+    76→    76→      if (data.success) {
+    77→    77→        toast.success('Zones de livraison sauvegardées')
+    78→    78→        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+    79→    79→      } else {
+    80→    80→        toast.error(data.error || 'Erreur')
+    81→    81→      }
+    82→    82→    } catch {
+    83→    83→      toast.error('Erreur serveur')
+    84→    84→    } finally {
+    85→    85→      setDeliveryZonesSaving(false)
+    86→    86→    }
+    87→    87→  }
+    88→    88→
+    89→    89→  const handleChangePassword = async () => {
+    90→    90→    if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
+    91→    91→      toast.error('Tous les champs sont requis')
+    92→    92→      return
+    93→    93→    }
+    94→    94→    if (pwForm.newPassword.length < 8) {
+    95→    95→      toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères')
+    96→    96→      return
+    97→    97→    }
+    98→    98→    if (pwForm.newPassword !== pwForm.confirmPassword) {
+    99→    99→      toast.error('Les mots de passe ne correspondent pas')
+   100→   100→      return
+   101→   101→    }
+   102→   102→    setChangingPw(true)
+   103→   103→    try {
+   104→   104→      const res = await fetch('/api/admin/change-password', {
+   105→   105→        method: 'POST',
+   106→   106→        headers: { 'Content-Type': 'application/json' },
+   107→   107→        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+   108→   108→      })
+   109→   109→      const data = await res.json()
+   110→   110→      if (data.success) {
+   111→   111→        toast.success('Mot de passe modifié avec succès')
+   112→   112→        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+   113→   113→      } else {
+   114→   114→        toast.error(data.error || 'Erreur')
+   115→   115→      }
+   116→   116→    } catch {
+   117→   117→      toast.error('Erreur serveur')
+   118→   118→    } finally {
+   119→   119→      setChangingPw(false)
+   120→   120→    }
+   121→   121→  }
+   122→   122→
+   123→   123→  const { data: settings } = useQuery({
+   124→   124→    queryKey: ['site-settings'],
+   125→   125→    queryFn: () => fetch('/api/site-settings').then(r => r.json()).then(d => d.data as Record<string, string>),
+   126→   126→  })
+   127→   127→
+   128→   128→  const { data: admins, isLoading: adminsLoading } = useQuery({
+   129→   129→    queryKey: ['admin-users'],
+   130→   130→    queryFn: () => fetch('/api/admin/users').then(r => r.json()).then(d => d.data as AdminUser[]),
+   131→   131→    enabled: isSuperAdmin,
+   132→   132→  })
+   133→   133→
+   134→   134→  useEffect(() => {
+   135→   135→    if (settings) {
+   136→   136→      setForm(prev => ({
+   137→   137→        ...prev,
+   138→   138→        site_name: settings.site_name || '',
+   139→   139→        site_tagline: settings.site_tagline || '',
+   140→   140→        site_description: settings.site_description || '',
+   141→   141→        contact_phone: settings.contact_phone || '',
+   142→   142→        contact_email: settings.contact_email || '',
+   143→   143→        contact_address: settings.contact_address || '',
+   144→   144→        whatsapp_number: settings.whatsapp_number || '',
+   145→   145→        currency: settings.currency || 'FCFA',
+   146→   146→        free_shipping_threshold: settings.free_shipping_threshold || '',
+   147→   147→      }))
+   148→   148→      setPromoEnabled(settings.promo_banner_enabled === 'true')
+   149→   149→      setPromoText(settings.promo_banner_text || 'Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
+   150→   150→      if (settings.delivery_zones) setDeliveryZones(settings.delivery_zones)
+   151→   151→      setHeroImageUrl(settings.hero_image_url || '')
+   152→   152→      setLoading(false)
+   153→   153→    }
+   154→   154→  }, [settings])
+   155→   155→
+   156→   156→  const saveSettings = async () => {
+   157→   157→    setSaving(true)
+   158→   158→    try {
+   159→   159→      const settingsArray = Object.entries(form).map(([key, value]) => ({ key, value }))
+   160→   160→      const res = await fetch('/api/site-settings', {
+   161→   161→        method: 'PUT',
+   162→   162→        headers: { 'Content-Type': 'application/json' },
+   163→   163→        body: JSON.stringify({ settings: settingsArray }),
+   164→   164→      })
+   165→   165→      const data = await res.json()
+   166→   166→      if (data.success) {
+   167→   167→        toast.success('Paramètres sauvegardés')
+   168→   168→      } else {
+   169→   169→        toast.error(data.error || 'Erreur')
+   170→   170→      }
+   171→   171→    } catch {
+   172→   172→      toast.error('Erreur serveur')
+   173→   173→    } finally {
+   174→   174→      setSaving(false)
+   175→   175→    }
+   176→   176→  }
+   177→   177→
+   178→   178→  const createAdmin = async () => {
+   179→   179→    if (!newAdmin.name || !newAdmin.email || !newAdmin.password) {
+   180→   180→      toast.error('Tous les champs sont requis')
+   181→   181→      return
+   182→   182→    }
+   183→   183→    if (newAdmin.password !== newAdmin.confirmPassword) {
+   184→   184→      toast.error('Les mots de passe ne correspondent pas')
+   185→   185→      return
+   186→   186→    }
+   187→   187→    if (newAdmin.password.length < 8) {
+   188→   188→      toast.error('Le mot de passe doit contenir au moins 8 caractères')
+   189→   189→      return
+   190→   190→    }
+   191→   191→    setCreatingAdmin(true)
+   192→   192→    try {
+   193→   193→      const res = await fetch('/api/admin/users', {
+   194→   194→        method: 'POST',
+   195→   195→        headers: { 'Content-Type': 'application/json' },
+   196→   196→        body: JSON.stringify({ email: newAdmin.email, name: newAdmin.name, password: newAdmin.password }),
+   197→   197→      })
+   198→   198→      const data = await res.json()
+   199→   199→      if (data.success) {
+   200→   200→        toast.success('Administrateur créé')
+   201→   201→        setAdminDialogOpen(false)
+   202→   202→        setNewAdmin({ name: '', email: '', password: '', confirmPassword: '' })
+   203→   203→        queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+   204→   204→      } else {
+   205→   205→        toast.error(data.error || 'Erreur')
+   206→   206→      }
+   207→   207→    } catch {
+   208→   208→      toast.error('Erreur serveur')
+   209→   209→    } finally {
+   210→   210→      setCreatingAdmin(false)
+   211→   211→    }
+   212→   212→  }
+   213→   213→
+   214→   214→  const savePromoBanner = async () => {
+   215→   215→    setPromoSaving(true)
+   216→   216→    try {
+   217→   217→      const res = await fetch('/api/site-settings', {
+   218→   218→        method: 'PUT',
+   219→   219→        headers: { 'Content-Type': 'application/json' },
+   220→   220→        body: JSON.stringify({
+   221→   221→          settings: [
+   222→   222→            { key: 'promo_banner_enabled', value: promoEnabled ? 'true' : 'false' },
+   223→   223→            { key: 'promo_banner_text', value: promoText },
+   224→   224→          ],
+   225→   225→        }),
+   226→   226→      })
+   227→   227→      const data = await res.json()
+   228→   228→      if (data.success) {
+   229→   229→        toast.success('Bannière promotionnelle sauvegardée')
+   230→   230→        queryClient.invalidateQueries({ queryKey: ['site-settings'] })
+   231→   231→      } else {
+   232→   232→        toast.error(data.error || 'Erreur')
+   233→   233→      }
+   234→   234→    } catch {
+   235→   235→      toast.error('Erreur serveur')
+   236→   236→    } finally {
+   237→   237→      setPromoSaving(false)
+   238→   238→    }
+   239→   239→  }
+   240→   240→
+   241→   241→  const fields = [
+   242→   242→    { key: 'site_name', label: 'Nom du site', placeholder: "KALA'S" },
+   243→   243→    { key: 'site_tagline', label: 'Slogan', placeholder: 'Produits d\'hygiène de qualité' },
+   244→   244→    { key: 'site_description', label: 'Description', placeholder: 'Description du site', multiline: true },
+   245→   245→    { key: 'contact_phone', label: 'Téléphone', placeholder: '+242 06 123 4567' },
+   246→   246→    { key: 'contact_email', label: 'Email', placeholder: 'contact@kalas.cg' },
+   247→   247→    { key: 'contact_address', label: 'Adresse', placeholder: 'Pointe-Noire, Congo-Brazzaville' },
+   248→   248→    { key: 'whatsapp_number', label: 'WhatsApp', placeholder: '+242 06 123 4567' },
+   249→   249→    { key: 'currency', label: 'Devise', placeholder: 'FCFA' },
+   250→   250→    { key: 'free_shipping_threshold', label: 'Seuil livraison gratuite', placeholder: '50000', type: 'number' },
+   251→   251→  ]
+   252→   252→
+   253→   253→  return (
+   254→   254→    <div className="space-y-6">
+   255→   255→      <Tabs defaultValue="general">
+   256→   256→        <TabsList className="relative">
+   257→   257→          <TabsTrigger value="general" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Settings className="h-3.5 w-3.5" />Général</TabsTrigger>
+   258→   258→          <TabsTrigger value="security" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><ShieldCheck className="h-3.5 w-3.5" />Sécurité</TabsTrigger>
+   259→   259→          <TabsTrigger value="banner" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Megaphone className="h-3.5 w-3.5" />Bannière</TabsTrigger>
+   260→   260→          <TabsTrigger value="delivery" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Truck className="h-3.5 w-3.5" />Livraison</TabsTrigger>
+   261→   261→          <TabsTrigger value="appearance" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:to-teal-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"><Image className="h-3.5 w-3.5" />Apparence</TabsTrigger>
+   262→   262→        </TabsList>
+   263→   263→
+   264→   264→        {/* Général Tab */}
+   265→   265→        <TabsContent value="general">
+   266→   266→          <div className="max-w-2xl">
+   267→   267→            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+   268→   268→              <CardHeader>
+   269→   269→                <CardTitle>Paramètres du Site</CardTitle>
+   270→   270→                <CardDescription>Configurez les informations générales de votre site.</CardDescription>
+   271→   271→              </CardHeader>
+   272→   272→              <CardContent>
+   273→   273→                {loading ? (
+   274→   274→                  <div className="space-y-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+   275→   275→                ) : (
+   276→   276→                  <div className="space-y-4">
+   277→   277→                    {fields.map(f => (
+   278→   278→                      <div key={f.key} className="space-y-2">
+   279→   279→                        <Label>{f.label}</Label>
+   280→   280→                        {f.multiline ? (
+   281→   281→                          <Textarea
+   282→   282→                            value={form[f.key]}
+   283→   283→                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+   284→   284→                            placeholder={f.placeholder}
+   285→   285→                            rows={3}
+   286→   286→                          />
+   287→   287→                        ) : (
+   288→   288→                          <Input
+   289→   289→                            type={f.type || 'text'}
+   290→   290→                            value={form[f.key]}
+   291→   291→                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+   292→   292→                            placeholder={f.placeholder}
+   293→   293→                            className="focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+   294→   294→                          />
+   295→   295→                        )}
+   296→   296→                      </div>
+   297→   297→                    ))}
+   298→   298→                    <div className="pt-4">
+   299→   299→                      <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveSettings} disabled={saving}>
+   300→   300→                        {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   301→   301→                        Sauvegarder
+   302→   302→                      </Button>
+   303→   303→                    </div>
+   304→   304→                  </div>
+   305→   305→                )}
+   306→   306→              </CardContent>
+   307→   307→            </Card>
+   308→   308→          </div>
+   309→   309→        </TabsContent>
+   310→   310→
+   311→   311→        {/* Sécurité Tab */}
+   312→   312→        <TabsContent value="security">
+   313→   313→          <div className="max-w-lg">
+   314→   314→            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+   315→   315→              <CardHeader>
+   316→   316→                <CardTitle>Changer le mot de passe</CardTitle>
+   317→   317→                <CardDescription>Modifiez votre mot de passe de connexion.</CardDescription>
+   318→   318→              </CardHeader>
+   319→   319→              <CardContent>
+   320→   320→                <div className="space-y-4">
+   321→   321→                  <div className="space-y-2">
+   322→   322→                    <Label>Mot de passe actuel</Label>
+   323→   323→                    <Input
+   324→   324→                      type="password"
+   325→   325→                      value={pwForm.currentPassword}
+   326→   326→                      onChange={e => setPwForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+   327→   327→                      placeholder="••••••••"
+   328→   328→                      className="focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+   329→   329→                    />
+   330→   330→                  </div>
+   331→   331→                  <div className="space-y-2">
+   332→   332→                    <Label>Nouveau mot de passe (min. 8 caractères)</Label>
+   333→   333→                    <Input
+   334→   334→                      type="password"
+   335→   335→                      value={pwForm.newPassword}
+   336→   336→                      onChange={e => setPwForm(prev => ({ ...prev, newPassword: e.target.value }))}
+   337→   337→                      placeholder="Minimum 8 caractères"
+   338→   338→                      className="focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+   339→   339→                    />
+   340→   340→                  </div>
+   341→   341→                  <div className="space-y-2">
+   342→   342→                    <Label>Confirmer le nouveau mot de passe</Label>
+   343→   343→                    <Input
+   344→   344→                      type="password"
+   345→   345→                      value={pwForm.confirmPassword}
+   346→   346→                      onChange={e => setPwForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+   347→   347→                      placeholder="Retapez le nouveau mot de passe"
+   348→   348→                      className="focus-visible:ring-emerald-500/40 focus-visible:border-emerald-400 transition-all duration-200"
+   349→   349→                    />
+   350→   350→                  </div>
+   351→   351→                  <div className="pt-2">
+   352→   352→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleChangePassword} disabled={changingPw}>
+   353→   353→                      {changingPw ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   354→   354→                      Changer
+   355→   355→                    </Button>
+   356→   356→                  </div>
+   357→   357→                </div>
+   358→   358→              </CardContent>
+   359→   359→            </Card>
+   360→   360→          </div>
+   361→   361→        </TabsContent>
+   362→   362→
+   363→   363→        {/* Bannière Tab */}
+   364→   364→        <TabsContent value="banner">
+   365→   365→          <div className="max-w-2xl">
+   366→   366→            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+   367→   367→              <CardHeader>
+   368→   368→                <CardTitle>Bannière Promotionnelle</CardTitle>
+   369→   369→                <CardDescription>Gérez la bannière promotionnelle affichée sur le site.</CardDescription>
+   370→   370→              </CardHeader>
+   371→   371→              <CardContent>
+   372→   372→                <div className="space-y-4">
+   373→   373→                  <div className="flex items-center justify-between">
+   374→   374→                    <Label>Activer la bannière</Label>
+   375→   375→                    <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} />
+   376→   376→                  </div>
+   377→   377→                  <div className="space-y-2">
+   378→   378→                    <Label>Message promotionnel</Label>
+   379→   379→                    <Textarea
+   380→   380→                      value={promoText}
+   381→   381→                      onChange={e => setPromoText(e.target.value)}
+   382→   382→                      placeholder="Message de la bannière promotionnelle"
+   383→   383→                      rows={3}
+   384→   384→                    />
+   385→   385→                  </div>
+   386→   386→                  <div className="pt-2">
+   387→   387→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={savePromoBanner} disabled={promoSaving}>
+   388→   388→                      {promoSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   389→   389→                      Sauvegarder
+   390→   390→                    </Button>
+   391→   391→                  </div>
+   392→   392→                </div>
+   393→   393→              </CardContent>
+   394→   394→            </Card>
+   395→   395→          </div>
+   396→   396→        </TabsContent>
+   397→   397→
+   398→   398→        {/* Apparence Tab */}
+   399→   399→        <TabsContent value="appearance">
+   400→   400→          <div className="max-w-2xl">
+   401→   401→            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+   402→   402→              <CardHeader>
+   403→   403→                <CardTitle>Image Hero (Page d&apos;accueil)</CardTitle>
+   404→   404→                <CardDescription>Image affichée à droite dans la section hero de la page principale.</CardDescription>
+   405→   405→              </CardHeader>
+   406→   406→              <CardContent>
+   407→   407→                <div className="space-y-4">
+   408→   408→                  {heroImageUrl ? (
+   409→   409→                    <div className="relative group rounded-xl overflow-hidden border border-gray-200">
+   410→   410→                      <img src={heroImageUrl} alt="Hero image" className="w-full h-48 object-cover" />
+   411→   411→                      <button
+   412→   412→                        onClick={() => setHeroImageUrl('')}
+   413→   413→                        className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+   414→   414→                      >
+   415→   415→                        <X className="h-3.5 w-3.5" />
+   416→   416→                      </button>
+   417→   417→                    </div>
+   418→   418→                  ) : (
+   419→   419→                    <div className="h-48 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50/50">
+   420→   420→                      <div className="text-center">
+   421→   421→                        <Image className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+   422→   422→                        <p className="text-sm text-gray-400">Aucune image hero configurée</p>
+   423→   423→                      </div>
+   424→   424→                    </div>
+   425→   425→                  )}
+   426→   426→                  <div className="flex gap-3">
+   427→   427→                    <label className="flex-1 cursor-pointer">
+   428→   428→                      <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-sm font-medium text-gray-600 hover:text-emerald-700">
+   429→   429→                        {heroUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+   430→   430→                        {heroUploading ? 'Upload en cours...' : 'Uploader une image'}
+   431→   431→                      </div>
+   432→   432→                      <input
+   433→   433→                        type="file"
+   434→   434→                        accept="image/*"
+   435→   435→                        className="hidden"
+   436→   436→                        onChange={async (e) => {
+   437→   437→                          const file = e.target.files?.[0]
+   438→   438→                          if (!file) return
+   439→   439→                          setHeroUploading(true)
+   440→   440→                          try {
+   441→   441→                            const formData = new FormData()
+   442→   442→                            formData.append('image', file)
+   443→   443→                            const res = await fetch('/api/upload', { method: 'POST', body: formData })
+   444→   444→                            const data = await res.json()
+   445→   445→                            if (data.data?.url) {
+   446→   446→                              setHeroImageUrl(data.data.url)
+   447→   447→                              toast.success('Image uploadée')
+   448→   448→                            } else {
+   449→   449→                              toast.error(data.error || 'Erreur upload')
+   450→   450→                            }
+   451→   451→                          } catch {
+   452→   452→                            toast.error('Erreur de connexion')
+   453→   453→                          } finally {
+   454→   454→                            setHeroUploading(false)
+   455→   455→                          }
+   456→   456→                        }}
+   457→   457→                      />
+   458→   458→                    </label>
+   459→   459→                  </div>
+   460→   460→                  <div className="space-y-2">
+   461→   461→                    <Label>Ou URL de l&apos;image</Label>
+   462→   462→                    <Input
+   463→   463→                      value={heroImageUrl}
+   464→   464→                      onChange={(e) => setHeroImageUrl(e.target.value)}
+   465→   465→                      placeholder="/uploads/hero.png ou https://..."
+   466→   466→                    />
+   467→   467→                  </div>
+   468→   468→                  <div className="pt-2">
+   469→   469→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={async () => {
+   470→   470→                      setHeroSaving(true)
+   471→   471→                      try {
+   472→   472→                        const res = await fetch('/api/site-settings', {
+   473→   473→                          method: 'PUT',
+   474→   474→                          headers: { 'Content-Type': 'application/json' },
+   475→   475→                          body: JSON.stringify({ settings: [{ key: 'hero_image_url', value: heroImageUrl }] }),
+   476→   476→                        })
+   477→   477→                        const data = await res.json()
+   478→   478→                        if (data.success) {
+   479→   479→                          toast.success('Image hero sauvegardée')
+   480→   480→                        } else {
+   481→   481→                          toast.error(data.error || 'Erreur')
+   482→   482→                        }
+   483→   483→                      } catch {
+   484→   484→                        toast.error('Erreur serveur')
+   485→   485→                      } finally {
+   486→   486→                        setHeroSaving(false)
+   487→   487→                      }
+   488→   488→                    }} disabled={heroSaving}>
+   489→   489→                      {heroSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   490→   490→                      Sauvegarder
+   491→   491→                    </Button>
+   492→   492→                  </div>
+   493→   493→                </div>
+   494→   494→              </CardContent>
+   495→   495→            </Card>
+   496→   496→          </div>
+   497→   497→        </TabsContent>
+   498→   498→
+   499→   499→        {/* Livraison Tab */}
+   500→   500→        <TabsContent value="delivery">
+   501→   501→          <div className="max-w-2xl">
+   502→   502→            <Card className="shadow-md shadow-gray-200/50 border-gray-200/60">
+   503→   503→              <CardHeader>
+   504→   504→                <div className="flex items-center gap-2">
+   505→   505→                  <MapPin className="h-5 w-5 text-emerald-600" />
+   506→   506→                  <CardTitle>Zone de livraison</CardTitle>
+   507→   507→                </div>
+   508→   508→                <CardDescription>Configurez les zones de livraison disponibles.</CardDescription>
+   509→   509→              </CardHeader>
+   510→   510→              <CardContent>
+   511→   511→                <div className="space-y-4">
+   512→   512→                  <div className="space-y-2">
+   513→   513→                    <Label>Zones de livraison (une par ligne)</Label>
+   514→   514→                    <Textarea
+   515→   515→                      value={deliveryZones}
+   516→   516→                      onChange={e => setDeliveryZones(e.target.value)}
+   517→   517→                      placeholder={"Centre-ville, Pointe-Noire\nMboukou\nLoango\nTchinouka"}
+   518→   518→                      rows={5}
+   519→   519→                    />
+   520→   520→                  </div>
+   521→   521→                  <div className="pt-2">
+   522→   522→                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveDeliveryZones} disabled={deliveryZonesSaving}>
+   523→   523→                      {deliveryZonesSaving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   524→   524→                      Sauvegarder
+   525→   525→                    </Button>
+   526→   526→                  </div>
+   527→   527→                </div>
+   528→   528→              </CardContent>
+   529→   529→            </Card>
+   530→   530→          </div>
+   531→   531→        </TabsContent>
+   532→   532→      </Tabs>
+   533→   533→
+   534→   534→      {/* Admin User Management */}
+   535→   535→      {isSuperAdmin && (
+   536→   536→        <div className="max-w-3xl">
+   537→   537→          <Card>
+   538→   538→            <CardHeader>
+   539→   539→              <div className="flex items-center justify-between">
+   540→   540→                <div>
+   541→   541→                  <CardTitle>Gestion des Administrateurs</CardTitle>
+   542→   542→                  <CardDescription>Gérez les comptes administrateurs du site.</CardDescription>
+   543→   543→                </div>
+   544→   544→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setAdminDialogOpen(true)}>
+   545→   545→                  <Plus className="h-4 w-4 mr-1" />Ajouter
+   546→   546→                </Button>
+   547→   547→              </div>
+   548→   548→            </CardHeader>
+   549→   549→            <CardContent>
+   550→   550→              {adminsLoading ? (
+   551→   551→                <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+   552→   552→              ) : admins && admins.length > 0 ? (
+   553→   553→                <div className="overflow-x-auto">
+   554→   554→                  <Table>
+   555→   555→                    <TableHeader>
+   556→   556→                      <TableRow>
+   557→   557→                        <TableHead>Email</TableHead>
+   558→   558→                        <TableHead>Nom</TableHead>
+   559→   559→                        <TableHead>Rôle</TableHead>
+   560→   560→                        <TableHead className="hidden sm:table-cell">Date de création</TableHead>
+   561→   561→                      </TableRow>
+   562→   562→                    </TableHeader>
+   563→   563→                    <TableBody>
+   564→   564→                      {admins.map(a => (
+   565→   565→                        <TableRow key={a.id}>
+   566→   566→                          <TableCell className="text-sm font-medium">{a.email}</TableCell>
+   567→   567→                          <TableCell className="text-sm">{a.name}</TableCell>
+   568→   568→                          <TableCell>
+   569→   569→                            <Badge
+   570→   570→                              variant="outline"
+   571→   571→                              className={a.role === 'super_admin' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200'}
+   572→   572→                            >
+   573→   573→                              {a.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+   574→   574→                            </Badge>
+   575→   575→                          </TableCell>
+   576→   576→                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{formatDate(a.createdAt)}</TableCell>
+   577→   577→                        </TableRow>
+   578→   578→                      ))}
+   579→   579→                    </TableBody>
+   580→   580→                  </Table>
+   581→   581→                </div>
+   582→   582→              ) : (
+   583→   583→                <div className="p-8 text-center">
+   584→   584→                  <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+   585→   585→                  <p className="text-sm text-muted-foreground">Aucun administrateur trouvé</p>
+   586→   586→                </div>
+   587→   587→              )}
+   588→   588→            </CardContent>
+   589→   589→          </Card>
+   590→   590→        </div>
+   591→   591→      )}
+   592→   592→
+   593→   593→      {/* Add Admin Dialog */}
+   594→   594→      <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+   595→   595→        <DialogContent>
+   596→   596→          <DialogHeader>
+   597→   597→            <DialogTitle>Ajouter un Administrateur</DialogTitle>
+   598→   598→            <DialogDescription>Créez un nouveau compte administrateur.</DialogDescription>
+   599→   599→          </DialogHeader>
+   600→   600→          <div className="space-y-4 py-4">
+   601→   601→            <div className="space-y-2">
+   602→   602→              <Label>Nom *</Label>
+   603→   603→              <Input
+   604→   604→                value={newAdmin.name}
+   605→   605→                onChange={e => setNewAdmin(prev => ({ ...prev, name: e.target.value }))}
+   606→   606→                placeholder="Nom complet"
+   607→   607→              />
+   608→   608→            </div>
+   609→   609→            <div className="space-y-2">
+   610→   610→              <Label>Email *</Label>
+   611→   611→              <Input
+   612→   612→                type="email"
+   613→   613→                value={newAdmin.email}
+   614→   614→                onChange={e => setNewAdmin(prev => ({ ...prev, email: e.target.value }))}
+   615→   615→                placeholder="admin@kalas.cg"
+   616→   616→              />
+   617→   617→            </div>
+   618→   618→            <div className="space-y-2">
+   619→   619→              <Label>Mot de passe *</Label>
+   620→   620→              <Input
+   621→   621→                type="password"
+   622→   622→                value={newAdmin.password}
+   623→   623→                onChange={e => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+   624→   624→                placeholder="Minimum 8 caractères"
+   625→   625→              />
+   626→   626→            </div>
+   627→   627→            <div className="space-y-2">
+   628→   628→              <Label>Confirmer le mot de passe *</Label>
+   629→   629→              <Input
+   630→   630→                type="password"
+   631→   631→                value={newAdmin.confirmPassword}
+   632→   632→                onChange={e => setNewAdmin(prev => ({ ...prev, confirmPassword: e.target.value }))}
+   633→   633→                placeholder="Retapez le mot de passe"
+   634→   634→              />
+   635→   635→            </div>
+   636→   636→          </div>
+   637→   637→          <DialogFooter>
+   638→   638→            <Button variant="outline" onClick={() => setAdminDialogOpen(false)}>Annuler</Button>
+   639→   639→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={createAdmin} disabled={creatingAdmin}>
+   640→   640→              {creatingAdmin ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+   641→   641→              Créer
+   642→   642→            </Button>
+   643→   643→          </DialogFooter>
+   644→   644→        </DialogContent>
+   645→   645→      </Dialog>
+   646→   646→    </div>
+   647→   647→  )
+   648→   648→}

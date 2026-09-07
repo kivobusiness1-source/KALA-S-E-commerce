@@ -32,6 +32,8 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'currency',
   'free_shipping_threshold',
   'hero_image_url',
+  'hero_video_url',
+  'hero_video_enabled',
   'promo_banner_text',
   'promo_banner_enabled',
 ])

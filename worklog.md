@@ -490,3 +490,30 @@ Stage Summary:
 - React strict mode enabled, build errors no longer ignored
 - next-auth dependency removed
 - Lint: 0 errors, 2 warnings (pre-existing)
+
+---
+Task ID: hero-video-feature
+Agent: main
+Task: Add hero video management to admin Publicité section and storefront
+
+Work Log:
+- Explored existing CatchphraseSection, SettingsSection, HeroSection code
+- Created /api/upload API route supporting both image and video file uploads (MP4, WebM, OGG, MOV up to 50MB)
+- Added hero_video_url and hero_video_enabled to PUBLIC_SETTINGS_KEYS whitelist in site-settings API
+- Completely rewrote CatchphraseSection with Tabs: "Phrases publicitaires" and "Vidéo Hero"
+  - Video Hero tab: toggle on/off, upload video file, enter YouTube/Vimeo URL, preview, save
+  - Supports YouTube, Vimeo embed URLs and direct MP4/WebM video files
+  - Video preview with proper iframe/video rendering
+- Updated storefront HeroSection to display video background when enabled
+  - Full-width video background with dark overlay for text readability
+  - YouTube/Vimeo: embedded iframe with autoplay/mute/loop
+  - Direct MP4/WebM: native video element with autoplay/loop/muted + mute toggle button
+  - Falls back to original gradient + image hero when video is disabled or not set
+- All pages return 200, APIs functional, lint passes with 0 errors
+
+Stage Summary:
+- Admin can now manage hero video from Publicité section (new "Vidéo Hero" tab)
+- Supports YouTube/Vimeo URLs and direct video file uploads
+- Storefront hero displays full-width video background when enabled
+- Upload API created at /api/upload for admin file management
+- hero_video_url and hero_video_enabled stored as SiteSetting key-value pairs
