@@ -9,6 +9,12 @@ const replySchema = z.object({
   context: z.string().optional(),
 })
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 const SYSTEM_PROMPT = `Tu es l'assistant client de KALA'S, une entreprise de produits d'hygiene a Pointe-Noire, Congo-Brazzaville.
 
 Regles:
@@ -23,7 +29,7 @@ Regles:
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non autorise' }, { status: 401 })
     }

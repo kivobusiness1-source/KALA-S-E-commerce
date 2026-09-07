@@ -6,6 +6,12 @@ import { z } from 'zod'
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 const stockAdjustSchema = z.object({
   change: z.number().int().describe('Positive for entry, negative for exit'),
   reason: z.string().optional(),
@@ -14,7 +20,7 @@ const stockAdjustSchema = z.object({
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ productId: string }> }) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session) {
       return err('Non autorisé', 401)
     }

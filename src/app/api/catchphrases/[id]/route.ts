@@ -10,9 +10,15 @@ const updateSchema = z.object({
   sortOrder: z.number().optional(),
 })
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || (session.role !== 'super_admin' && session.role !== 'admin')) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -23,7 +29,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
     }
     const cp = await db.catchphrase.update({ where: { id }, data: validated.data })
-    await logActivity(session.adminId, 'update_catchphrase', `Phrase modifiée: ${cp.text.slice(0, 50)}`)
+    await logActivity(session.id, 'update_catchphrase', `Phrase modifiée: ${cp.text.slice(0, 50)}`)
     return NextResponse.json({ success: true, data: cp })
   } catch (error) {
     console.error('Update catchphrase error:', error)
@@ -33,13 +39,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || session.role !== 'super_admin') {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
     const { id } = await params
     await db.catchphrase.delete({ where: { id } })
-    await logActivity(session.adminId, 'delete_catchphrase', 'Phrase supprimée')
+    await logActivity(session.id, 'delete_catchphrase', 'Phrase supprimée')
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete catchphrase error:', error)

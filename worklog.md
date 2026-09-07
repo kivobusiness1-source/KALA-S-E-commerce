@@ -221,3 +221,136 @@ Stage Summary:
 - All references to Pointe-Noire preserved
 - Login verified working via browser automation
 - Cron job (365707) set for 15-minute periodic reviews
+
+---
+Task ID: 2
+Agent: main
+Task: Convert KALA'S from single-page app to multi-page site
+
+Work Log:
+- Updated Navbar.tsx: replaced scrollToSection with Next.js Link components
+  - Added usePathname() for active link detection
+  - Nav links: Accueil (/), Produits (/produits), Entreprises (/entreprises), A Propos (/a-propos), Contact (/contact)
+  - Changed mobile breakpoint from md to lg for 5 links
+  - Removed scrollToSection prop from NavbarProps interface
+  - Added Building2 icon for Entreprises link
+- Updated Footer.tsx: replaced scrollToSection with Next.js Link navigation
+  - Added Link import, removed scrollToSection prop
+  - Added Entreprises link to footer nav
+  - Removed scrollProgress prop (unused)
+- Updated HeroSection.tsx: removed scrollToSection prop
+  - Added CTA buttons: "Voir nos produits" → /produits, "Commandes en gros" → /entreprises
+  - Kept trust indicators below CTAs
+- Created StorefrontLayout.tsx: shared layout component for all storefront pages
+  - Manages all shared state: cart, wishlist, cookie consent, promo bar, products, orders, reviews
+  - Includes Navbar, promo banner, CartSheet, ChatWidget, SocialProofToast, ProductComparison, Footer
+  - Wraps children in <main> tag
+  - Lazy-loads heavy components (CartSheet, Footer, ChatWidget, etc.)
+- Simplified Homepage (page.tsx): clean landing page
+  - Keeps: HeroSection, FeaturesBar, Featured Products (6), HowToOrderSection, TestimonialsSection, NewsletterSection
+  - Removes: full ProductsSection, AboutSection, ContactSection, FAQSection, DeliveryPricingSection, OrderTrackingSection, WholesaleSection, FlashSaleSection
+  - Featured products section with grid cards, wishlist, add-to-cart
+- Created /produits page: full product catalog
+  - ProductsSection with all filters, search, sort
+  - DeliveryPricingSection and FAQSection at bottom
+  - Breadcrumb: Accueil > Produits
+- Created /a-propos page: company information
+  - AboutSection, TestimonialsSection, FAQSection, NewsletterSection
+  - Breadcrumb: Accueil > À Propos
+- Created /contact page: contact and support
+  - ContactSection, DeliveryPricingSection, OrderTrackingSection
+  - Breadcrumb: Accueil > Contact
+- Created /entreprises page: B2B offerings
+  - Dark corporate hero section with B2B stats
+  - Benefits section (6 cards: approvisionnement, prix, gestionnaire, contrats, livraison, récurrentes)
+  - Contract types section: Mensuel (-5%), Trimestriel (-10%, popular), Annuel (-15%)
+  - WholesaleSection (existing bulk order wizard)
+  - Business testimonials (3 enterprise clients)
+  - Quote request form with dark theme
+  - Breadcrumb: Accueil > Entreprises
+- All pages use StorefrontLayout wrapper
+- Lint: 0 errors, 2 warnings (pre-existing jsx-a11y)
+- All 5 pages tested: /, /produits, /a-propos, /contact, /entreprises all return HTTP 200
+
+Stage Summary:
+- Converted from SPA (scrollToSection) to MPA (Next.js Link navigation)
+- 5 storefront pages: /, /produits, /a-propos, /contact, /entreprises
+- Shared layout via StorefrontLayout component
+- Navbar highlights active page with usePathname()
+- New Entreprises page for B2B customers with contracts, bulk ordering, quote form
+- Homepage is now a clean landing page with featured products only
+- All text in French, FCFA currency, Pointe-Noire context preserved
+
+---
+
+Task ID: 4
+Agent: main
+Task: Redesign /produits page with Amazon-inspired layout + product detail pages
+
+Work Log:
+- Created AmazonProductsSection.tsx (~480 lines) replacing old ProductsSection on /produits page
+  - LEFT SIDEBAR (desktop): Category checkboxes, Price range inputs, Volume filter buttons (1L/5L/10L/20L/500g), In-stock toggle, Clear all filters button
+  - Mobile: Filter sheet (Sheet component) slides from left with all filter controls
+  - Results bar: "X résultats" count, Search input, Sort dropdown (Plus récents, Prix croissant, Prix décroissant, Meilleures ventes, Note moyenne), View toggle (grid/list)
+  - Active filter tags with remove buttons
+  - Product Card Grid View: Large image with hover zoom, Category badge (top-left), Wishlist heart (top-right), Discount % badge, Product name (2-line clamp), Star rating with count, Large bold FCFA price, Compare-at price struck through, Volume badge, Stock status (En stock green / Rupture red), Delivery estimate "Livraison 24-48h à Pointe-Noire", Full-width "Ajouter au panier" button, Compare checkbox
+  - Product Card List View: Horizontal layout with image left, info right, cart button on right
+  - Internal filtering/sorting logic (self-contained component)
+  - Old ProductsSection preserved for homepage use
+- Updated /produits/page.tsx to use AmazonProductsSection
+  - Simplified: no more external state for categories/search/sort (component manages internally)
+  - Fetches all products at once, component filters client-side
+  - Keeps breadcrumb, page header, DeliveryPricingSection, FAQSection
+- Added slug query parameter to /api/products/route.ts
+  - GET /api/products?slug=xxx returns single product or 404
+  - Backward compatible: no slug = returns all products as before
+- Created /produits/[slug]/page.tsx (~790 lines) - Amazon-style product detail page
+  - LEFT COLUMN (60%): Large product image with hover zoom, Thumbnail gallery below, Tabs: Description | Caractéristiques | Avis (with review form, rating distribution bars)
+  - RIGHT COLUMN (40%): Product name (large), Star rating with count + link, Price in large FCFA with compare-at + savings amount, Volume badge, Stock status with green/red indicator, Delivery info box "Livraison 24-48h à Pointe-Noire" + "Livraison GRATUITE dès 25 000 FCFA", Quantity selector (-/input/+), "Ajouter au panier" button (large, full width), "Acheter maintenant" button (outline, opens cart), Wishlist button + Share button, Selling points (Qualité garantie, Livraison rapide, Retrait gratuit)
+  - Below the fold: "Produits similaires" (same category, max 4), "Clients ayant acheté cet article ont aussi acheté" (different category, max 4)
+  - Mobile: Sticky "Add to cart" bar at bottom with product name + price + add button
+  - Breadcrumb: Accueil > Produits > [Category] > [Product Name]
+  - Review section with star distribution bars, review cards, and review submission form
+- All text in French, FCFA formatting with space thousands separator
+- Amazon-style rating stars (amber filled, gray empty)
+- Clean white backgrounds, subtle shadows, hover effects
+- Lint: 0 errors, 2 warnings (pre-existing jsx-a11y)
+
+Stage Summary:
+- Amazon-style products catalog with sidebar filters, grid/list views
+- Individual product detail pages at /produits/[slug]
+- Slug-based API support for single product lookup
+- All Amazon design elements implemented: filters, sort, ratings, delivery info, stock indicators, discount badges, comparison checkboxes, wishlist hearts
+- Mobile responsive: filter sheet, sticky cart bar, full-width cards
+- FCFA pricing throughout, Pointe-Noire delivery context
+
+---
+Task ID: 5
+Agent: main
+Task: Fix admin bugs, create multi-page navigation, Amazon-style products, Entreprises page
+
+Work Log:
+- Fixed critical bug: validateSession() called without token in 7 API routes (livreurs, catchphrases, ai-reply, order notes, stock) - caused 401 on ALL those routes
+- Fixed bug: session.adminId → session.id in activity logging (5 routes)
+- Converted from single-page app to multi-page with Next.js routing
+- Updated Navbar with Next.js Link navigation and usePathname() for active state
+- Added "Entreprises" link to nav
+- Created StorefrontLayout shared component (Navbar + promo bar + CartSheet + ChatWidget + Footer + cookie consent)
+- Simplified homepage to landing page (Hero + FeaturesBar + Featured Products + HowToOrder + Testimonials + Newsletter)
+- Created /produits page with Amazon-style product catalog (sidebar filters, grid/list view, sort, search)
+- Created /produits/[slug] product detail page (image gallery, tabs, reviews, similar products, sticky mobile cart)
+- Created /a-propos page (About + Testimonials + FAQ + Newsletter)
+- Created /contact page (Contact form + Delivery pricing + Order tracking)
+- Created /entreprises page (B2B hero, benefits, contract types, WholesaleSection, business testimonials, quote form)
+- Updated Footer with Link navigation and Entreprises link
+- Updated HeroSection CTA buttons to link to /produits and /entreprises
+- Added slug query param to /api/products for product detail page
+- Verified: admin login works, livreurs CRUD works, all 6 pages return 200
+
+Stage Summary:
+- Admin bugs FIXED: validateSession() now properly receives token, session.adminId → session.id
+- Multi-page navigation: /, /produits, /a-propos, /contact, /entreprises, /admin
+- Amazon-style products page with sidebar filters, grid/list view, product detail page
+- Entreprises page for B2B with contract types and wholesale ordering
+- All APIs verified working
+- Lint: 0 errors

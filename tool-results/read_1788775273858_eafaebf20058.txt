@@ -1,0 +1,1683 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { useQuery, useQueryClient } from '@tanstack/react-query'
+     5→import { toast } from 'sonner'
+     6→import {
+     7→  Package, ShoppingCart, CreditCard, Plus, Edit, Trash2, Search, RefreshCw,
+     8→  Power, PowerOff, ChevronUp, ChevronDown, Eye, X, Filter, Box, Truck,
+     9→  DollarSign, Phone, Mail, Building2, MapPin, FileText, UserPlus,
+    10→  ToggleLeft, ToggleRight, Banknote, Layers, Tag,
+    11→} from 'lucide-react'
+    12→import { Button } from '@/components/ui/button'
+    13→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    14→import { Badge } from '@/components/ui/badge'
+    15→import { Input } from '@/components/ui/input'
+    16→import { Textarea } from '@/components/ui/textarea'
+    17→import { Label } from '@/components/ui/label'
+    18→import { Switch } from '@/components/ui/switch'
+    19→import { Separator } from '@/components/ui/separator'
+    20→import { Skeleton } from '@/components/ui/skeleton'
+    21→import {
+    22→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    23→} from '@/components/ui/dialog'
+    24→import {
+    25→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    26→} from '@/components/ui/alert-dialog'
+    27→import {
+    28→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    29→} from '@/components/ui/select'
+    30→import {
+    31→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    32→} from '@/components/ui/table'
+    33→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    34→import { formatPrice, formatDate } from './helpers'
+    35→import type { Deliverer } from './types'
+    36→
+    37→// ─── Types ────────────────────────────────────────────────────────────────
+    38→
+    39→interface WholesaleProduct {
+    40→  id: string
+    41→  name: string
+    42→  description: string | null
+    43→  lotSize: number
+    44→  lotUnit: string
+    45→  pricePerLot: number
+    46→  comparePrice: number | null
+    47→  minLots: number
+    48→  stockLots: number
+    49→  image: string | null
+    50→  isActive: boolean
+    51→  createdAt: string
+    52→}
+    53→
+    54→interface WholesaleOrderItem {
+    55→  id: string
+    56→  productId: string
+    57→  productName: string
+    58→  lotSize: number
+    59→  lotUnit: string
+    60→  quantityLots: number
+    61→  pricePerLot: number
+    62→  total: number
+    63→}
+    64→
+    65→interface WholesaleOrder {
+    66→  id: string
+    67→  orderNumber: string
+    68→  customerName: string
+    69→  customerPhone: string | null
+    70→  customerEmail: string | null
+    71→  company: string | null
+    72→  nif: string | null
+    73→  stat: string | null
+    74→  address: string | null
+    75→  status: string
+    76→  totalAmount: number
+    77→  paymentMethod: string | null
+    78→  paymentStatus: string
+    79→  paymentReference: string | null
+    80→  notes: string | null
+    81→  delivererId: string | null
+    82→  createdAt: string
+    83→  updatedAt: string
+    84→  items: WholesaleOrderItem[]
+    85→  deliverer?: { id: string; name: string; phone: string } | null
+    86→}
+    87→
+    88→interface PaymentMethod {
+    89→  id: string
+    90→  name: string
+    91→  description: string | null
+    92→  accountInfo: string | null
+    93→  icon: string | null
+    94→  isActive: boolean
+    95→  isCash: boolean
+    96→  sortOrder: number
+    97→  createdAt: string
+    98→}
+    99→
+   100→// ─── Status configs ───────────────────────────────────────────────────────
+   101→
+   102→const wholesaleStatusLabels: Record<string, string> = {
+   103→  pending: 'En attente',
+   104→  confirmed: 'Confirmée',
+   105→  processing: 'En traitement',
+   106→  ready: 'Prête',
+   107→  shipped: 'Expédiée',
+   108→  delivered: 'Livrée',
+   109→  cancelled: 'Annulée',
+   110→}
+   111→
+   112→const wholesaleStatusColors: Record<string, string> = {
+   113→  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+   114→  confirmed: 'bg-blue-50 text-blue-700 border-blue-200',
+   115→  processing: 'bg-violet-50 text-violet-700 border-violet-200',
+   116→  ready: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+   117→  shipped: 'bg-orange-50 text-orange-700 border-orange-200',
+   118→  delivered: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+   119→  cancelled: 'bg-red-50 text-red-700 border-red-200',
+   120→}
+   121→
+   122→const wholesaleStatusDotColors: Record<string, string> = {
+   123→  pending: 'bg-amber-400',
+   124→  confirmed: 'bg-blue-400',
+   125→  processing: 'bg-violet-400',
+   126→  ready: 'bg-indigo-400',
+   127→  shipped: 'bg-orange-400',
+   128→  delivered: 'bg-emerald-400',
+   129→  cancelled: 'bg-red-400',
+   130→}
+   131→
+   132→const paymentStatusLabels: Record<string, string> = {
+   133→  unpaid: 'Non payé',
+   134→  partial: 'Partiel',
+   135→  paid: 'Payé',
+   136→}
+   137→
+   138→const paymentStatusColors: Record<string, string> = {
+   139→  unpaid: 'bg-red-50 text-red-700 border-red-200',
+   140→  partial: 'bg-amber-50 text-amber-700 border-amber-200',
+   141→  paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+   142→}
+   143→
+   144→const paymentStatusDotColors: Record<string, string> = {
+   145→  unpaid: 'bg-red-400',
+   146→  partial: 'bg-amber-400',
+   147→  paid: 'bg-emerald-400',
+   148→}
+   149→
+   150→function WholesaleStatusBadge({ status }: { status: string }) {
+   151→  return (
+   152→    <Badge variant="outline" className={`${wholesaleStatusColors[status] || 'bg-gray-50 text-gray-700 border-gray-200'} flex items-center gap-1.5`}>
+   153→      <span className={`w-2 h-2 rounded-full shrink-0 ${wholesaleStatusDotColors[status] || 'bg-gray-400'}`} />
+   154→      {wholesaleStatusLabels[status] || status}
+   155→    </Badge>
+   156→  )
+   157→}
+   158→
+   159→function PaymentStatusBadge({ status }: { status: string }) {
+   160→  return (
+   161→    <Badge variant="outline" className={`${paymentStatusColors[status] || 'bg-gray-50 text-gray-700 border-gray-200'} flex items-center gap-1.5`}>
+   162→      <span className={`w-2 h-2 rounded-full shrink-0 ${paymentStatusDotColors[status] || 'bg-gray-400'}`} />
+   163→      {paymentStatusLabels[status] || status}
+   164→    </Badge>
+   165→  )
+   166→}
+   167→
+   168→const WHOLESALE_ORDER_STATUSES = ['pending', 'confirmed', 'processing', 'ready', 'shipped', 'delivered', 'cancelled']
+   169→const PAYMENT_STATUSES = ['unpaid', 'partial', 'paid']
+   170→
+   171→// ─── Main Component ───────────────────────────────────────────────────────
+   172→
+   173→export default function WholesaleSection() {
+   174→  return (
+   175→    <div className="space-y-6">
+   176→      <Tabs defaultValue="products" className="w-full">
+   177→        <TabsList className="w-full sm:w-auto">
+   178→          <TabsTrigger value="products" className="gap-1.5">
+   179→            <Package className="h-4 w-4" />
+   180→            <span className="hidden sm:inline">Produits en Gros</span>
+   181→            <span className="sm:hidden">Produits</span>
+   182→          </TabsTrigger>
+   183→          <TabsTrigger value="orders" className="gap-1.5">
+   184→            <ShoppingCart className="h-4 w-4" />
+   185→            <span className="hidden sm:inline">Commandes en Gros</span>
+   186→            <span className="sm:hidden">Commandes</span>
+   187→          </TabsTrigger>
+   188→          <TabsTrigger value="payment-methods" className="gap-1.5">
+   189→            <CreditCard className="h-4 w-4" />
+   190→            <span className="hidden sm:inline">Méthodes de Paiement</span>
+   191→            <span className="sm:hidden">Paiement</span>
+   192→          </TabsTrigger>
+   193→        </TabsList>
+   194→
+   195→        <TabsContent value="products">
+   196→          <WholesaleProductsTab />
+   197→        </TabsContent>
+   198→        <TabsContent value="orders">
+   199→          <WholesaleOrdersTab />
+   200→        </TabsContent>
+   201→        <TabsContent value="payment-methods">
+   202→          <PaymentMethodsTab />
+   203→        </TabsContent>
+   204→      </Tabs>
+   205→    </div>
+   206→  )
+   207→}
+   208→
+   209→// ─── Sub-tab 1: Wholesale Products ────────────────────────────────────────
+   210→
+   211→interface ProductFormData {
+   212→  name: string
+   213→  description: string
+   214→  lotSize: number
+   215→  lotUnit: string
+   216→  pricePerLot: number
+   217→  comparePrice: number
+   218→  minLots: number
+   219→  stockLots: number
+   220→  image: string
+   221→  isActive: boolean
+   222→}
+   223→
+   224→const emptyProductForm: ProductFormData = {
+   225→  name: '', description: '', lotSize: 1, lotUnit: 'unités', pricePerLot: 0,
+   226→  comparePrice: 0, minLots: 1, stockLots: 0, image: '', isActive: true,
+   227→}
+   228→
+   229→function WholesaleProductsTab() {
+   230→  const queryClient = useQueryClient()
+   231→  const [createOpen, setCreateOpen] = useState(false)
+   232→  const [editOpen, setEditOpen] = useState(false)
+   233→  const [deleteOpen, setDeleteOpen] = useState(false)
+   234→  const [editingProduct, setEditingProduct] = useState<WholesaleProduct | null>(null)
+   235→  const [deletingProduct, setDeletingProduct] = useState<WholesaleProduct | null>(null)
+   236→  const [form, setForm] = useState<ProductFormData>(emptyProductForm)
+   237→  const [formLoading, setFormLoading] = useState(false)
+   238→  const [search, setSearch] = useState('')
+   239→
+   240→  const { data: products, isLoading } = useQuery({
+   241→    queryKey: ['wholesale-products'],
+   242→    queryFn: () => fetch('/api/wholesale/products').then(r => r.json()).then(d => d.data as WholesaleProduct[]),
+   243→  })
+   244→
+   245→  const filteredProducts = useMemo(() => {
+   246→    if (!products) return []
+   247→    if (!search.trim()) return products
+   248→    const q = search.toLowerCase()
+   249→    return products.filter(p => p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+   250→  }, [products, search])
+   251→
+   252→  const totalActive = products?.filter(p => p.isActive).length ?? 0
+   253→  const totalInactive = products?.filter(p => !p.isActive).length ?? 0
+   254→
+   255→  const resetForm = () => setForm(emptyProductForm)
+   256→
+   257→  const openEdit = (p: WholesaleProduct) => {
+   258→    setForm({
+   259→      name: p.name,
+   260→      description: p.description || '',
+   261→      lotSize: p.lotSize,
+   262→      lotUnit: p.lotUnit,
+   263→      pricePerLot: p.pricePerLot,
+   264→      comparePrice: p.comparePrice || 0,
+   265→      minLots: p.minLots,
+   266→      stockLots: p.stockLots,
+   267→      image: p.image || '',
+   268→      isActive: p.isActive,
+   269→    })
+   270→    setEditingProduct(p)
+   271→    setEditOpen(true)
+   272→  }
+   273→
+   274→  const handleCreate = async () => {
+   275→    if (!form.name.trim()) { toast.error('Le nom est obligatoire'); return }
+   276→    if (form.pricePerLot <= 0) { toast.error('Le prix par lot doit être positif'); return }
+   277→    setFormLoading(true)
+   278→    try {
+   279→      const res = await fetch('/api/wholesale/products', {
+   280→        method: 'POST',
+   281→        headers: { 'Content-Type': 'application/json' },
+   282→        body: JSON.stringify({
+   283→          name: form.name.trim(),
+   284→          description: form.description.trim() || null,
+   285→          lotSize: form.lotSize,
+   286→          lotUnit: form.lotUnit,
+   287→          pricePerLot: form.pricePerLot,
+   288→          comparePrice: form.comparePrice > 0 ? form.comparePrice : null,
+   289→          minLots: form.minLots,
+   290→          stockLots: form.stockLots,
+   291→          image: form.image.trim() || null,
+   292→          isActive: form.isActive,
+   293→        }),
+   294→      })
+   295→      const data = await res.json()
+   296→      if (data.success) {
+   297→        toast.success('Produit en gros ajouté')
+   298→        queryClient.invalidateQueries({ queryKey: ['wholesale-products'] })
+   299→        setCreateOpen(false)
+   300→        resetForm()
+   301→      } else {
+   302→        toast.error(data.error || 'Erreur lors de l\'ajout')
+   303→      }
+   304→    } catch {
+   305→      toast.error('Erreur serveur')
+   306→    } finally {
+   307→      setFormLoading(false)
+   308→    }
+   309→  }
+   310→
+   311→  const handleEdit = async () => {
+   312→    if (!editingProduct || !form.name.trim()) { toast.error('Le nom est obligatoire'); return }
+   313→    setFormLoading(true)
+   314→    try {
+   315→      const res = await fetch(`/api/wholesale/products/${editingProduct.id}`, {
+   316→        method: 'PUT',
+   317→        headers: { 'Content-Type': 'application/json' },
+   318→        body: JSON.stringify({
+   319→          name: form.name.trim(),
+   320→          description: form.description.trim() || null,
+   321→          lotSize: form.lotSize,
+   322→          lotUnit: form.lotUnit,
+   323→          pricePerLot: form.pricePerLot,
+   324→          comparePrice: form.comparePrice > 0 ? form.comparePrice : null,
+   325→          minLots: form.minLots,
+   326→          stockLots: form.stockLots,
+   327→          image: form.image.trim() || null,
+   328→          isActive: form.isActive,
+   329→        }),
+   330→      })
+   331→      const data = await res.json()
+   332→      if (data.success) {
+   333→        toast.success('Produit modifié')
+   334→        queryClient.invalidateQueries({ queryKey: ['wholesale-products'] })
+   335→        setEditOpen(false)
+   336→        setEditingProduct(null)
+   337→        resetForm()
+   338→      } else {
+   339→        toast.error(data.error || 'Erreur lors de la modification')
+   340→      }
+   341→    } catch {
+   342→      toast.error('Erreur serveur')
+   343→    } finally {
+   344→      setFormLoading(false)
+   345→    }
+   346→  }
+   347→
+   348→  const handleToggle = async (p: WholesaleProduct) => {
+   349→    try {
+   350→      const res = await fetch(`/api/wholesale/products/${p.id}`, {
+   351→        method: 'PUT',
+   352→        headers: { 'Content-Type': 'application/json' },
+   353→        body: JSON.stringify({ isActive: !p.isActive }),
+   354→      })
+   355→      const data = await res.json()
+   356→      if (data.success) {
+   357→        toast.success(p.isActive ? 'Produit désactivé' : 'Produit activé')
+   358→        queryClient.invalidateQueries({ queryKey: ['wholesale-products'] })
+   359→      } else {
+   360→        toast.error(data.error || 'Erreur')
+   361→      }
+   362→    } catch {
+   363→      toast.error('Erreur serveur')
+   364→    }
+   365→  }
+   366→
+   367→  const handleDelete = async () => {
+   368→    if (!deletingProduct) return
+   369→    try {
+   370→      const res = await fetch(`/api/wholesale/products/${deletingProduct.id}`, { method: 'DELETE' })
+   371→      const data = await res.json()
+   372→      if (data.success) {
+   373→        toast.success('Produit supprimé')
+   374→        queryClient.invalidateQueries({ queryKey: ['wholesale-products'] })
+   375→      } else {
+   376→        toast.error(data.error || 'Erreur lors de la suppression')
+   377→      }
+   378→    } catch {
+   379→      toast.error('Erreur serveur')
+   380→    } finally {
+   381→      setDeleteOpen(false)
+   382→      setDeletingProduct(null)
+   383→    }
+   384→  }
+   385→
+   386→  return (
+   387→    <div className="space-y-6">
+   388→      {/* Stats */}
+   389→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   390→        <Card>
+   391→          <CardContent className="p-4">
+   392→            <p className="text-sm text-muted-foreground">Total produits</p>
+   393→            <p className="text-2xl font-bold text-gray-900">{products?.length ?? 0}</p>
+   394→          </CardContent>
+   395→        </Card>
+   396→        <Card>
+   397→          <CardContent className="p-4">
+   398→            <p className="text-sm text-muted-foreground">Actifs</p>
+   399→            <p className="text-2xl font-bold text-emerald-600">{totalActive}</p>
+   400→          </CardContent>
+   401→        </Card>
+   402→        <Card>
+   403→          <CardContent className="p-4">
+   404→            <p className="text-sm text-muted-foreground">Inactifs</p>
+   405→            <p className="text-2xl font-bold text-gray-500">{totalInactive}</p>
+   406→          </CardContent>
+   407→        </Card>
+   408→        <Card>
+   409→          <CardContent className="p-4">
+   410→            <p className="text-sm text-muted-foreground">Stock total (lots)</p>
+   411→            <p className="text-2xl font-bold text-gray-900">{products?.reduce((s, p) => s + p.stockLots, 0) ?? 0}</p>
+   412→          </CardContent>
+   413→        </Card>
+   414→      </div>
+   415→
+   416→      {/* Header */}
+   417→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+   418→        <div>
+   419→          <h3 className="text-lg font-semibold text-gray-900">Produits en Gros</h3>
+   420→          <p className="text-sm text-muted-foreground">Gérer les produits vendus en lots</p>
+   421→        </div>
+   422→        <div className="flex-1" />
+   423→        <div className="flex items-center gap-2 w-full sm:w-auto">
+   424→          <div className="relative flex-1 sm:flex-initial">
+   425→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   426→            <Input
+   427→              placeholder="Rechercher..."
+   428→              value={search}
+   429→              onChange={e => setSearch(e.target.value)}
+   430→              className="pl-9 w-full sm:w-[200px]"
+   431→            />
+   432→          </div>
+   433→          <Button
+   434→            onClick={() => { resetForm(); setCreateOpen(true) }}
+   435→            className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white"
+   436→          >
+   437→            <Plus className="h-4 w-4 mr-2" />
+   438→            Ajouter
+   439→          </Button>
+   440→        </div>
+   441→      </div>
+   442→
+   443→      {/* Table */}
+   444→      <Card>
+   445→        <CardContent className="p-0">
+   446→          {isLoading ? (
+   447→            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+   448→          ) : filteredProducts.length > 0 ? (
+   449→            <div className="overflow-x-auto">
+   450→              <Table>
+   451→                <TableHeader>
+   452→                  <TableRow className="bg-gray-50/80">
+   453→                    <TableHead>Produit</TableHead>
+   454→                    <TableHead>Lot</TableHead>
+   455→                    <TableHead>Prix/lot</TableHead>
+   456→                    <TableHead className="hidden md:table-cell">Min. lots</TableHead>
+   457→                    <TableHead>Stock (lots)</TableHead>
+   458→                    <TableHead>Statut</TableHead>
+   459→                    <TableHead className="w-36">Actions</TableHead>
+   460→                  </TableRow>
+   461→                </TableHeader>
+   462→                <TableBody>
+   463→                  {filteredProducts.map((p, i) => (
+   464→                    <TableRow key={p.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50`}>
+   465→                      <TableCell>
+   466→                        <div className="flex items-center gap-3">
+   467→                          {p.image ? (
+   468→                            <img src={p.image} alt={p.name} className="h-10 w-10 rounded-lg object-cover border border-gray-100 shrink-0" />
+   469→                          ) : (
+   470→                            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+   471→                              <Box className="h-5 w-5 text-gray-400" />
+   472→                            </div>
+   473→                          )}
+   474→                          <div className="min-w-0">
+   475→                            <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+   476→                            {p.description && (
+   477→                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.description}</p>
+   478→                            )}
+   479→                          </div>
+   480→                        </div>
+   481→                      </TableCell>
+   482→                      <TableCell>
+   483→                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 whitespace-nowrap">
+   484→                          <Layers className="h-3 w-3 mr-1" />
+   485→                          1 lot = {p.lotSize} {p.lotUnit}
+   486→                        </Badge>
+   487→                      </TableCell>
+   488→                      <TableCell>
+   489→                        <div>
+   490→                          <p className="text-sm font-semibold text-gray-900">{formatPrice(p.pricePerLot)}</p>
+   491→                          {p.comparePrice && p.comparePrice > 0 && (
+   492→                            <p className="text-xs text-muted-foreground line-through">{formatPrice(p.comparePrice)}</p>
+   493→                          )}
+   494→                        </div>
+   495→                      </TableCell>
+   496→                      <TableCell className="hidden md:table-cell">
+   497→                        <span className="text-sm text-muted-foreground">{p.minLots}</span>
+   498→                      </TableCell>
+   499→                      <TableCell>
+   500→                        <span className={`text-sm font-medium ${p.stockLots <= p.minLots ? 'text-red-600' : 'text-gray-900'}`}>
+   501→                          {p.stockLots}
+   502→                        </span>
+   503→                      </TableCell>
+   504→                      <TableCell>
+   505→                        <Badge
+   506→                          variant="outline"
+   507→                          className={p.isActive
+   508→                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+   509→                            : 'bg-red-50 text-red-600 border-red-200'
+   510→                          }
+   511→                        >
+   512→                          {p.isActive ? 'Actif' : 'Inactif'}
+   513→                        </Badge>
+   514→                      </TableCell>
+   515→                      <TableCell>
+   516→                        <div className="flex items-center gap-1">
+   517→                          <Button
+   518→                            variant="ghost"
+   519→                            size="icon"
+   520→                            className={`h-8 w-8 ${p.isActive ? 'text-gray-500 hover:text-orange-600' : 'text-orange-500 hover:text-orange-700'}`}
+   521→                            onClick={() => handleToggle(p)}
+   522→                            title={p.isActive ? 'Désactiver' : 'Activer'}
+   523→                          >
+   524→                            {p.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+   525→                          </Button>
+   526→                          <Button
+   527→                            variant="ghost"
+   528→                            size="icon"
+   529→                            className="h-8 w-8 text-gray-500 hover:text-gray-700"
+   530→                            onClick={() => openEdit(p)}
+   531→                            title="Modifier"
+   532→                          >
+   533→                            <Edit className="h-4 w-4" />
+   534→                          </Button>
+   535→                          <Button
+   536→                            variant="ghost"
+   537→                            size="icon"
+   538→                            className="h-8 w-8 text-red-500 hover:text-red-700"
+   539→                            onClick={() => { setDeletingProduct(p); setDeleteOpen(true) }}
+   540→                            title="Supprimer"
+   541→                          >
+   542→                            <Trash2 className="h-4 w-4" />
+   543→                          </Button>
+   544→                        </div>
+   545→                      </TableCell>
+   546→                    </TableRow>
+   547→                  ))}
+   548→                </TableBody>
+   549→              </Table>
+   550→            </div>
+   551→          ) : (
+   552→            <div className="p-12 text-center">
+   553→              <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+   554→              <p className="text-muted-foreground">Aucun produit en gros trouvé</p>
+   555→            </div>
+   556→          )}
+   557→        </CardContent>
+   558→      </Card>
+   559→
+   560→      {/* Create Dialog */}
+   561→      <ProductFormDialog
+   562→        open={createOpen}
+   563→        onOpenChange={(open) => { if (!open) resetForm(); setCreateOpen(open) }}
+   564→        title="Ajouter un produit en gros"
+   565→        description="Créer un nouveau produit vendu en lots."
+   566→        form={form}
+   567→        setForm={setForm}
+   568→        onSubmit={handleCreate}
+   569→        loading={formLoading}
+   570→        submitLabel="Ajouter"
+   571→      />
+   572→
+   573→      {/* Edit Dialog */}
+   574→      <ProductFormDialog
+   575→        open={editOpen}
+   576→        onOpenChange={(open) => { if (!open) { setEditingProduct(null); resetForm() }; setEditOpen(open) }}
+   577→        title="Modifier le produit"
+   578→        description="Modifier les informations du produit en gros."
+   579→        form={form}
+   580→        setForm={setForm}
+   581→        onSubmit={handleEdit}
+   582→        loading={formLoading}
+   583→        submitLabel="Enregistrer"
+   584→      />
+   585→
+   586→      {/* Delete Dialog */}
+   587→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+   588→        <AlertDialogContent>
+   589→          <AlertDialogHeader>
+   590→            <AlertDialogTitle>Supprimer ce produit ?</AlertDialogTitle>
+   591→            <AlertDialogDescription>
+   592→              Cette action est irréversible. Le produit <strong>{deletingProduct?.name}</strong> sera définitivement supprimé.
+   593→            </AlertDialogDescription>
+   594→          </AlertDialogHeader>
+   595→          <AlertDialogFooter>
+   596→            <AlertDialogCancel>Annuler</AlertDialogCancel>
+   597→            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>Supprimer</AlertDialogAction>
+   598→          </AlertDialogFooter>
+   599→        </AlertDialogContent>
+   600→      </AlertDialog>
+   601→    </div>
+   602→  )
+   603→}
+   604→
+   605→// ─── Product Form Dialog ──────────────────────────────────────────────────
+   606→
+   607→function ProductFormDialog({
+   608→  open, onOpenChange, title, description, form, setForm, onSubmit, loading, submitLabel,
+   609→}: {
+   610→  open: boolean
+   611→  onOpenChange: (open: boolean) => void
+   612→  title: string
+   613→  description: string
+   614→  form: ProductFormData
+   615→  setForm: (form: ProductFormData) => void
+   616→  onSubmit: () => void
+   617→  loading: boolean
+   618→  submitLabel: string
+   619→}) {
+   620→  return (
+   621→    <Dialog open={open} onOpenChange={onOpenChange}>
+   622→      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+   623→        <DialogHeader>
+   624→          <DialogTitle>{title}</DialogTitle>
+   625→          <DialogDescription>{description}</DialogDescription>
+   626→        </DialogHeader>
+   627→        <div className="space-y-4 py-2">
+   628→          <div className="space-y-2">
+   629→            <Label htmlFor="wp-name">Nom *</Label>
+   630→            <Input id="wp-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Savon Liquide 5L" />
+   631→          </div>
+   632→          <div className="space-y-2">
+   633→            <Label htmlFor="wp-desc">Description</Label>
+   634→            <Textarea id="wp-desc" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description du produit" rows={3} />
+   635→          </div>
+   636→          <div className="grid grid-cols-2 gap-4">
+   637→            <div className="space-y-2">
+   638→              <Label htmlFor="wp-lot-size">Taille du lot *</Label>
+   639→              <Input id="wp-lot-size" type="number" min={1} value={form.lotSize} onChange={e => setForm({ ...form, lotSize: Math.max(1, parseInt(e.target.value) || 1) })} />
+   640→            </div>
+   641→            <div className="space-y-2">
+   642→              <Label htmlFor="wp-lot-unit">Unité</Label>
+   643→              <Input id="wp-lot-unit" value={form.lotUnit} onChange={e => setForm({ ...form, lotUnit: e.target.value })} placeholder="unités" />
+   644→            </div>
+   645→          </div>
+   646→          <div className="grid grid-cols-2 gap-4">
+   647→            <div className="space-y-2">
+   648→              <Label htmlFor="wp-price">Prix par lot (FCFA) *</Label>
+   649→              <Input id="wp-price" type="number" min={0} value={form.pricePerLot} onChange={e => setForm({ ...form, pricePerLot: Math.max(0, parseInt(e.target.value) || 0) })} />
+   650→            </div>
+   651→            <div className="space-y-2">
+   652→              <Label htmlFor="wp-compare">Prix comparé (FCFA)</Label>
+   653→              <Input id="wp-compare" type="number" min={0} value={form.comparePrice} onChange={e => setForm({ ...form, comparePrice: Math.max(0, parseInt(e.target.value) || 0) })} />
+   654→            </div>
+   655→          </div>
+   656→          <div className="grid grid-cols-2 gap-4">
+   657→            <div className="space-y-2">
+   658→              <Label htmlFor="wp-min-lots">Minimum de lots</Label>
+   659→              <Input id="wp-min-lots" type="number" min={1} value={form.minLots} onChange={e => setForm({ ...form, minLots: Math.max(1, parseInt(e.target.value) || 1) })} />
+   660→            </div>
+   661→            <div className="space-y-2">
+   662→              <Label htmlFor="wp-stock-lots">Stock (lots)</Label>
+   663→              <Input id="wp-stock-lots" type="number" min={0} value={form.stockLots} onChange={e => setForm({ ...form, stockLots: Math.max(0, parseInt(e.target.value) || 0) })} />
+   664→            </div>
+   665→          </div>
+   666→          <div className="space-y-2">
+   667→            <Label htmlFor="wp-image">URL de l&apos;image</Label>
+   668→            <Input id="wp-image" value={form.image} onChange={e => setForm({ ...form, image: e.target.value })} placeholder="https://..." />
+   669→          </div>
+   670→          <div className="flex items-center gap-3">
+   671→            <Switch id="wp-active" checked={form.isActive} onCheckedChange={checked => setForm({ ...form, isActive: checked })} />
+   672→            <Label htmlFor="wp-active" className="cursor-pointer">Produit actif</Label>
+   673→          </div>
+   674→        </div>
+   675→        <DialogFooter>
+   676→          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+   677→          <Button onClick={onSubmit} disabled={loading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
+   678→            {loading ? 'Enregistrement...' : submitLabel}
+   679→          </Button>
+   680→        </DialogFooter>
+   681→      </DialogContent>
+   682→    </Dialog>
+   683→  )
+   684→}
+   685→
+   686→// ─── Sub-tab 2: Wholesale Orders ──────────────────────────────────────────
+   687→
+   688→function WholesaleOrdersTab() {
+   689→  const queryClient = useQueryClient()
+   690→  const [statusFilter, setStatusFilter] = useState('all')
+   691→  const [search, setSearch] = useState('')
+   692→  const [detailOpen, setDetailOpen] = useState(false)
+   693→  const [selectedOrder, setSelectedOrder] = useState<WholesaleOrder | null>(null)
+   694→  const [noteText, setNoteText] = useState('')
+   695→  const [addingNote, setAddingNote] = useState(false)
+   696→
+   697→  const { data: orders, isLoading } = useQuery({
+   698→    queryKey: ['wholesale-orders', statusFilter, search],
+   699→    queryFn: () => {
+   700→      const params = new URLSearchParams()
+   701→      if (statusFilter !== 'all') params.set('status', statusFilter)
+   702→      if (search) params.set('search', search)
+   703→      return fetch(`/api/wholesale/orders?${params}`).then(r => r.json()).then(d => d.data as WholesaleOrder[])
+   704→    },
+   705→  })
+   706→
+   707→  // Fetch deliverers for assignment
+   708→  const { data: deliverers } = useQuery({
+   709→    queryKey: ['admin-livreurs'],
+   710→    queryFn: () => fetch('/api/livreurs').then(r => r.json()).then(d => d.data as Deliverer[]),
+   711→  })
+   712→
+   713→  const openDetail = async (orderId: string) => {
+   714→    try {
+   715→      const res = await fetch(`/api/wholesale/orders/${orderId}`)
+   716→      const data = await res.json()
+   717→      if (data.success) {
+   718→        setSelectedOrder(data.data)
+   719→        setDetailOpen(true)
+   720→        setNoteText('')
+   721→      }
+   722→    } catch {
+   723→      toast.error('Erreur de chargement')
+   724→    }
+   725→  }
+   726→
+   727→  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+   728→    try {
+   729→      const res = await fetch(`/api/wholesale/orders/${orderId}`, {
+   730→        method: 'PUT',
+   731→        headers: { 'Content-Type': 'application/json' },
+   732→        body: JSON.stringify({ status: newStatus }),
+   733→      })
+   734→      const data = await res.json()
+   735→      if (data.success) {
+   736→        toast.success('Statut mis à jour')
+   737→        queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] })
+   738→        if (selectedOrder?.id === orderId) {
+   739→          setSelectedOrder({ ...selectedOrder, status: newStatus })
+   740→        }
+   741→      } else {
+   742→        toast.error(data.error || 'Erreur')
+   743→      }
+   744→    } catch {
+   745→      toast.error('Erreur serveur')
+   746→    }
+   747→  }
+   748→
+   749→  const updatePaymentStatus = async (orderId: string, newPaymentStatus: string) => {
+   750→    try {
+   751→      const res = await fetch(`/api/wholesale/orders/${orderId}`, {
+   752→        method: 'PUT',
+   753→        headers: { 'Content-Type': 'application/json' },
+   754→        body: JSON.stringify({ paymentStatus: newPaymentStatus }),
+   755→      })
+   756→      const data = await res.json()
+   757→      if (data.success) {
+   758→        toast.success('Statut de paiement mis à jour')
+   759→        queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] })
+   760→        if (selectedOrder?.id === orderId) {
+   761→          setSelectedOrder({ ...selectedOrder, paymentStatus: newPaymentStatus })
+   762→        }
+   763→      } else {
+   764→        toast.error(data.error || 'Erreur')
+   765→      }
+   766→    } catch {
+   767→      toast.error('Erreur serveur')
+   768→    }
+   769→  }
+   770→
+   771→  const assignDeliverer = async (orderId: string, delivererId: string | null) => {
+   772→    try {
+   773→      const res = await fetch(`/api/wholesale/orders/${orderId}`, {
+   774→        method: 'PUT',
+   775→        headers: { 'Content-Type': 'application/json' },
+   776→        body: JSON.stringify({ delivererId }),
+   777→      })
+   778→      const data = await res.json()
+   779→      if (data.success) {
+   780→        toast.success(delivererId ? 'Livreur assigné' : 'Livreur retiré')
+   781→        queryClient.invalidateQueries({ queryKey: ['wholesale-orders'] })
+   782→        if (selectedOrder?.id === orderId) {
+   783→          const del = delivererId ? deliverers?.find(d => d.id === delivererId) : null
+   784→          setSelectedOrder({
+   785→            ...selectedOrder,
+   786→            delivererId,
+   787→            deliverer: del ? { id: del.id, name: del.name, phone: del.phone } : null,
+   788→          })
+   789→        }
+   790→      } else {
+   791→        toast.error(data.error || 'Erreur')
+   792→      }
+   793→    } catch {
+   794→      toast.error('Erreur serveur')
+   795→    }
+   796→  }
+   797→
+   798→  const addNote = async () => {
+   799→    if (!selectedOrder || !noteText.trim()) return
+   800→    setAddingNote(true)
+   801→    try {
+   802→      const res = await fetch(`/api/wholesale/orders/${selectedOrder.id}`, {
+   803→        method: 'PUT',
+   804→        headers: { 'Content-Type': 'application/json' },
+   805→        body: JSON.stringify({ notes: noteText.trim() }),
+   806→      })
+   807→      const data = await res.json()
+   808→      if (data.success) {
+   809→        toast.success('Note ajoutée')
+   810→        setSelectedOrder({ ...selectedOrder, notes: noteText.trim() })
+   811→        setNoteText('')
+   812→      } else {
+   813→        toast.error(data.error || 'Erreur')
+   814→      }
+   815→    } catch {
+   816→      toast.error('Erreur serveur')
+   817→    } finally {
+   818→      setAddingNote(false)
+   819→    }
+   820→  }
+   821→
+   822→  // Summary stats
+   823→  const totalOrders = orders?.length ?? 0
+   824→  const pendingCount = orders?.filter(o => o.status === 'pending').length ?? 0
+   825→  const totalRevenue = orders?.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.totalAmount, 0) ?? 0
+   826→
+   827→  return (
+   828→    <div className="space-y-6">
+   829→      {/* Stats */}
+   830→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   831→        <Card>
+   832→          <CardContent className="p-4">
+   833→            <p className="text-sm text-muted-foreground">Total commandes</p>
+   834→            <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
+   835→          </CardContent>
+   836→        </Card>
+   837→        <Card>
+   838→          <CardContent className="p-4">
+   839→            <p className="text-sm text-muted-foreground">En attente</p>
+   840→            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+   841→          </CardContent>
+   842→        </Card>
+   843→        <Card>
+   844→          <CardContent className="p-4">
+   845→            <p className="text-sm text-muted-foreground">Livrées</p>
+   846→            <p className="text-2xl font-bold text-emerald-600">{orders?.filter(o => o.status === 'delivered').length ?? 0}</p>
+   847→          </CardContent>
+   848→        </Card>
+   849→        <Card>
+   850→          <CardContent className="p-4">
+   851→            <p className="text-sm text-muted-foreground">Chiffre d&apos;affaires</p>
+   852→            <p className="text-2xl font-bold text-gray-900">{formatPrice(totalRevenue)}</p>
+   853→          </CardContent>
+   854→        </Card>
+   855→      </div>
+   856→
+   857→      {/* Header & Filters */}
+   858→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+   859→        <div>
+   860→          <h3 className="text-lg font-semibold text-gray-900">Commandes en Gros</h3>
+   861→          <p className="text-sm text-muted-foreground">Suivi des commandes de gros</p>
+   862→        </div>
+   863→        <div className="flex-1" />
+   864→        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+   865→          <div className="relative flex-1 sm:flex-initial">
+   866→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   867→            <Input
+   868→              placeholder="N° commande, nom, suivi..."
+   869→              value={search}
+   870→              onChange={e => setSearch(e.target.value)}
+   871→              className="pl-9 w-full sm:w-[220px]"
+   872→            />
+   873→          </div>
+   874→          <Select value={statusFilter} onValueChange={setStatusFilter}>
+   875→            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tous les statuts" /></SelectTrigger>
+   876→            <SelectContent>
+   877→              <SelectItem value="all">Tous les statuts</SelectItem>
+   878→              {WHOLESALE_ORDER_STATUSES.map(s => (
+   879→                <SelectItem key={s} value={s}>{wholesaleStatusLabels[s]}</SelectItem>
+   880→              ))}
+   881→            </SelectContent>
+   882→          </Select>
+   883→        </div>
+   884→      </div>
+   885→
+   886→      {/* Table */}
+   887→      <Card>
+   888→        <CardContent className="p-0">
+   889→          {isLoading ? (
+   890→            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+   891→          ) : orders && orders.length > 0 ? (
+   892→            <div className="overflow-x-auto">
+   893→              <Table>
+   894→                <TableHeader>
+   895→                  <TableRow className="bg-gray-50/80">
+   896→                    <TableHead>N° Commande</TableHead>
+   897→                    <TableHead>Client</TableHead>
+   898→                    <TableHead className="hidden md:table-cell">Entreprise</TableHead>
+   899→                    <TableHead>Montant</TableHead>
+   900→                    <TableHead>Statut</TableHead>
+   901→                    <TableHead className="hidden sm:table-cell">Paiement</TableHead>
+   902→                    <TableHead className="hidden lg:table-cell">Date</TableHead>
+   903→                    <TableHead className="w-20">Détail</TableHead>
+   904→                  </TableRow>
+   905→                </TableHeader>
+   906→                <TableBody>
+   907→                  {orders.map((o, i) => (
+   908→                    <TableRow key={o.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50`}>
+   909→                      <TableCell>
+   910→                        <span className="text-sm font-medium text-gray-900">{o.orderNumber}</span>
+   911→                      </TableCell>
+   912→                      <TableCell>
+   913→                        <div className="min-w-0">
+   914→                          <p className="text-sm text-gray-900 truncate">{o.customerName}</p>
+   915→                          {o.customerPhone && (
+   916→                            <p className="text-xs text-muted-foreground truncate">{o.customerPhone}</p>
+   917→                          )}
+   918→                        </div>
+   919→                      </TableCell>
+   920→                      <TableCell className="hidden md:table-cell">
+   921→                        <span className="text-sm text-muted-foreground">{o.company || '—'}</span>
+   922→                      </TableCell>
+   923→                      <TableCell>
+   924→                        <span className="text-sm font-semibold text-gray-900">{formatPrice(o.totalAmount)}</span>
+   925→                      </TableCell>
+   926→                      <TableCell>
+   927→                        <WholesaleStatusBadge status={o.status} />
+   928→                      </TableCell>
+   929→                      <TableCell className="hidden sm:table-cell">
+   930→                        <PaymentStatusBadge status={o.paymentStatus} />
+   931→                      </TableCell>
+   932→                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+   933→                        {formatDate(o.createdAt)}
+   934→                      </TableCell>
+   935→                      <TableCell>
+   936→                        <Button
+   937→                          variant="ghost"
+   938→                          size="icon"
+   939→                          className="h-8 w-8 text-gray-500 hover:text-gray-700"
+   940→                          onClick={() => openDetail(o.id)}
+   941→                          title="Voir détail"
+   942→                        >
+   943→                          <Eye className="h-4 w-4" />
+   944→                        </Button>
+   945→                      </TableCell>
+   946→                    </TableRow>
+   947→                  ))}
+   948→                </TableBody>
+   949→              </Table>
+   950→            </div>
+   951→          ) : (
+   952→            <div className="p-12 text-center">
+   953→              <ShoppingCart className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+   954→              <p className="text-muted-foreground">Aucune commande en gros trouvée</p>
+   955→            </div>
+   956→          )}
+   957→        </CardContent>
+   958→      </Card>
+   959→
+   960→      {/* Order Detail Dialog */}
+   961→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   962→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   963→          <DialogHeader>
+   964→            <DialogTitle className="flex items-center gap-2">
+   965→              <ShoppingCart className="h-5 w-5" />
+   966→              Commande {selectedOrder?.orderNumber}
+   967→            </DialogTitle>
+   968→            <DialogDescription>Détails de la commande en gros</DialogDescription>
+   969→          </DialogHeader>
+   970→
+   971→          {selectedOrder && (
+   972→            <div className="space-y-6 py-2">
+   973→              {/* Status & Payment Row */}
+   974→              <div className="flex flex-wrap gap-3 items-center">
+   975→                <WholesaleStatusBadge status={selectedOrder.status} />
+   976→                <PaymentStatusBadge status={selectedOrder.paymentStatus} />
+   977→                <span className="text-sm text-muted-foreground">{formatDate(selectedOrder.createdAt)}</span>
+   978→              </div>
+   979→
+   980→              {/* Actions */}
+   981→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   982→                <div className="space-y-1.5">
+   983→                  <Label className="text-xs text-muted-foreground">Statut commande</Label>
+   984→                  <Select value={selectedOrder.status} onValueChange={v => updateOrderStatus(selectedOrder.id, v)}>
+   985→                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+   986→                    <SelectContent>
+   987→                      {WHOLESALE_ORDER_STATUSES.map(s => (
+   988→                        <SelectItem key={s} value={s}>{wholesaleStatusLabels[s]}</SelectItem>
+   989→                      ))}
+   990→                    </SelectContent>
+   991→                  </Select>
+   992→                </div>
+   993→                <div className="space-y-1.5">
+   994→                  <Label className="text-xs text-muted-foreground">Statut paiement</Label>
+   995→                  <Select value={selectedOrder.paymentStatus} onValueChange={v => updatePaymentStatus(selectedOrder.id, v)}>
+   996→                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+   997→                    <SelectContent>
+   998→                      {PAYMENT_STATUSES.map(s => (
+   999→                        <SelectItem key={s} value={s}>{paymentStatusLabels[s]}</SelectItem>
+  1000→                      ))}
+  1001→                    </SelectContent>
+  1002→                  </Select>
+  1003→                </div>
+  1004→                <div className="space-y-1.5">
+  1005→                  <Label className="text-xs text-muted-foreground">Livreur</Label>
+  1006→                  <Select
+  1007→                    value={selectedOrder.delivererId || 'none'}
+  1008→                    onValueChange={v => assignDeliverer(selectedOrder.id, v === 'none' ? null : v)}
+  1009→                  >
+  1010→                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+  1011→                    <SelectContent>
+  1012→                      <SelectItem value="none">Aucun</SelectItem>
+  1013→                      {deliverers?.filter(d => d.isActive).map(d => (
+  1014→                        <SelectItem key={d.id} value={d.id}>{d.name} — {d.phone}</SelectItem>
+  1015→                      ))}
+  1016→                    </SelectContent>
+  1017→                  </Select>
+  1018→                </div>
+  1019→              </div>
+  1020→
+  1021→              <Separator />
+  1022→
+  1023→              {/* Customer Info */}
+  1024→              <div>
+  1025→                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+  1026→                  <Building2 className="h-4 w-4" />
+  1027→                  Informations client
+  1028→                </h4>
+  1029→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+  1030→                  <div className="flex items-center gap-2">
+  1031→                    <span className="text-muted-foreground shrink-0">Nom:</span>
+  1032→                    <span className="font-medium text-gray-900">{selectedOrder.customerName}</span>
+  1033→                  </div>
+  1034→                  {selectedOrder.customerPhone && (
+  1035→                    <div className="flex items-center gap-2">
+  1036→                      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1037→                      <span className="text-gray-900">{selectedOrder.customerPhone}</span>
+  1038→                    </div>
+  1039→                  )}
+  1040→                  {selectedOrder.customerEmail && (
+  1041→                    <div className="flex items-center gap-2">
+  1042→                      <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1043→                      <span className="text-gray-900">{selectedOrder.customerEmail}</span>
+  1044→                    </div>
+  1045→                  )}
+  1046→                  {selectedOrder.company && (
+  1047→                    <div className="flex items-center gap-2">
+  1048→                      <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1049→                      <span className="text-gray-900">{selectedOrder.company}</span>
+  1050→                    </div>
+  1051→                  )}
+  1052→                  {selectedOrder.nif && (
+  1053→                    <div className="flex items-center gap-2">
+  1054→                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1055→                      <span className="text-muted-foreground">NIF:</span>
+  1056→                      <span className="text-gray-900">{selectedOrder.nif}</span>
+  1057→                    </div>
+  1058→                  )}
+  1059→                  {selectedOrder.stat && (
+  1060→                    <div className="flex items-center gap-2">
+  1061→                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1062→                      <span className="text-muted-foreground">STAT:</span>
+  1063→                      <span className="text-gray-900">{selectedOrder.stat}</span>
+  1064→                    </div>
+  1065→                  )}
+  1066→                  {selectedOrder.address && (
+  1067→                    <div className="flex items-start gap-2 sm:col-span-2">
+  1068→                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+  1069→                      <span className="text-gray-900">{selectedOrder.address}</span>
+  1070→                    </div>
+  1071→                  )}
+  1072→                </div>
+  1073→              </div>
+  1074→
+  1075→              <Separator />
+  1076→
+  1077→              {/* Items */}
+  1078→              <div>
+  1079→                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+  1080→                  <Package className="h-4 w-4" />
+  1081→                  Articles commandés
+  1082→                </h4>
+  1083→                <div className="space-y-2">
+  1084→                  {selectedOrder.items.map(item => (
+  1085→                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+  1086→                      <div>
+  1087→                        <p className="text-sm font-medium text-gray-900">{item.productName}</p>
+  1088→                        <p className="text-xs text-muted-foreground">
+  1089→                          {item.quantityLots} lot(s) × {formatPrice(item.pricePerLot)} / lot
+  1090→                          <span className="ml-2">({item.lotSize} {item.lotUnit}/lot)</span>
+  1091→                        </p>
+  1092→                      </div>
+  1093→                      <p className="text-sm font-semibold text-gray-900">{formatPrice(item.total)}</p>
+  1094→                    </div>
+  1095→                  ))}
+  1096→                </div>
+  1097→                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+  1098→                  <span className="text-sm font-semibold text-gray-900">Total</span>
+  1099→                  <span className="text-lg font-bold text-gray-900">{formatPrice(selectedOrder.totalAmount)}</span>
+  1100→                </div>
+  1101→              </div>
+  1102→
+  1103→              <Separator />
+  1104→
+  1105→              {/* Payment Info */}
+  1106→              <div>
+  1107→                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+  1108→                  <DollarSign className="h-4 w-4" />
+  1109→                  Informations de paiement
+  1110→                </h4>
+  1111→                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+  1112→                  <div>
+  1113→                    <span className="text-muted-foreground">Méthode</span>
+  1114→                    <p className="font-medium text-gray-900">{selectedOrder.paymentMethod || '—'}</p>
+  1115→                  </div>
+  1116→                  <div>
+  1117→                    <span className="text-muted-foreground">Référence</span>
+  1118→                    <p className="font-medium text-gray-900">{selectedOrder.paymentReference || '—'}</p>
+  1119→                  </div>
+  1120→                  <div>
+  1121→                    <span className="text-muted-foreground">Montant</span>
+  1122→                    <p className="font-semibold text-gray-900">{formatPrice(selectedOrder.totalAmount)}</p>
+  1123→                  </div>
+  1124→                </div>
+  1125→              </div>
+  1126→
+  1127→              <Separator />
+  1128→
+  1129→              {/* Assigned Deliverer */}
+  1130→              {selectedOrder.deliverer && (
+  1131→                <>
+  1132→                  <div>
+  1133→                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+  1134→                      <Truck className="h-4 w-4" />
+  1135→                      Livreur assigné
+  1136→                    </h4>
+  1137→                    <div className="flex items-center gap-3 text-sm">
+  1138→                      <span className="font-medium text-gray-900">{selectedOrder.deliverer.name}</span>
+  1139→                      <span className="text-muted-foreground">{selectedOrder.deliverer.phone}</span>
+  1140→                    </div>
+  1141→                  </div>
+  1142→                  <Separator />
+  1143→                </>
+  1144→              )}
+  1145→
+  1146→              {/* Notes */}
+  1147→              <div>
+  1148→                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+  1149→                  <FileText className="h-4 w-4" />
+  1150→                  Notes
+  1151→                </h4>
+  1152→                {selectedOrder.notes && (
+  1153→                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg mb-3">{selectedOrder.notes}</p>
+  1154→                )}
+  1155→                <div className="flex gap-2">
+  1156→                  <Textarea
+  1157→                    placeholder="Ajouter une note..."
+  1158→                    value={noteText}
+  1159→                    onChange={e => setNoteText(e.target.value)}
+  1160→                    rows={2}
+  1161→                    className="flex-1"
+  1162→                  />
+  1163→                  <Button
+  1164→                    onClick={addNote}
+  1165→                    disabled={addingNote || !noteText.trim()}
+  1166→                    className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white self-end"
+  1167→                  >
+  1168→                    {addingNote ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Ajouter'}
+  1169→                  </Button>
+  1170→                </div>
+  1171→              </div>
+  1172→            </div>
+  1173→          )}
+  1174→        </DialogContent>
+  1175→      </Dialog>
+  1176→    </div>
+  1177→  )
+  1178→}
+  1179→
+  1180→// ─── Sub-tab 3: Payment Methods ───────────────────────────────────────────
+  1181→
+  1182→interface PaymentMethodFormData {
+  1183→  name: string
+  1184→  description: string
+  1185→  accountInfo: string
+  1186→  icon: string
+  1187→  isActive: boolean
+  1188→  isCash: boolean
+  1189→  sortOrder: number
+  1190→}
+  1191→
+  1192→const emptyPaymentMethodForm: PaymentMethodFormData = {
+  1193→  name: '', description: '', accountInfo: '', icon: '',
+  1194→  isActive: true, isCash: false, sortOrder: 0,
+  1195→}
+  1196→
+  1197→function PaymentMethodsTab() {
+  1198→  const queryClient = useQueryClient()
+  1199→  const [createOpen, setCreateOpen] = useState(false)
+  1200→  const [editOpen, setEditOpen] = useState(false)
+  1201→  const [deleteOpen, setDeleteOpen] = useState(false)
+  1202→  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null)
+  1203→  const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null)
+  1204→  const [form, setForm] = useState<PaymentMethodFormData>(emptyPaymentMethodForm)
+  1205→  const [formLoading, setFormLoading] = useState(false)
+  1206→  const [seedLoading, setSeedLoading] = useState(false)
+  1207→
+  1208→  const { data: methods, isLoading } = useQuery({
+  1209→    queryKey: ['wholesale-payment-methods'],
+  1210→    queryFn: () => fetch('/api/wholesale/payment-methods').then(r => r.json()).then(d => d.data as PaymentMethod[]),
+  1211→  })
+  1212→
+  1213→  const sortedMethods = useMemo(() => {
+  1214→    if (!methods) return []
+  1215→    return [...methods].sort((a, b) => a.sortOrder - b.sortOrder)
+  1216→  }, [methods])
+  1217→
+  1218→  const totalActive = methods?.filter(m => m.isActive).length ?? 0
+  1219→
+  1220→  const resetForm = () => setForm(emptyPaymentMethodForm)
+  1221→
+  1222→  const openEdit = (m: PaymentMethod) => {
+  1223→    setForm({
+  1224→      name: m.name,
+  1225→      description: m.description || '',
+  1226→      accountInfo: m.accountInfo || '',
+  1227→      icon: m.icon || '',
+  1228→      isActive: m.isActive,
+  1229→      isCash: m.isCash,
+  1230→      sortOrder: m.sortOrder,
+  1231→    })
+  1232→    setEditingMethod(m)
+  1233→    setEditOpen(true)
+  1234→  }
+  1235→
+  1236→  const handleCreate = async () => {
+  1237→    if (!form.name.trim()) { toast.error('Le nom est obligatoire'); return }
+  1238→    setFormLoading(true)
+  1239→    try {
+  1240→      const res = await fetch('/api/wholesale/payment-methods', {
+  1241→        method: 'POST',
+  1242→        headers: { 'Content-Type': 'application/json' },
+  1243→        body: JSON.stringify({
+  1244→          name: form.name.trim(),
+  1245→          description: form.description.trim() || null,
+  1246→          accountInfo: form.accountInfo.trim() || null,
+  1247→          icon: form.icon.trim() || null,
+  1248→          isActive: form.isActive,
+  1249→          isCash: form.isCash,
+  1250→          sortOrder: form.sortOrder,
+  1251→        }),
+  1252→      })
+  1253→      const data = await res.json()
+  1254→      if (data.success) {
+  1255→        toast.success('Méthode de paiement ajoutée')
+  1256→        queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1257→        setCreateOpen(false)
+  1258→        resetForm()
+  1259→      } else {
+  1260→        toast.error(data.error || 'Erreur lors de l\'ajout')
+  1261→      }
+  1262→    } catch {
+  1263→      toast.error('Erreur serveur')
+  1264→    } finally {
+  1265→      setFormLoading(false)
+  1266→    }
+  1267→  }
+  1268→
+  1269→  const handleEdit = async () => {
+  1270→    if (!editingMethod || !form.name.trim()) { toast.error('Le nom est obligatoire'); return }
+  1271→    setFormLoading(true)
+  1272→    try {
+  1273→      const res = await fetch(`/api/wholesale/payment-methods/${editingMethod.id}`, {
+  1274→        method: 'PUT',
+  1275→        headers: { 'Content-Type': 'application/json' },
+  1276→        body: JSON.stringify({
+  1277→          name: form.name.trim(),
+  1278→          description: form.description.trim() || null,
+  1279→          accountInfo: form.accountInfo.trim() || null,
+  1280→          icon: form.icon.trim() || null,
+  1281→          isActive: form.isActive,
+  1282→          isCash: form.isCash,
+  1283→          sortOrder: form.sortOrder,
+  1284→        }),
+  1285→      })
+  1286→      const data = await res.json()
+  1287→      if (data.success) {
+  1288→        toast.success('Méthode modifiée')
+  1289→        queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1290→        setEditOpen(false)
+  1291→        setEditingMethod(null)
+  1292→        resetForm()
+  1293→      } else {
+  1294→        toast.error(data.error || 'Erreur lors de la modification')
+  1295→      }
+  1296→    } catch {
+  1297→      toast.error('Erreur serveur')
+  1298→    } finally {
+  1299→      setFormLoading(false)
+  1300→    }
+  1301→  }
+  1302→
+  1303→  const handleToggle = async (m: PaymentMethod) => {
+  1304→    try {
+  1305→      const res = await fetch(`/api/wholesale/payment-methods/${m.id}`, {
+  1306→        method: 'PUT',
+  1307→        headers: { 'Content-Type': 'application/json' },
+  1308→        body: JSON.stringify({ isActive: !m.isActive }),
+  1309→      })
+  1310→      const data = await res.json()
+  1311→      if (data.success) {
+  1312→        toast.success(m.isActive ? 'Méthode désactivée' : 'Méthode activée')
+  1313→        queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1314→      } else {
+  1315→        toast.error(data.error || 'Erreur')
+  1316→      }
+  1317→    } catch {
+  1318→      toast.error('Erreur serveur')
+  1319→    }
+  1320→  }
+  1321→
+  1322→  const handleDelete = async () => {
+  1323→    if (!deletingMethod) return
+  1324→    try {
+  1325→      const res = await fetch(`/api/wholesale/payment-methods/${deletingMethod.id}`, { method: 'DELETE' })
+  1326→      const data = await res.json()
+  1327→      if (data.success) {
+  1328→        toast.success('Méthode supprimée')
+  1329→        queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1330→      } else {
+  1331→        toast.error(data.error || 'Erreur lors de la suppression')
+  1332→      }
+  1333→    } catch {
+  1334→      toast.error('Erreur serveur')
+  1335→    } finally {
+  1336→      setDeleteOpen(false)
+  1337→      setDeletingMethod(null)
+  1338→    }
+  1339→  }
+  1340→
+  1341→  const handleReorder = async (method: PaymentMethod, direction: 'up' | 'down') => {
+  1342→    if (!sortedMethods) return
+  1343→    const currentIndex = sortedMethods.findIndex(m => m.id === method.id)
+  1344→    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+  1345→    if (targetIndex < 0 || targetIndex >= sortedMethods.length) return
+  1346→    const targetMethod = sortedMethods[targetIndex]
+  1347→    try {
+  1348→      await Promise.all([
+  1349→        fetch(`/api/wholesale/payment-methods/${method.id}`, {
+  1350→          method: 'PUT',
+  1351→          headers: { 'Content-Type': 'application/json' },
+  1352→          body: JSON.stringify({ sortOrder: targetMethod.sortOrder }),
+  1353→        }),
+  1354→        fetch(`/api/wholesale/payment-methods/${targetMethod.id}`, {
+  1355→          method: 'PUT',
+  1356→          headers: { 'Content-Type': 'application/json' },
+  1357→          body: JSON.stringify({ sortOrder: method.sortOrder }),
+  1358→        }),
+  1359→      ])
+  1360→      queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1361→      toast.success('Ordre mis à jour')
+  1362→    } catch {
+  1363→      toast.error('Erreur serveur')
+  1364→    }
+  1365→  }
+  1366→
+  1367→  const handleSeed = async () => {
+  1368→    setSeedLoading(true)
+  1369→    try {
+  1370→      const res = await fetch('/api/wholesale/seed', { method: 'POST' })
+  1371→      const data = await res.json()
+  1372→      if (data.success) {
+  1373→        toast.success('Données initiales créées')
+  1374→        queryClient.invalidateQueries({ queryKey: ['wholesale-payment-methods'] })
+  1375→        queryClient.invalidateQueries({ queryKey: ['wholesale-products'] })
+  1376→      } else {
+  1377→        toast.error(data.error || 'Erreur lors de l\'initialisation')
+  1378→      }
+  1379→    } catch {
+  1380→      toast.error('Erreur serveur')
+  1381→    } finally {
+  1382→      setSeedLoading(false)
+  1383→    }
+  1384→  }
+  1385→
+  1386→  return (
+  1387→    <div className="space-y-6">
+  1388→      {/* Stats */}
+  1389→      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+  1390→        <Card>
+  1391→          <CardContent className="p-4">
+  1392→            <p className="text-sm text-muted-foreground">Total méthodes</p>
+  1393→            <p className="text-2xl font-bold text-gray-900">{methods?.length ?? 0}</p>
+  1394→          </CardContent>
+  1395→        </Card>
+  1396→        <Card>
+  1397→          <CardContent className="p-4">
+  1398→            <p className="text-sm text-muted-foreground">Actives</p>
+  1399→            <p className="text-2xl font-bold text-emerald-600">{totalActive}</p>
+  1400→          </CardContent>
+  1401→        </Card>
+  1402→        <Card className="col-span-2 lg:col-span-1">
+  1403→          <CardContent className="p-4">
+  1404→            <p className="text-sm text-muted-foreground">Espèces</p>
+  1405→            <p className="text-2xl font-bold text-gray-900">{methods?.filter(m => m.isCash).length ?? 0}</p>
+  1406→          </CardContent>
+  1407→        </Card>
+  1408→      </div>
+  1409→
+  1410→      {/* Header */}
+  1411→      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+  1412→        <div>
+  1413→          <h3 className="text-lg font-semibold text-gray-900">Méthodes de Paiement</h3>
+  1414→          <p className="text-sm text-muted-foreground">Gérer les modes de paiement pour les commandes en gros</p>
+  1415→        </div>
+  1416→        <div className="flex-1" />
+  1417→        <div className="flex items-center gap-2">
+  1418→          <Button
+  1419→            variant="outline"
+  1420→            onClick={handleSeed}
+  1421→            disabled={seedLoading}
+  1422→          >
+  1423→            {seedLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  1424→            Initialiser
+  1425→          </Button>
+  1426→          <Button
+  1427→            onClick={() => { resetForm(); setCreateOpen(true) }}
+  1428→            className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white"
+  1429→          >
+  1430→            <Plus className="h-4 w-4 mr-2" />
+  1431→            Ajouter
+  1432→          </Button>
+  1433→        </div>
+  1434→      </div>
+  1435→
+  1436→      {/* Table */}
+  1437→      <Card>
+  1438→        <CardContent className="p-0">
+  1439→          {isLoading ? (
+  1440→            <div className="p-6 space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+  1441→          ) : sortedMethods.length > 0 ? (
+  1442→            <div className="overflow-x-auto">
+  1443→              <Table>
+  1444→                <TableHeader>
+  1445→                  <TableRow className="bg-gray-50/80">
+  1446→                    <TableHead className="w-10"></TableHead>
+  1447→                    <TableHead>Nom</TableHead>
+  1448→                    <TableHead className="hidden md:table-cell">Compte</TableHead>
+  1449→                    <TableHead>Type</TableHead>
+  1450→                    <TableHead>Statut</TableHead>
+  1451→                    <TableHead className="hidden sm:table-cell">Ordre</TableHead>
+  1452→                    <TableHead className="w-36">Actions</TableHead>
+  1453→                  </TableRow>
+  1454→                </TableHeader>
+  1455→                <TableBody>
+  1456→                  {sortedMethods.map((m, i) => (
+  1457→                    <TableRow key={m.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50`}>
+  1458→                      <TableCell>
+  1459→                        <div className="flex flex-col gap-0.5">
+  1460→                          <button
+  1461→                            className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+  1462→                            onClick={() => handleReorder(m, 'up')}
+  1463→                            disabled={i === 0}
+  1464→                            title="Monter"
+  1465→                          >
+  1466→                            <ChevronUp className="h-3.5 w-3.5 text-gray-500" />
+  1467→                          </button>
+  1468→                          <button
+  1469→                            className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+  1470→                            onClick={() => handleReorder(m, 'down')}
+  1471→                            disabled={i === sortedMethods.length - 1}
+  1472→                            title="Descendre"
+  1473→                          >
+  1474→                            <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+  1475→                          </button>
+  1476→                        </div>
+  1477→                      </TableCell>
+  1478→                      <TableCell>
+  1479→                        <div className="flex items-center gap-2">
+  1480→                          {m.icon ? (
+  1481→                            <span className="text-lg">{m.icon}</span>
+  1482→                          ) : (
+  1483→                            <CreditCard className="h-4 w-4 text-gray-400 shrink-0" />
+  1484→                          )}
+  1485→                          <div className="min-w-0">
+  1486→                            <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+  1487→                            {m.description && (
+  1488→                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">{m.description}</p>
+  1489→                            )}
+  1490→                          </div>
+  1491→                        </div>
+  1492→                      </TableCell>
+  1493→                      <TableCell className="hidden md:table-cell">
+  1494→                        <span className="text-sm text-muted-foreground truncate max-w-[200px] block">{m.accountInfo || '—'}</span>
+  1495→                      </TableCell>
+  1496→                      <TableCell>
+  1497→                        {m.isCash ? (
+  1498→                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+  1499→                            <Banknote className="h-3 w-3 mr-1" />
+  1500→                            Espèces
+  1501→                          </Badge>
+  1502→                        ) : (
+  1503→                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+  1504→                            <CreditCard className="h-3 w-3 mr-1" />
+  1505→                            Mobile
+  1506→                          </Badge>
+  1507→                        )}
+  1508→                      </TableCell>
+  1509→                      <TableCell>
+  1510→                        <Badge
+  1511→                          variant="outline"
+  1512→                          className={m.isActive
+  1513→                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  1514→                            : 'bg-red-50 text-red-600 border-red-200'
+  1515→                          }
+  1516→                        >
+  1517→                          {m.isActive ? 'Active' : 'Inactive'}
+  1518→                        </Badge>
+  1519→                      </TableCell>
+  1520→                      <TableCell className="hidden sm:table-cell">
+  1521→                        <span className="text-sm text-muted-foreground">{m.sortOrder}</span>
+  1522→                      </TableCell>
+  1523→                      <TableCell>
+  1524→                        <div className="flex items-center gap-1">
+  1525→                          <Button
+  1526→                            variant="ghost"
+  1527→                            size="icon"
+  1528→                            className={`h-8 w-8 ${m.isActive ? 'text-gray-500 hover:text-orange-600' : 'text-orange-500 hover:text-orange-700'}`}
+  1529→                            onClick={() => handleToggle(m)}
+  1530→                            title={m.isActive ? 'Désactiver' : 'Activer'}
+  1531→                          >
+  1532→                            {m.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+  1533→                          </Button>
+  1534→                          <Button
+  1535→                            variant="ghost"
+  1536→                            size="icon"
+  1537→                            className="h-8 w-8 text-gray-500 hover:text-gray-700"
+  1538→                            onClick={() => openEdit(m)}
+  1539→                            title="Modifier"
+  1540→                          >
+  1541→                            <Edit className="h-4 w-4" />
+  1542→                          </Button>
+  1543→                          <Button
+  1544→                            variant="ghost"
+  1545→                            size="icon"
+  1546→                            className="h-8 w-8 text-red-500 hover:text-red-700"
+  1547→                            onClick={() => { setDeletingMethod(m); setDeleteOpen(true) }}
+  1548→                            title="Supprimer"
+  1549→                          >
+  1550→                            <Trash2 className="h-4 w-4" />
+  1551→                          </Button>
+  1552→                        </div>
+  1553→                      </TableCell>
+  1554→                    </TableRow>
+  1555→                  ))}
+  1556→                </TableBody>
+  1557→              </Table>
+  1558→            </div>
+  1559→          ) : (
+  1560→            <div className="p-12 text-center">
+  1561→              <CreditCard className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+  1562→              <p className="text-muted-foreground mb-4">Aucune méthode de paiement configurée</p>
+  1563→              <Button variant="outline" onClick={handleSeed} disabled={seedLoading}>
+  1564→                {seedLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+  1565→                Initialiser les méthodes par défaut
+  1566→              </Button>
+  1567→            </div>
+  1568→          )}
+  1569→        </CardContent>
+  1570→      </Card>
+  1571→
+  1572→      {/* Create Dialog */}
+  1573→      <PaymentMethodFormDialog
+  1574→        open={createOpen}
+  1575→        onOpenChange={(open) => { if (!open) resetForm(); setCreateOpen(open) }}
+  1576→        title="Ajouter une méthode de paiement"
+  1577→        description="Créer un nouveau mode de paiement."
+  1578→        form={form}
+  1579→        setForm={setForm}
+  1580→        onSubmit={handleCreate}
+  1581→        loading={formLoading}
+  1582→        submitLabel="Ajouter"
+  1583→      />
+  1584→
+  1585→      {/* Edit Dialog */}
+  1586→      <PaymentMethodFormDialog
+  1587→        open={editOpen}
+  1588→        onOpenChange={(open) => { if (!open) { setEditingMethod(null); resetForm() }; setEditOpen(open) }}
+  1589→        title="Modifier la méthode"
+  1590→        description="Modifier les informations du mode de paiement."
+  1591→        form={form}
+  1592→        setForm={setForm}
+  1593→        onSubmit={handleEdit}
+  1594→        loading={formLoading}
+  1595→        submitLabel="Enregistrer"
+  1596→      />
+  1597→
+  1598→      {/* Delete Dialog */}
+  1599→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1600→        <AlertDialogContent>
+  1601→          <AlertDialogHeader>
+  1602→            <AlertDialogTitle>Supprimer cette méthode ?</AlertDialogTitle>
+  1603→            <AlertDialogDescription>
+  1604→              Cette action est irréversible. La méthode <strong>{deletingMethod?.name}</strong> sera définitivement supprimée.
+  1605→            </AlertDialogDescription>
+  1606→          </AlertDialogHeader>
+  1607→          <AlertDialogFooter>
+  1608→            <AlertDialogCancel>Annuler</AlertDialogCancel>
+  1609→            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>Supprimer</AlertDialogAction>
+  1610→          </AlertDialogFooter>
+  1611→        </AlertDialogContent>
+  1612→      </AlertDialog>
+  1613→    </div>
+  1614→  )
+  1615→}
+  1616→
+  1617→// ─── Payment Method Form Dialog ───────────────────────────────────────────
+  1618→
+  1619→function PaymentMethodFormDialog({
+  1620→  open, onOpenChange, title, description, form, setForm, onSubmit, loading, submitLabel,
+  1621→}: {
+  1622→  open: boolean
+  1623→  onOpenChange: (open: boolean) => void
+  1624→  title: string
+  1625→  description: string
+  1626→  form: PaymentMethodFormData
+  1627→  setForm: (form: PaymentMethodFormData) => void
+  1628→  onSubmit: () => void
+  1629→  loading: boolean
+  1630→  submitLabel: string
+  1631→}) {
+  1632→  return (
+  1633→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1634→      <DialogContent>
+  1635→        <DialogHeader>
+  1636→          <DialogTitle>{title}</DialogTitle>
+  1637→          <DialogDescription>{description}</DialogDescription>
+  1638→        </DialogHeader>
+  1639→        <div className="space-y-4 py-2">
+  1640→          <div className="space-y-2">
+  1641→            <Label htmlFor="pm-name">Nom *</Label>
+  1642→            <Input id="pm-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: M-Pesa" />
+  1643→          </div>
+  1644→          <div className="space-y-2">
+  1645→            <Label htmlFor="pm-desc">Description</Label>
+  1646→            <Textarea id="pm-desc" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description de la méthode" rows={2} />
+  1647→          </div>
+  1648→          <div className="space-y-2">
+  1649→            <Label htmlFor="pm-account">Informations du compte</Label>
+  1650→            <Input id="pm-account" value={form.accountInfo} onChange={e => setForm({ ...form, accountInfo: e.target.value })} placeholder="Numéro ou identifiant du compte" />
+  1651→          </div>
+  1652→          <div className="grid grid-cols-2 gap-4">
+  1653→            <div className="space-y-2">
+  1654→              <Label htmlFor="pm-icon">Icône (emoji)</Label>
+  1655→              <Input id="pm-icon" value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="📱" />
+  1656→            </div>
+  1657→            <div className="space-y-2">
+  1658→              <Label htmlFor="pm-sort">Ordre d&apos;affichage</Label>
+  1659→              <Input id="pm-sort" type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} />
+  1660→            </div>
+  1661→          </div>
+  1662→          <div className="flex items-center gap-6">
+  1663→            <div className="flex items-center gap-3">
+  1664→              <Switch id="pm-active" checked={form.isActive} onCheckedChange={checked => setForm({ ...form, isActive: checked })} />
+  1665→              <Label htmlFor="pm-active" className="cursor-pointer">Active</Label>
+  1666→            </div>
+  1667→            <div className="flex items-center gap-3">
+  1668→              <Switch id="pm-cash" checked={form.isCash} onCheckedChange={checked => setForm({ ...form, isCash: checked })} />
+  1669→              <Label htmlFor="pm-cash" className="cursor-pointer">Espèces</Label>
+  1670→            </div>
+  1671→          </div>
+  1672→        </div>
+  1673→        <DialogFooter>
+  1674→          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+  1675→          <Button onClick={onSubmit} disabled={loading} className="bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white">
+  1676→            {loading ? 'Enregistrement...' : submitLabel}
+  1677→          </Button>
+  1678→        </DialogFooter>
+  1679→      </DialogContent>
+  1680→    </Dialog>
+  1681→  )
+  1682→}
+  1683→

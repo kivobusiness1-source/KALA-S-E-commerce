@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Phone, Mail, MapPin, ChevronUp, Lock, Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
@@ -9,21 +10,25 @@ import { TermsModal, PrivacyModal } from './LegalModals'
 import type { ProductType } from './types'
 
 interface FooterProps {
-  scrollToSection: (id: string) => void
   recentlyViewed: ProductType[]
   setSelectedProduct: (product: ProductType) => void
   showBackToTop: boolean
-  scrollProgress: number
   cookieConsentVisible: boolean
   setCookieConsentVisible: (visible: boolean) => void
 }
 
+const navLinks = [
+  { label: 'Accueil', href: '/' },
+  { label: 'Produits', href: '/produits' },
+  { label: 'Entreprises', href: '/entreprises' },
+  { label: 'A Propos', href: '/a-propos' },
+  { label: 'Contact', href: '/contact' },
+]
+
 export function Footer({
-  scrollToSection,
   recentlyViewed,
   setSelectedProduct,
   showBackToTop,
-  scrollProgress,
   cookieConsentVisible,
   setCookieConsentVisible,
 }: FooterProps) {
@@ -38,13 +43,6 @@ export function Footer({
       .then(d => { /* loyalty points - handled silently */ })
       .catch(() => {})
   }, [])
-
-  const navLinks = [
-    { label: 'Accueil', id: 'hero' },
-    { label: 'Produits', id: 'products' },
-    { label: 'A Propos', id: 'about' },
-    { label: 'Contact', id: 'contact' },
-  ]
 
   const recentlyViewedSection = recentlyViewed.length > 0 ? (
     <section className="py-8 bg-white border-t border-[#e5e5e5]">
@@ -88,7 +86,7 @@ export function Footer({
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">CC</span>
                 </div>
-                <span className="text-lg font-bold text-white">KALA'S</span>
+                <span className="text-lg font-bold text-white">KALA&apos;S</span>
               </div>
               <p className="text-sm leading-relaxed">
                 Fabricant de produits d&rsquo;hygiene de qualite industrielle base a Pointe-Noire, Congo-Brazzaville.
@@ -99,7 +97,7 @@ export function Footer({
             <div>
               <h4 className="font-semibold text-white mb-4 text-sm">A propos</h4>
               <p className="text-sm leading-relaxed">
-                KALA'S est une entreprise congolaise specialisee dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiene accessibles et efficaces.
+                KALA&apos;S est une entreprise congolaise specialisee dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiene accessibles et efficaces.
               </p>
             </div>
 
@@ -108,13 +106,13 @@ export function Footer({
               <h4 className="font-semibold text-white mb-4 text-sm">Liens Rapides</h4>
               <ul className="space-y-2">
                 {navLinks.map((link) => (
-                  <li key={link.id}>
-                    <button
-                      onClick={() => scrollToSection(link.id)}
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
                       className="text-sm hover:text-white transition-colors duration-150"
                     >
                       {link.label}
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -166,7 +164,7 @@ export function Footer({
                 Politique de Confidentialite
               </button>
             </div>
-            <p className="text-xs">2025 KALA'S. Tous droits reserves.</p>
+            <p className="text-xs">2025 KALA&apos;S. Tous droits reserves.</p>
           </div>
         </div>
       </footer>

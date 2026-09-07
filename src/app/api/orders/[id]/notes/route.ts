@@ -7,13 +7,19 @@ const noteSchema = z.object({
   content: z.string().min(1, 'Le contenu est requis').max(2000, 'Message trop long'),
 })
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 // GET /api/orders/[id]/notes - Get all notes for an order
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await validateSession()
+    const session = await getSession(_request)
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
     }
@@ -43,7 +49,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
     }
@@ -70,7 +76,7 @@ export async function POST(
       },
     })
 
-    await logActivity(session.adminId, 'order_reply', `Réponse ajoutée à la commande ${order.orderNumber}`)
+    await logActivity(session.id, 'order_reply', `Réponse ajoutée à la commande ${order.orderNumber}`)
 
     // Update order timestamp
     await db.order.update({

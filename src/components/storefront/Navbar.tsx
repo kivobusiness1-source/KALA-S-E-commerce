@@ -1,6 +1,8 @@
 'use client'
 
-import { ShoppingCart, Search, Home, Package, Info, Phone, Menu, X } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { ShoppingCart, Search, Home, Package, Info, Phone, Menu, X, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -16,47 +18,59 @@ interface NavbarProps {
   setMobileMenuOpen: (open: boolean) => void
   cartTotalItems: number
   onCartOpen: () => void
-  scrollToSection: (id: string) => void
 }
 
-export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalItems, onCartOpen, scrollToSection }: NavbarProps) {
-  const navLinks = [
-    { label: 'Accueil', id: 'hero', icon: Home },
-    { label: 'Produits', id: 'products', icon: Package },
-    { label: 'A Propos', id: 'about', icon: Info },
-    { label: 'Contact', id: 'contact', icon: Phone },
-  ]
+const navLinks = [
+  { label: 'Accueil', href: '/', icon: Home },
+  { label: 'Produits', href: '/produits', icon: Package },
+  { label: 'Entreprises', href: '/entreprises', icon: Building2 },
+  { label: 'A Propos', href: '/a-propos', icon: Info },
+  { label: 'Contact', href: '/contact', icon: Phone },
+]
+
+export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalItems, onCartOpen }: NavbarProps) {
+  const pathname = usePathname()
+
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname.startsWith(href)
+  }
 
   const handleSearchClick = () => {
-    scrollToSection('products')
-    setTimeout(() => {
+    if (pathname !== '/produits') {
+      window.location.href = '/produits'
+    } else {
       const input = document.getElementById('product-search-input') as HTMLInputElement | null
       if (input) input.focus()
-    }, 600)
+    }
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-[#e5e5e5]">
+    <header className={`sticky top-0 z-50 bg-white border-b border-[#e5e5e5] transition-shadow duration-200 ${scrolled ? 'shadow-sm' : ''}`}>
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <button onClick={() => scrollToSection('hero')} className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity duration-150">
+          <Link href="/" className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity duration-150">
             <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <span className="text-white text-sm font-bold tracking-tight">CC</span>
             </div>
-            <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">KALA'S</span>
-          </button>
+            <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">KALA&apos;S</span>
+          </Link>
 
           {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-7">
             {navLinks.map((link) => (
-              <button
-                key={link.id}
-                onClick={() => scrollToSection(link.id)}
-                className="relative text-sm font-medium text-[#1a1a1a] hover:text-[#1a1a1a] transition-colors duration-150 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-[#1a1a1a] after:transition-all after:duration-150 hover:after:w-full"
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`relative text-sm font-medium transition-colors duration-150 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:transition-all after:duration-150 ${
+                  isActive(link.href)
+                    ? 'text-[#1a1a1a] after:w-full after:bg-[#1a1a1a]'
+                    : 'text-[#888888] hover:text-[#1a1a1a] after:w-0 hover:after:w-full after:bg-[#1a1a1a]'
+                }`}
               >
                 {link.label}
-              </button>
+              </Link>
             ))}
           </div>
 
@@ -83,7 +97,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
             </button>
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
               aria-label="Menu"
             >
               <Menu className="w-5 h-5 text-[#888888]" />
@@ -104,7 +118,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                 <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
                   <span className="text-white text-xs font-bold">CC</span>
                 </div>
-                <span className="text-lg font-bold tracking-tight">KALA'S</span>
+                <span className="text-lg font-bold tracking-tight">KALA&apos;S</span>
               </SheetTitle>
               <SheetDescription className="sr-only">Navigation</SheetDescription>
             </SheetHeader>
@@ -120,15 +134,21 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
           <div className="flex flex-col gap-0.5 px-3 flex-1">
             {navLinks.map((link) => {
               const Icon = link.icon
+              const active = isActive(link.href)
               return (
-                <button
-                  key={link.id}
-                  onClick={() => scrollToSection(link.id)}
-                  className="text-left px-4 py-3 rounded-lg text-[#1a1a1a] hover:bg-gray-50 transition-colors duration-150 font-medium flex items-center gap-3"
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`text-left px-4 py-3 rounded-lg transition-colors duration-150 font-medium flex items-center gap-3 ${
+                    active
+                      ? 'bg-gray-100 text-[#1a1a1a]'
+                      : 'text-[#1a1a1a] hover:bg-gray-50'
+                  }`}
                 >
-                  <Icon className="w-4 h-4 text-[#888888]" />
+                  <Icon className={`w-4 h-4 ${active ? 'text-[#1a1a1a]' : 'text-[#888888]'}`} />
                   <span>{link.label}</span>
-                </button>
+                </Link>
               )
             })}
           </div>
@@ -136,11 +156,13 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
           {/* Contact button at bottom */}
           <div className="px-5 pt-4 pb-6 border-t border-[#e5e5e5]">
             <Button
-              onClick={() => scrollToSection('contact')}
+              asChild
               className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white font-medium"
             >
-              <Phone className="w-4 h-4 mr-2" />
-              Contacter
+              <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+                <Phone className="w-4 h-4 mr-2" />
+                Contacter
+              </Link>
             </Button>
           </div>
         </SheetContent>

@@ -1,13 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sparkles, Droplets, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
+import { Sparkles, Droplets, ShieldCheck, ArrowRight } from 'lucide-react'
 
-interface HeroSectionProps {
-  scrollToSection: (id: string) => void
-}
-
-export function HeroSection({ scrollToSection }: HeroSectionProps) {
+export function HeroSection() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,7 +49,24 @@ export function HeroSection({ scrollToSection }: HeroSectionProps) {
               Savon liquide, détergent et eau de Javel de qualité industrielle. Fabriqué avec fierté à Pointe-Noire pour les ménages et professionnels.
             </p>
 
-            {/* Trust indicators instead of CTA buttons */}
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+              <Link
+                href="/produits"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl font-medium transition-colors duration-150 text-sm"
+              >
+                Voir nos produits
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/entreprises"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-[#e5e5e5] hover:bg-gray-50 text-[#1a1a1a] rounded-xl font-medium transition-colors duration-150 text-sm"
+              >
+                Commandes en gros
+              </Link>
+            </div>
+
+            {/* Trust indicators */}
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
@@ -91,7 +105,7 @@ export function HeroSection({ scrollToSection }: HeroSectionProps) {
                   <div className="w-full h-[380px] bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
                     <div className="text-center">
                       <Droplets className="h-16 w-16 text-emerald-300 mx-auto mb-3" />
-                      <p className="text-sm text-emerald-400 font-medium">KALA'S</p>
+                      <p className="text-sm text-emerald-400 font-medium">KALA&apos;S</p>
                       <p className="text-xs text-emerald-300 mt-1">Produits d&apos;hygiène</p>
                     </div>
                   </div>

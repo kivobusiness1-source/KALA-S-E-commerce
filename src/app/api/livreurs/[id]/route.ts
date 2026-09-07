@@ -12,9 +12,15 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || (session.role !== 'super_admin' && session.role !== 'admin')) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -25,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
     }
     const livreur = await db.deliverer.update({ where: { id }, data: validated.data })
-    await logActivity(session.adminId, 'update_deliverer', `Livreur modifié: ${livreur.name}`)
+    await logActivity(session.id, 'update_deliverer', `Livreur modifié: ${livreur.name}`)
     return NextResponse.json({ success: true, data: livreur })
   } catch (error) {
     console.error('Update livreur error:', error)
@@ -35,7 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || session.role !== 'super_admin') {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -43,7 +49,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const livreur = await db.deliverer.findUnique({ where: { id } })
     if (!livreur) return NextResponse.json({ success: false, error: 'Introuvable' }, { status: 404 })
     await db.deliverer.delete({ where: { id } })
-    await logActivity(session.adminId, 'delete_deliverer', `Livreur supprimé: ${livreur.name}`)
+    await logActivity(session.id, 'delete_deliverer', `Livreur supprimé: ${livreur.name}`)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete livreur error:', error)

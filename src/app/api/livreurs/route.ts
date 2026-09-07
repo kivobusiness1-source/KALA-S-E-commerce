@@ -11,10 +11,16 @@ const delivererSchema = z.object({
   vehicle: z.string().optional().nullable(),
 })
 
+async function getSession(request: NextRequest) {
+  const token = request.cookies.get('admin_token')?.value
+  if (!token) return null
+  return await validateSession(token)
+}
+
 // GET /api/livreurs - List all deliverers
 export async function GET(request: NextRequest) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session) return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
@@ -37,7 +43,7 @@ export async function GET(request: NextRequest) {
 // POST /api/livreurs - Create deliverer
 export async function POST(request: NextRequest) {
   try {
-    const session = await validateSession()
+    const session = await getSession(request)
     if (!session || (session.role !== 'super_admin' && session.role !== 'admin')) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -54,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const livreur = await db.deliverer.create({ data: validated.data })
-    await logActivity(session.adminId, 'create_deliverer', `Livreur créé: ${livreur.name} (${livreur.phone})`)
+    await logActivity(session.id, 'create_deliverer', `Livreur créé: ${livreur.name} (${livreur.phone})`)
 
     return NextResponse.json({ success: true, data: livreur }, { status: 201 })
   } catch (error) {

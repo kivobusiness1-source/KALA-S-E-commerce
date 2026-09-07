@@ -17,6 +17,7 @@ const querySchema = z.object({
   search: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
   all: z.enum(['true', 'false']).optional(),
+  slug: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -49,6 +50,10 @@ export async function GET(request: NextRequest) {
       where.isFeatured = true
     }
 
+    if (query.slug) {
+      where.slug = query.slug
+    }
+
     const products = await db.product.findMany({
       where,
       include: {
@@ -79,6 +84,14 @@ export async function GET(request: NextRequest) {
         reviewCount: r ? r.count : 0,
       }
     })
+
+    // If querying by slug, return single product or 404
+    if (query.slug) {
+      if (productsWithRatings.length === 0) {
+        return err('Product not found', 404)
+      }
+      return ok(productsWithRatings[0])
+    }
 
     return ok(productsWithRatings)
   } catch (error) {
