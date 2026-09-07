@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
+  // Redirect /entreprises/admin → /admin (prevent 404 from browser autocomplete)
+  if (request.nextUrl.pathname === '/entreprises/admin') {
+    return NextResponse.redirect(new URL('/admin', request.url))
+  }
+
   const response = NextResponse.next()
   
   // Content Security Policy

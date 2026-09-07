@@ -3,9 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // ╔══════════════════════════════════════════════════════════════╗
+  // ║  DÉVELOPPEMENT LOCAL → sqlite                              ║
+  // ║  PRODUCTION VERCEL  → postgresql (changer provider + url)   ║
+  // ╚══════════════════════════════════════════════════════════════╝
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // ==================== ADMIN AUTH ====================

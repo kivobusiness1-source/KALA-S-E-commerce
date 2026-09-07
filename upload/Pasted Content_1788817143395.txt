@@ -1,0 +1,957 @@
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/categories 500 in 9.5s (next.js: 2.0s, proxy.ts: 160ms, application-code: 7.4s)
+ GET /api/products 500 in 9.6s (next.js: 4.7s, proxy.ts: 87ms, application-code: 4.8s)
+ GET /api/products? 500 in 9.6s (next.js: 5.4s, proxy.ts: 155ms, application-code: 4.1s)
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/categories 500 in 371ms (next.js: 66ms, proxy.ts: 22ms, application-code: 282ms)
+ GET /api/products 500 in 363ms (next.js: 151ms, proxy.ts: 26ms, application-code: 186ms)
+[browser] Encountered two children with the same key, `-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/products? 500 in 509ms (next.js: 400ms, proxy.ts: 30ms, application-code: 78ms)
+○ Compiling /entreprises ...
+ GET /entreprises 200 in 7.3s (next.js: 7.0s, proxy.ts: 9ms, application-code: 294ms)
+ GET /entreprises 200 in 168ms (next.js: 37ms, proxy.ts: 17ms, application-code: 114ms)
+Site settings GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1vx92i7._.js:131:165
+
+  128 ]);
+  129 async function GET(request) {
+  130     try {
+→ 131         const settings = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\site-settings\route.ts:43:43)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\site-settings\route.ts:43:22)
+  41 | export async function GET(request: NextRequest) {
+  42 |   try {
+> 43 |     const settings = await db.siteSetting.findMany()
+     |                                           ^
+  44 |
+  45 |     // Check if authenticated as admin
+  46 |     const token = request.cookies.get('admin_token')?.value {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/site-settings 500 in 356ms (next.js: 35ms, proxy.ts: 20ms, application-code: 301ms)
+ GET /api/categories 500 in 371ms (next.js: 56ms, proxy.ts: 22ms, application-code: 293ms)
+ GET /api/products? 500 in 365ms (next.js: 113ms, proxy.ts: 25ms, application-code: 227ms)
+Site settings GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1vx92i7._.js:131:165
+
+  128 ]);
+  129 async function GET(request) {
+  130     try {
+→ 131         const settings = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\site-settings\route.ts:43:43)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\site-settings\route.ts:43:22)
+  41 | export async function GET(request: NextRequest) {
+  42 |   try {
+> 43 |     const settings = await db.siteSetting.findMany()
+     |                                           ^
+  44 |
+  45 |     // Check if authenticated as admin
+  46 |     const token = request.cookies.get('admin_token')?.value {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/site-settings 500 in 191ms (next.js: 34ms, proxy.ts: 61ms, application-code: 96ms)
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/categories 500 in 275ms (next.js: 91ms, proxy.ts: 23ms, application-code: 160ms)
+ GET /api/products? 500 in 305ms (next.js: 180ms, proxy.ts: 21ms, application-code: 104ms)
+WholesaleProducts GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0r97-pj._.js:138:170
+
+  135         }
+  136     ];
+  137 }
+→ 138 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\products\route.ts:43:48)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\products\route.ts:43:22)
+  41 |     }
+  42 |
+> 43 |     const products = await db.wholesaleProduct.findMany({
+     |                                                ^
+  44 |       where,
+  45 |       orderBy: { createdAt: 'desc' },
+  46 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+WholesalePaymentMethods GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1d9si2_._.js:108:175
+
+  105 }
+  106 async function GET() {
+  107     try {
+→ 108         const methods = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\payment-methods\route.ts:19:53)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\payment-methods\route.ts:19:21)
+  17 | export async function GET() {
+  18 |   try {
+> 19 |     const methods = await db.wholesalePaymentMethod.findMany({
+     |                                                     ^
+  20 |       where: { isActive: true },
+  21 |       orderBy: { sortOrder: 'asc' },
+  22 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/wholesale/products 500 in 3.2s (next.js: 2.6s, proxy.ts: 85ms, application-code: 518ms)
+ GET /api/wholesale/payment-methods 500 in 3.2s (next.js: 2.8s, proxy.ts: 61ms, application-code: 317ms)
+WholesaleProducts GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0r97-pj._.js:138:170
+
+  135         }
+  136     ];
+  137 }
+→ 138 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\products\route.ts:43:48)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\products\route.ts:43:22)
+  41 |     }
+  42 |
+> 43 |     const products = await db.wholesaleProduct.findMany({
+     |                                                ^
+  44 |       where,
+  45 |       orderBy: { createdAt: 'desc' },
+  46 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+WholesalePaymentMethods GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1d9si2_._.js:108:175
+
+  105 }
+  106 async function GET() {
+  107     try {
+→ 108         const methods = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\payment-methods\route.ts:19:53)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\payment-methods\route.ts:19:21)
+  17 | export async function GET() {
+  18 |   try {
+> 19 |     const methods = await db.wholesalePaymentMethod.findMany({
+     |                                                     ^
+  20 |       where: { isActive: true },
+  21 |       orderBy: { sortOrder: 'asc' },
+  22 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/wholesale/products 500 in 120ms (next.js: 37ms, proxy.ts: 21ms, application-code: 62ms)
+ GET /api/wholesale/payment-methods 500 in 113ms (next.js: 52ms, proxy.ts: 24ms, application-code: 38ms)
+ GET /entreprises/admin 404 in 4.1s (next.js: 3.7s, proxy.ts: 9ms, application-code: 398ms)
+ GET /entreprises 200 in 2.8s (next.js: 701ms, proxy.ts: 280ms, application-code: 1864ms)
+Site settings GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1vx92i7._.js:131:165
+
+  128 ]);
+  129 async function GET(request) {
+  130     try {
+→ 131         const settings = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\site-settings\route.ts:43:43)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\site-settings\route.ts:43:22)
+  41 | export async function GET(request: NextRequest) {
+  42 |   try {
+> 43 |     const settings = await db.siteSetting.findMany()
+     |                                           ^
+  44 |
+  45 |     // Check if authenticated as admin
+  46 |     const token = request.cookies.get('admin_token')?.value {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/site-settings 500 in 938ms (next.js: 137ms, proxy.ts: 22ms, application-code: 779ms)
+ GET /api/categories 500 in 932ms (next.js: 305ms, proxy.ts: 20ms, application-code: 606ms)
+ GET /api/products? 500 in 910ms (next.js: 469ms, proxy.ts: 14ms, application-code: 427ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url="/produits" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="entreprise...">
+        <SegmentTrieNode>
+        <ClientPageRoot Component={function EntreprisesPage} serverProvidedParams={{...}}>
+          <EntreprisesPage params={Promise} searchParams={Promise}>
+            <StorefrontLayout>
+              <div ref={{current:null}} className="min-h-scre...">
+                <Navbar scrolled={false} mobileMenuOpen={false} setMobileMenuOpen={function bound dispatchSetState} ...>
+                  <header className={"sticky t..."}>
+                    <nav className="max-w-7xl ...">
+                      <div className="flex items...">
+                        <LinkComponent>
+                        <div className="hidden lg:...">
+                          <LinkComponent>
+                          <LinkComponent href="/produits" className="relative t...">
+                            <a
++                             className="relative text-sm font-medium transition-colors duration-150 after:absolute af..."
+-                             className="relative text-sm font-medium transition-colors duration-150 after:absolute af..."
+                              ref={function}
+                              onClick={function onClick}
+                              onMouseEnter={function onMouseEnter}
+                              onTouchStart={function onTouchStart}
+                              href="/produits"
+                            >
++                             Produits
+                          <LinkComponent href="/entreprises" className="relative t...">
+                            <a
++                             className="relative text-sm font-medium transition-colors duration-150 after:absolute af..."
+-                             className="relative text-sm font-medium transition-colors duration-150 after:absolute af..."
+                              ref={function}
+                              onClick={function onClick}
+                              onMouseEnter={function onMouseEnter}
+                              onTouchStart={function onTouchStart}
+                              href="/entreprises"
+                            >
++                             Entreprises
+                          ...
+                        ...
+                    ...
+                ...
+      ...
+ 
+Site settings GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1vx92i7._.js:131:165
+
+  128 ]);
+  129 async function GET(request) {
+  130     try {
+→ 131         const settings = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].siteSetting.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\site-settings\route.ts:43:43)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\site-settings\route.ts:43:22)
+  41 | export async function GET(request: NextRequest) {
+  42 |   try {
+> 43 |     const settings = await db.siteSetting.findMany()
+     |                                           ^
+  44 |
+  45 |     // Check if authenticated as admin
+  46 |     const token = request.cookies.get('admin_token')?.value {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/site-settings 500 in 132ms (next.js: 28ms, proxy.ts: 41ms, application-code: 63ms)
+WholesalePaymentMethods GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1d9si2_._.js:108:175
+
+  105 }
+  106 async function GET() {
+  107     try {
+→ 108         const methods = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\payment-methods\route.ts:19:53)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\payment-methods\route.ts:19:21)
+  17 | export async function GET() {
+  18 |   try {
+> 19 |     const methods = await db.wholesalePaymentMethod.findMany({
+     |                                                     ^
+  20 |       where: { isActive: true },
+  21 |       orderBy: { sortOrder: 'asc' },
+  22 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+WholesaleProducts GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0r97-pj._.js:138:170
+
+  135         }
+  136     ];
+  137 }
+→ 138 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\products\route.ts:43:48)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\products\route.ts:43:22)
+  41 |     }
+  42 |
+> 43 |     const products = await db.wholesaleProduct.findMany({
+     |                                                ^
+  44 |       where,
+  45 |       orderBy: { createdAt: 'desc' },
+  46 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/wholesale/payment-methods 500 in 239ms (next.js: 55ms, proxy.ts: 18ms, application-code: 166ms)
+ GET /api/wholesale/products 500 in 258ms (next.js: 117ms, proxy.ts: 31ms, application-code: 111ms)
+WholesalePaymentMethods GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1d9si2_._.js:108:175
+
+  105 }
+  106 async function GET() {
+  107     try {
+→ 108         const methods = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesalePaymentMethod.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\payment-methods\route.ts:19:53)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\payment-methods\route.ts:19:21)
+  17 | export async function GET() {
+  18 |   try {
+> 19 |     const methods = await db.wholesalePaymentMethod.findMany({
+     |                                                     ^
+  20 |       where: { isActive: true },
+  21 |       orderBy: { sortOrder: 'asc' },
+  22 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+WholesaleProducts GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0r97-pj._.js:138:170
+
+  135         }
+  136     ];
+  137 }
+→ 138 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].wholesaleProduct.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\wholesale\products\route.ts:43:48)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\wholesale\products\route.ts:43:22)
+  41 |     }
+  42 |
+> 43 |     const products = await db.wholesaleProduct.findMany({
+     |                                                ^
+  44 |       where,
+  45 |       orderBy: { createdAt: 'desc' },
+  46 |     }) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/wholesale/payment-methods 500 in 404ms (next.js: 44ms, proxy.ts: 44ms, application-code: 315ms)
+ GET /api/wholesale/products 500 in 380ms (next.js: 192ms, proxy.ts: 26ms, application-code: 161ms)
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/categories 500 in 938ms (next.js: 459ms, proxy.ts: 91ms, application-code: 388ms)
+ GET /api/products? 500 in 900ms (next.js: 578ms, proxy.ts: 132ms, application-code: 190ms)
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/products? 500 in 461ms (next.js: 214ms, proxy.ts: 24ms, application-code: 223ms)
+ GET /api/categories 500 in 535ms (next.js: 320ms, proxy.ts: 68ms, application-code: 146ms)
+Products GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__1myjsa2._.js:153:161
+
+  150 if (query.slug) {
+  151     where.slug = query.slug;
+  152 }
+→ 153 const products = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].product.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\products\route.ts:57:39)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\products\route.ts:57:22)
+  55 |     }
+  56 |
+> 57 |     const products = await db.product.findMany({
+     |                                       ^
+  58 |       where,
+  59 |       include: {
+  60 |         category: true, {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+Categories GET error: Error [PrismaClientInitializationError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany()` invocation in
+C:\Users\chris\OneDrive\Bureau\KALA'S5\.next\dev\server\chunks\[root-of-the-server]__0ck3ftr._.js:115:164
+
+  112 });
+  113 async function GET() {
+  114     try {
+→ 115         const categories = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].category.findMany(
+error: Error validating datasource `db`: the URL must start with the protocol `postgresql://` or `postgres://`.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider  = "postgresql"
+ 7 |   url       = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (src\app\api\categories\route.ts:25:42)
+    at <unknown> (-->  schema.prisma:7)
+    at async GET (src\app\api\categories\route.ts:25:24)
+  23 | export async function GET() {
+  24 |   try {
+> 25 |     const categories = await db.category.findMany({
+     |                                          ^
+  26 |       where: { isActive: true },
+  27 |       include: {
+  28 |         _count: { {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+ GET /api/products? 500 in 202ms (next.js: 40ms, proxy.ts: 15ms, application-code: 148ms)
+ GET /api/categories 500 in 185ms (next.js: 70ms, proxy.ts: 18ms, application-code: 97ms)

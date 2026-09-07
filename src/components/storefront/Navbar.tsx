@@ -61,6 +61,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
               <Link
                 key={link.href}
                 href={link.href}
+                suppressHydrationWarning
                 className={`relative text-sm font-medium transition-colors duration-150 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:transition-all after:duration-150 ${
                   isActive(link.href)
                     ? 'text-[#1a1a1a] after:w-full after:bg-[#1a1a1a]'
@@ -136,6 +137,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
+                  suppressHydrationWarning
                   className={`text-left px-4 py-3 rounded-lg transition-colors duration-150 font-medium flex items-center gap-3 ${
                     active
                       ? 'bg-gray-100 text-[#1a1a1a]'
