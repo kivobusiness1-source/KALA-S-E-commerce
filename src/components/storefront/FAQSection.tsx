@@ -26,7 +26,7 @@ export function FAQSection() {
     },
     {
       question: 'Quelle est votre politique de retours et echanges ?',
-      answer: "En cas de produit defectueux ou non conforme, vous disposez de 7 jours apres reception pour demander un echange ou un remboursement. Contactez-nous par email a contact@congoclean.cg ou par telephone au +242 06 123 4567."
+      answer: "En cas de produit defectueux ou non conforme, vous disposez de 7 jours apres reception pour demander un echange ou un remboursement. Contactez-nous par email a contact@kalas.cg ou par telephone au +242 06 123 4567."
     },
     {
       question: 'Proposez-vous des commandes en gros ?',

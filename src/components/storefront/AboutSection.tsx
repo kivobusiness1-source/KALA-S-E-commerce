@@ -4,7 +4,7 @@ import { Users, Package, Award, MapPin, Shield, Leaf, Truck, Sparkles } from 'lu
 import { FadeInSection, CountUp } from './AnimatedComponents'
 
 const timelineItems = [
-  { year: '2021', title: 'Creation', description: 'Fondation de CongoClean a Pointe-Noire avec une vision claire.' },
+  { year: '2021', title: 'Creation', description: 'Fondation de KALA\'S a Pointe-Noire avec une vision claire.' },
   { year: '2022', title: 'Premiers produits', description: "Lancement de notre gamme initiale de 5 produits d'hygiene." },
   { year: '2023', title: 'Expansion', description: "Elargissement de la gamme et croissance de l'equipe." },
   { year: '2024', title: '500+ clients', description: 'Depassement de la barre des 500 clients satisfaits.' },
@@ -33,7 +33,7 @@ export function AboutSection() {
         <FadeInSection>
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] mb-4">
-              A Propos de CongoClean
+              A Propos de KALA'S
             </h2>
             <p className="text-[#555555] max-w-2xl mx-auto">
               Notre engagement pour la qualite et le developpement local
@@ -48,7 +48,7 @@ export function AboutSection() {
             <div className="relative">
               <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-sm relative bg-[#1a1a1a]">
                 <div className="absolute bottom-4 left-4 right-4 text-center">
-                  <p className="text-white/80 text-lg sm:text-xl font-bold tracking-wider">CongoClean</p>
+                  <p className="text-white/80 text-lg sm:text-xl font-bold tracking-wider">KALA'S</p>
                   <p className="text-white/50 text-[10px] sm:text-xs mt-0.5">Proprete & Qualite depuis 2021</p>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export function AboutSection() {
             {/* Text side */}
             <div>
               <p className="text-[#555555] mb-4 leading-relaxed">
-                CongoClean est une entreprise de fabrication de produits d&rsquo;hygiene basee a Pointe-Noire, au coeur du Congo-Brazzaville. Depuis notre creation, nous nous engageons a fournir des produits de qualite industrielle pour les menages et les entreprises.
+                KALA'S est une entreprise de fabrication de produits d&rsquo;hygiene basee a Pointe-Noire, au coeur du Congo-Brazzaville. Depuis notre creation, nous nous engageons a fournir des produits de qualite industrielle pour les menages et les entreprises.
               </p>
               <p className="text-[#555555] mb-8 leading-relaxed">
                 Notre gamme comprend du savon liquide, du detergent et de l&rsquo;eau de Javel, tous formules pour repondre aux normes les plus strictes. Nous sommes fiers de contribuer au developpement economique local en creant des emplois et en utilisant des ressources disponibles au Congo.

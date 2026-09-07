@@ -31,7 +31,7 @@ export function Footer({
   const [privacyOpen, setPrivacyOpen] = useState(false)
 
   useEffect(() => {
-    const email = localStorage.getItem('congoclean_loyalty_email')
+    const email = localStorage.getItem('kalas_loyalty_email')
     if (!email) return
     fetch(`/api/loyalty?email=${encodeURIComponent(email)}`)
       .then(r => r.json())
@@ -88,7 +88,7 @@ export function Footer({
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">CC</span>
                 </div>
-                <span className="text-lg font-bold text-white">CongoClean</span>
+                <span className="text-lg font-bold text-white">KALA'S</span>
               </div>
               <p className="text-sm leading-relaxed">
                 Fabricant de produits d&rsquo;hygiene de qualite industrielle base a Pointe-Noire, Congo-Brazzaville.
@@ -99,7 +99,7 @@ export function Footer({
             <div>
               <h4 className="font-semibold text-white mb-4 text-sm">A propos</h4>
               <p className="text-sm leading-relaxed">
-                CongoClean est une entreprise congolaise specialisee dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiene accessibles et efficaces.
+                KALA'S est une entreprise congolaise specialisee dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiene accessibles et efficaces.
               </p>
             </div>
 
@@ -130,7 +130,7 @@ export function Footer({
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-gray-500 shrink-0" />
-                  <span className="text-sm">contact@congoclean.cg</span>
+                  <span className="text-sm">contact@kalas.cg</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-gray-500 shrink-0 mt-0.5" />
@@ -166,7 +166,7 @@ export function Footer({
                 Politique de Confidentialite
               </button>
             </div>
-            <p className="text-xs">2025 CongoClean. Tous droits reserves.</p>
+            <p className="text-xs">2025 KALA'S. Tous droits reserves.</p>
           </div>
         </div>
       </footer>
@@ -217,7 +217,7 @@ export function Footer({
               <div className="flex items-center gap-3 shrink-0">
                 <button
                   onClick={() => {
-                    localStorage.setItem('congoclean_cookie_consent', 'rejected')
+                    localStorage.setItem('kalas_cookie_consent', 'rejected')
                     setCookieConsentVisible(false)
                   }}
                   className="text-sm text-[#888888] hover:text-[#1a1a1a] px-4 py-2 transition-colors duration-150"
@@ -226,7 +226,7 @@ export function Footer({
                 </button>
                 <button
                   onClick={() => {
-                    localStorage.setItem('congoclean_cookie_consent', 'accepted')
+                    localStorage.setItem('kalas_cookie_consent', 'accepted')
                     setCookieConsentVisible(false)
                   }}
                   className="text-sm bg-[#1a1a1a] hover:bg-[#333] text-white px-5 py-2 rounded-lg font-medium transition-colors duration-150"

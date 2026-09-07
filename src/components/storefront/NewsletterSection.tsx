@@ -23,7 +23,7 @@ export function NewsletterSection({
   const [copied, setCopied] = useState(false)
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText('CONGOCLEAN10')
+    navigator.clipboard.writeText('KALAS10')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -40,7 +40,7 @@ export function NewsletterSection({
             <p className="text-[#555555] text-sm mb-6">Utilisez le code pour 10% de reduction sur votre premiere commande.</p>
             <div className="inline-flex items-center gap-2 bg-gray-50 border border-[#e5e5e5] rounded-lg px-4 py-3">
               <Gift className="w-4 h-4 text-[#888888]" />
-              <code className="text-sm font-mono font-bold text-[#1a1a1a] tracking-wider">CONGOCLEAN10</code>
+              <code className="text-sm font-mono font-bold text-[#1a1a1a] tracking-wider">KALAS10</code>
               <button
                 onClick={handleCopyCode}
                 className="w-8 h-8 rounded-md hover:bg-gray-200 flex items-center justify-center transition-colors duration-150"

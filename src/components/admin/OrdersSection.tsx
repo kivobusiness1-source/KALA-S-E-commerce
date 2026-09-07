@@ -254,7 +254,7 @@ export default function OrdersSection() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `commandes-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      a.download = `commandes-kalas-${format(new Date(), 'yyyy-MM-dd')}.csv`
       a.click()
       URL.revokeObjectURL(url)
       toast.success('Fichier CSV téléchargé')

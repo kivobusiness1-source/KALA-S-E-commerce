@@ -1,4 +1,4 @@
-# CongoClean Project Worklog
+# KALA'S Project Worklog
 
 ## Session: Wholesale Ordering System (Commandes en Gros)
 
@@ -151,3 +151,73 @@ Stage Summary:
 2. Complete homepage hero redesign (from previous request)
 3. Test end-to-end order flow in browser
 4. Add email notifications for order status changes
+
+---
+Task ID: 3
+Agent: brand-update-agent
+Task: Update site brand name from CongoClean to KALA'S and email domain from congosoap.cg to kalas.cg
+
+Work Log:
+- Updated seed.ts: admin email admin@kalas.cg, site_name KALA'S, site_tagline updated, contact_email contact@kalas.cg
+- Updated layout.tsx: title, description, keywords, openGraph title and siteName all changed to KALA'S
+- Updated HeroSection.tsx: alt text and placeholder brand name changed to KALA'S
+- Updated Footer.tsx: company name KALA'S, email contact@kalas.cg, copyright KALA'S, localStorage keys kalas_loyalty_email/kalas_cookie_consent
+- Updated Navbar.tsx: desktop and mobile brand name changed to KALA'S
+- Updated AboutSection.tsx: heading, timeline, company description all changed to KALA'S
+- Updated ContactSection.tsx: email changed to contact@kalas.cg
+- Updated FAQSection.tsx: email changed to contact@kalas.cg
+- Updated LegalModals.tsx: all CongoClean company refs → KALA'S, congoclean.cg → kalas.cg, contact@congoclean.cg → contact@kalas.cg
+- Updated NewsletterSection.tsx: promo code CONGOCLEAN10 → KALAS10
+- Updated TestimonialsSection.tsx: "produits CongoClean" → "produits KALA'S" (kept product name "CongoClean 5L" as is)
+- Updated ChatWidget.tsx: header brand name → KALA'S
+- Updated DeliveryPricingSection.tsx: "Pourquoi CongoClean" → "Pourquoi KALA'S"
+- Updated SettingsSection.tsx: placeholders for site_name, contact_email, admin email changed
+- Updated ProductsSection.tsx: CSV export filename produits-kalas
+- Updated OrdersSection.tsx: CSV export filename commandes-kalas
+- Updated TeamSection.tsx: email placeholders changed to email@kalas.cg
+- Updated EmailsSection.tsx: CSV export filename abonnes-kalas
+- Updated page.tsx: localStorage keys kalas_cookie_consent/kalas_loyalty_email
+- Updated admin/page.tsx: brand name KALA'S, login placeholder admin@kalas.cg
+- Updated ai-reply/route.ts: system prompt KALA'S
+- Updated ai-chat/route.ts: system prompt KALA'S, contact email contact@kalas.cg
+- Updated wholesale/seed/route.ts: depot KALA'S
+- Updated wishlist-store.ts: localStorage key kalas_wishlist
+- Updated admin email in database: admin@congosoap.cg → admin@kalas.cg
+- Ran lint check: 0 errors, 2 warnings (pre-existing jsx-a11y warnings)
+
+Stage Summary:
+- All CongoClean site/company name references changed to KALA'S
+- All congosoap.cg email domains changed to kalas.cg
+- All contact@congoclean.cg emails changed to contact@kalas.cg
+- Product brand names (CongoClean Savon Liquide 1L/5L/10L, ProWash, JavelCongo) preserved as product names
+- Product slugs (congoclean-savon-liquide-*) preserved unchanged
+- Testimonial product reference "Le CongoClean 5L" preserved as product name
+- Database admin email updated to admin@kalas.cg
+- Promo code changed from CONGOCLEAN10 to KALAS10
+- All localStorage keys updated (kalas_wishlist, kalas_cookie_consent, kalas_loyalty_email)
+- Lint: 0 errors, 2 warnings (pre-existing)
+
+---
+Task ID: 4
+Agent: main
+Task: Reset admin password and rebrand site to KALA'S
+
+Work Log:
+- User reported inability to login with previously given passwords
+- Found admin credentials in database: email admin@congosoap.cg with SHA-256 hash
+- Generated new password: Kalas@2025! and computed SHA-256 hash
+- Updated admin password hash directly in database
+- Updated site settings in database: site_name → KALA'S, site_tagline → Produits d'hygiène fabriqués à Pointe-Noire, contact_email → contact@kalas.cg
+- Updated admin email in database: admin@congosoap.cg → admin@kalas.cg
+- Verified login works via API: POST /api/admin/auth/login returns success
+- Verified login works via browser: admin dashboard loads with "Connexion réussie !" toast
+- All 24 code files updated with KALA'S branding (delegated to subagent)
+- Site verified rendering with KALA'S branding in browser
+
+Stage Summary:
+- Admin password reset to: Kalas@2025!
+- Admin email: admin@kalas.cg
+- Site fully rebranded from CongoClean to KALA'S
+- All references to Pointe-Noire preserved
+- Login verified working via browser automation
+- Cron job (365707) set for 15-minute periodic reviews

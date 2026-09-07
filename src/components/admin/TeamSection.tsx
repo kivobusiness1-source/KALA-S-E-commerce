@@ -398,7 +398,7 @@ export default function TeamSection() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-email">Email *</Label>
-              <Input id="team-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@congosoap.cg" />
+              <Input id="team-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@kalas.cg" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-password">Mot de passe *</Label>
@@ -446,7 +446,7 @@ export default function TeamSection() {
             </div>
             <div className="space-y-2">
               <Label>Email *</Label>
-              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@congosoap.cg" />
+              <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@kalas.cg" />
             </div>
             {/* Password only when editing — optional */}
             <div className="space-y-2">

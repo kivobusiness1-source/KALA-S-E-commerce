@@ -24,7 +24,7 @@ interface ContactSectionProps {
 export function ContactSection({ contactForm, setContactForm, contactLoading, onSubmit }: ContactSectionProps) {
   const contactInfo = [
     { icon: Phone, label: 'Telephone', value: '+242 06 123 4567' },
-    { icon: Mail, label: 'Email', value: 'contact@congoclean.cg' },
+    { icon: Mail, label: 'Email', value: 'contact@kalas.cg' },
     { icon: MapPin, label: 'Adresse', value: 'Zone Industrielle, Pointe-Noire' },
   ]
 

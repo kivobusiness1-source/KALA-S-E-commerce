@@ -84,14 +84,14 @@ export function HeroSection({ scrollToSection }: HeroSectionProps) {
                 {heroImageUrl ? (
                   <img
                     src={heroImageUrl}
-                    alt="CongoClean Produits d'hygiène"
+                    alt="KALA'S Produits d'hygiène"
                     className="w-full h-auto object-cover max-h-[420px]"
                   />
                 ) : (
                   <div className="w-full h-[380px] bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
                     <div className="text-center">
                       <Droplets className="h-16 w-16 text-emerald-300 mx-auto mb-3" />
-                      <p className="text-sm text-emerald-400 font-medium">CongoClean</p>
+                      <p className="text-sm text-emerald-400 font-medium">KALA'S</p>
                       <p className="text-xs text-emerald-300 mt-1">Produits d&apos;hygiène</p>
                     </div>
                   </div>

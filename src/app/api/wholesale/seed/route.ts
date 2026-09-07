@@ -94,7 +94,7 @@ const defaultPaymentMethods = [
   },
   {
     name: 'Espèces',
-    description: 'Paiement en espèces à la livraison ou au dépôt CongoClean.',
+    description: "Paiement en espèces à la livraison ou au dépôt KALA'S.",
     accountInfo: null,
     icon: '💰',
     isActive: true,

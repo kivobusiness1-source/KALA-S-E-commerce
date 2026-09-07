@@ -7,10 +7,10 @@ async function seed() {
   // Create admin user
   const adminPassword = await hashPassword('Admin@2024!')
   const admin = await db.admin.upsert({
-    where: { email: 'admin@congosoap.cg' },
+    where: { email: 'admin@kalas.cg' },
     update: {},
     create: {
-      email: 'admin@congosoap.cg',
+      email: 'admin@kalas.cg',
       name: 'Administrateur',
       password: adminPassword,
       role: 'super_admin',
@@ -184,11 +184,11 @@ async function seed() {
 
   // Site settings
   const settings = [
-    { key: 'site_name', value: 'CongoClean', type: 'string' },
-    { key: 'site_tagline', value: 'Produits d\'hygiène fabriqués au Congo-Brazzaville', type: 'string' },
+    { key: 'site_name', value: "KALA'S", type: 'string' },
+    { key: 'site_tagline', value: "Produits d'hygiène fabriqués à Pointe-Noire", type: 'string' },
     { key: 'site_description', value: 'Fabricant de savon liquide, détergent et eau de Javel à Pointe-Noire, Congo-Brazzaville. Qualité industrielle pour les ménages et les professionnels.', type: 'string' },
     { key: 'contact_phone', value: '+242 06 123 4567', type: 'string' },
-    { key: 'contact_email', value: 'contact@congoclean.cg', type: 'string' },
+    { key: 'contact_email', value: 'contact@kalas.cg', type: 'string' },
     { key: 'contact_address', value: 'Zone Industrielle, Pointe-Noire, Congo-Brazzaville', type: 'string' },
     { key: 'whatsapp_number', value: '+242061234567', type: 'string' },
     { key: 'currency', value: 'FCFA', type: 'string' },

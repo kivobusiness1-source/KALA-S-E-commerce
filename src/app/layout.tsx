@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CongoClean | Produits d'Hygiène - Pointe-Noire, Congo-Brazzaville",
+  title: "KALA'S | Produits d'Hygiène - Pointe-Noire, Congo-Brazzaville",
   description:
-    "CongoClean - Fabricant de produits d'hygiène de qualité industrielle à Pointe-Noire, Congo-Brazzaville. Savon liquide, détergent et eau de Javel.",
+    "KALA'S - Fabricant de produits d'hygiène de qualité industrielle à Pointe-Noire, Congo-Brazzaville. Savon liquide, détergent et eau de Javel.",
   keywords: [
-    "CongoClean",
+    "KALA'S",
     "savon liquide",
     "détergent",
     "eau de Javel",
@@ -32,10 +32,10 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "CongoClean | Produits d'Hygiène",
+    title: "KALA'S | Produits d'Hygiène",
     description:
       "Savon liquide, détergent et eau de Javel de qualité industrielle. Fabriqué avec fierté à Pointe-Noire.",
-    siteName: "CongoClean",
+    siteName: "KALA'S",
     type: "website",
   },
 };

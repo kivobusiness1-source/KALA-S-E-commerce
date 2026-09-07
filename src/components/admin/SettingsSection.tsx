@@ -239,11 +239,11 @@ export default function SettingsSection() {
   }
 
   const fields = [
-    { key: 'site_name', label: 'Nom du site', placeholder: 'CongoClean' },
+    { key: 'site_name', label: 'Nom du site', placeholder: "KALA'S" },
     { key: 'site_tagline', label: 'Slogan', placeholder: 'Produits d\'hygiène de qualité' },
     { key: 'site_description', label: 'Description', placeholder: 'Description du site', multiline: true },
     { key: 'contact_phone', label: 'Téléphone', placeholder: '+242 06 123 4567' },
-    { key: 'contact_email', label: 'Email', placeholder: 'contact@congosoap.cg' },
+    { key: 'contact_email', label: 'Email', placeholder: 'contact@kalas.cg' },
     { key: 'contact_address', label: 'Adresse', placeholder: 'Pointe-Noire, Congo-Brazzaville' },
     { key: 'whatsapp_number', label: 'WhatsApp', placeholder: '+242 06 123 4567' },
     { key: 'currency', label: 'Devise', placeholder: 'FCFA' },
@@ -612,7 +612,7 @@ export default function SettingsSection() {
                 type="email"
                 value={newAdmin.email}
                 onChange={e => setNewAdmin(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="admin@congosoap.cg"
+                placeholder="admin@kalas.cg"
               />
             </div>
             <div className="space-y-2">

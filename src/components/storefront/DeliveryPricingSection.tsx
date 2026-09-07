@@ -117,9 +117,9 @@ export function DeliveryPricingSection() {
               </ul>
             </div>
 
-            {/* Right Column - Pourquoi CongoClean ? */}
+            {/* Right Column - Pourquoi KALA'S ? */}
             <div className="bg-white border border-[#e5e5e5] rounded-2xl p-6 sm:p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-[#1a1a1a] mb-6">Pourquoi CongoClean ?</h2>
+              <h2 className="text-2xl font-bold text-[#1a1a1a] mb-6">Pourquoi KALA'S ?</h2>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-[#1a1a1a] mt-0.5 shrink-0" />

@@ -169,7 +169,7 @@ export default function Home() {
 
   // Cookie consent check
   useEffect(() => {
-    const consent = localStorage.getItem('congoclean_cookie_consent')
+    const consent = localStorage.getItem('kalas_cookie_consent')
     if (!consent) {
       setCookieConsentVisible(true)
     }
@@ -370,7 +370,7 @@ export default function Home() {
         setOrderForm({ customerName: '', customerEmail: '', customerPhone: '', address: '' })
         // Store email for loyalty lookup in footer
         if (orderForm.customerEmail) {
-          localStorage.setItem('congoclean_loyalty_email', orderForm.customerEmail)
+          localStorage.setItem('kalas_loyalty_email', orderForm.customerEmail)
         }
         setTimeout(() => setEarnedPoints(0), 8000)
       } else {

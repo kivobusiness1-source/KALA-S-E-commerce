@@ -132,7 +132,7 @@ export default function AdminPage() {
             <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8">
               <span className="text-2xl font-black" style={{ color: '#1a1a1a' }}>CC</span>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-4">CongoClean</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">KALA'S</h1>
             <p className="text-gray-300 text-lg mb-2">Produits d&apos;hygiène de qualité</p>
             <p className="text-gray-500 text-sm">Administration · Gestion · Suivi</p>
           </div>
@@ -145,7 +145,7 @@ export default function AdminPage() {
               <div className="lg:hidden mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: '#1a1a1a' }}>
                 <span className="text-xl font-black text-white">CC</span>
               </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">CongoClean</CardTitle>
+              <CardTitle className="text-2xl font-bold text-gray-900">KALA'S</CardTitle>
               <CardDescription>Administration</CardDescription>
             </CardHeader>
             <CardContent>
@@ -155,7 +155,7 @@ export default function AdminPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@congosoap.cg"
+                    placeholder="admin@kalas.cg"
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     required
@@ -215,7 +215,7 @@ export default function AdminPage() {
               <span className="text-white text-xs font-bold">CC</span>
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-gray-900 text-lg leading-tight truncate">CongoClean</h1>
+              <h1 className="font-bold text-gray-900 text-lg leading-tight truncate">KALA'S</h1>
               <p className="text-xs text-muted-foreground">Administration</p>
             </div>
           </div>

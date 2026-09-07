@@ -15,7 +15,7 @@ interface TestimonialsSectionProps {
 export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, isMobile }: TestimonialsSectionProps) {
   const testimonials = [
     { name: 'Marie Nzaba', role: 'Menagere, Pointe-Noire', text: 'Le CongoClean 5L est devenu indispensable chez nous. Parfait pour toute la famille, il nettoie bien et ne seche pas les mains.', rating: 5 },
-    { name: 'Jean-Pierre Massamba', role: 'Gerant Hotel Le Phare', text: 'Nous utilisons les produits CongoClean depuis 2 ans. Qualite constante et prix competitifs. Je recommande vivement.', rating: 5 },
+    { name: 'Jean-Pierre Massamba', role: 'Gerant Hotel Le Phare', text: 'Nous utilisons les produits KALA\'S depuis 2 ans. Qualite constante et prix competitifs. Je recommande vivement.', rating: 5 },
     { name: 'Aline Mouanda', role: 'Proprietaire Restaurant', text: 'Le detergent ProWash est excellent pour la vaisselle de mon restaurant. Format 5L tres economique. Livraison rapide.', rating: 4 },
   ]
 

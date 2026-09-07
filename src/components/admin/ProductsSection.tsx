@@ -424,7 +424,7 @@ export default function ProductsSection() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `produits-congoclean-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.download = `produits-kalas-${format(new Date(), 'yyyy-MM-dd')}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Fichier CSV téléchargé')

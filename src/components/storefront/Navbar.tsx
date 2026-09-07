@@ -44,7 +44,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
             <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <span className="text-white text-sm font-bold tracking-tight">CC</span>
             </div>
-            <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">CongoClean</span>
+            <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">KALA'S</span>
           </button>
 
           {/* Desktop Nav Links */}
@@ -104,7 +104,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                 <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
                   <span className="text-white text-xs font-bold">CC</span>
                 </div>
-                <span className="text-lg font-bold tracking-tight">CongoClean</span>
+                <span className="text-lg font-bold tracking-tight">KALA'S</span>
               </SheetTitle>
               <SheetDescription className="sr-only">Navigation</SheetDescription>
             </SheetHeader>
