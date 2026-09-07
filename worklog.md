@@ -547,3 +547,25 @@ Stage Summary:
 - Pipeline de déploiement configuré pour Vercel
 - Variables d'environnement documentées
 - Toutes les commandes interdites identifiées (prisma migrate reset, db push en prod)
+
+---
+Task ID: 1
+Agent: main
+Task: Supprimer toute dépendance Z AI (z-ai-web-dev-sdk) et rendre le code autonome
+
+Work Log:
+- Scan complet du projet : 2 fichiers uniquement utilisaient z-ai-web-dev-sdk (ai-chat et ai-reply)
+- Créé /src/lib/llm.ts — utilitaire LLM autonome via fetch natif (OpenAI-compatible)
+- Réécrit /src/app/api/ai-chat/route.ts — remplace ZAI.create() par chatCompletion()
+- Réécrit /src/app/api/ai-reply/route.ts — remplace dynamic import ZAI par chatCompletion()
+- Supprimé z-ai-web-dev-sdk du package.json, bun install OK
+- Supprimé skills/ (61MB), agent-ctx/, .zscripts/ — artefacts Z AI non utilisés
+- Lint OK (0 erreurs), dev server HTTP 200
+- API ai-chat répond gracieusement quand OPENAI_API_KEY non configurée
+- ZIP régénéré : 1.2 MB, 280 fichiers
+
+Stage Summary:
+- Le projet est 100% autonome — zéro dépendance Z AI
+- LLM fonctionne via n'importe quel API OpenAI-compatible (OpenAI, Groq, Together, Mistral, Ollama, etc.)
+- Variables d'env requises : OPENAI_API_KEY (obligatoire), OPENAI_BASE_URL (optionnel), OPENAI_MODEL (optionnel)
+- ZIP propre : /home/z/my-project/kalas-site.zip (1.2 MB)

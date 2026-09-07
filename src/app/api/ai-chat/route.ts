@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
 import { z } from 'zod'
 import { checkRateLimit } from '@/lib/auth'
+import { chatCompletion, isLLMConfigured, LLMError } from '@/lib/llm'
 
 // ─── Zod validation (H-2) ───
 const chatSchema = z.object({
@@ -11,7 +11,7 @@ const chatSchema = z.object({
 
 // ─── Bounded memory with TTL (H-3) ───
 interface ConversationEntry {
-  messages: { role: string; content: string }[]
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
   lastActivity: number
 }
 
@@ -81,6 +81,14 @@ const MAX_MESSAGES = 20
 
 export async function POST(request: NextRequest) {
   try {
+    // Check LLM configuration
+    if (!isLLMConfigured()) {
+      return NextResponse.json({
+        success: true,
+        response: 'Bonjour ! Notre service de chat est temporairement indisponible. Veuillez nous contacter au +242 06 123 4567 ou par email à contact@kalas.cg.',
+      })
+    }
+
     // Rate limit
     const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
     if (!checkRateLimit(`ai-chat:${clientIp}`, 20, 60 * 1000)) {
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
       entry = undefined
     }
 
-    let history = entry?.messages || [
+    let history: { role: 'system' | 'user' | 'assistant'; content: string }[] = entry?.messages || [
       { role: 'system', content: SYSTEM_PROMPT },
     ]
 
@@ -112,13 +120,12 @@ export async function POST(request: NextRequest) {
       ]
     }
 
-    const zai = await ZAI.create()
-    const completion = await zai.chat.completions.create({
+    const result = await chatCompletion({
       messages: history,
-      thinking: { type: 'disabled' },
+      temperature: 0.7,
     })
 
-    const aiResponse = completion.choices[0]?.message?.content || "Désolé, je n'ai pas pu traiter votre demande. Veuillez nous contacter au +242 06 123 4567."
+    const aiResponse = result.content
 
     history.push({ role: 'assistant', content: aiResponse })
 
@@ -131,6 +138,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       const messages = error.errors.map(e => e.message).join(', ')
       return NextResponse.json({ success: false, error: messages }, { status: 400 })
+    }
+    if (error instanceof LLMError) {
+      console.error('LLM Error:', error.code, error.message)
+      return NextResponse.json({
+        success: true,
+        response: 'Désolé, notre assistant est temporairement indisponible. Veuillez nous contacter au +242 06 123 4567.',
+      })
     }
     console.error('AI Chat error:', error)
     return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { chatCompletion, isLLMConfigured, LLMError } from '@/lib/llm'
 
 const replySchema = z.object({
   conversationId: z.string().optional(),
@@ -34,6 +35,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Non autorise' }, { status: 401 })
     }
 
+    // Check LLM configuration
+    if (!isLLMConfigured()) {
+      return NextResponse.json({
+        success: false,
+        error: 'IA non configurée. Veuillez définir OPENAI_API_KEY dans les variables d\'environnement.',
+      }, { status: 503 })
+    }
+
     const body = await request.json()
     const validated = replySchema.safeParse(body)
     if (!validated.success) {
@@ -55,20 +64,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const ZAI = await import('z-ai-web-dev-sdk')
-    const zai = await ZAI.create()
-
     const messages = [
-      { role: 'assistant' as const, content: SYSTEM_PROMPT },
+      { role: 'system' as const, content: SYSTEM_PROMPT },
       { role: 'user' as const, content: contextInfo ? `Contexte: ${contextInfo}\n\nMessage du client: ${customerMessage}` : customerMessage },
     ]
 
-    const completion = await zai.chat.completions.create({
+    const result = await chatCompletion({
       messages,
-      thinking: { type: 'disabled' },
+      temperature: 0.7,
     })
 
-    const reply = completion.choices[0]?.message?.content || 'Desole, je n\'ai pas pu generer une reponse.'
+    const reply = result.content
 
     if (validated.data.conversationId) {
       await db.message.create({
@@ -87,6 +93,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { reply } })
   } catch (error) {
+    if (error instanceof LLMError) {
+      console.error('LLM Error:', error.code, error.message)
+      return NextResponse.json({ success: false, error: `Erreur IA: ${error.message}` }, { status: 503 })
+    }
     console.error('AI reply error:', error)
     return NextResponse.json({ success: false, error: 'Erreur IA' }, { status: 500 })
   }
