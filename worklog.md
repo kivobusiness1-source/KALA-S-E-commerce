@@ -517,3 +517,33 @@ Stage Summary:
 - Storefront hero displays full-width video background when enabled
 - Upload API created at /api/upload for admin file management
 - hero_video_url and hero_video_enabled stored as SiteSetting key-value pairs
+
+---
+Task ID: production-migration-setup
+Agent: main
+Task: Configurer le pipeline de migration production Vercel (SQLite → PostgreSQL)
+
+Work Log:
+- Analysé le schéma Prisma actuel : 20+ modèles, provider=sqlite, pas de migrations
+- Mis à jour schema.prisma : provider="postgresql", ajout directUrl=env("DIRECT_URL")
+- Validé le schéma avec prisma validate ✅
+- Généré le SQL de migration initiale avec prisma migrate diff (512 lignes)
+- Créé prisma/migrations/20250907_init_postgresql/migration.sql
+- Créé prisma/migrations/migration_lock.toml (provider = "postgresql")
+- Généré Prisma Client avec prisma generate ✅
+- Mis à jour package.json scripts :
+  - build: "prisma generate && next build"
+  - postinstall: "prisma generate"
+  - db:validate, db:migrate:dev, db:migrate:deploy, db:migrate:status, db:migrate:diff
+  - vercel-build: "prisma generate && prisma migrate deploy && next build"
+- Mis à jour .gitignore : commentaires sur NE PAS ignorer prisma/migrations/
+- Créé .env.example avec exemples pour Supabase, Neon, Vercel Postgres
+- Mis à jour .env avec DATABASE_URL et DIRECT_URL
+- Lint vérifié : 0 erreurs, 2 warnings existants
+
+Stage Summary:
+- Schema Prisma migré de SQLite vers PostgreSQL
+- Migration initiale créée (20 tables, 34 index, 16 foreign keys)
+- Pipeline de déploiement configuré pour Vercel
+- Variables d'environnement documentées
+- Toutes les commandes interdites identifiées (prisma migrate reset, db push en prod)

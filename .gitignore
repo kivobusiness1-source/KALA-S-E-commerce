@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (NE JAMAIS committer les secrets)
 .env*
+.env.local
+!.env.example
 
 # vercel
 .vercel
@@ -50,5 +52,11 @@ test
 prompt
 
 server.log
+
 # Skills directory
 /skills/
+
+# Prisma
+# ⚠️ IMPORTANT : NE PAS ignorer prisma/migrations/
+# Les migrations doivent être versionnées dans Git
+# pour que la production puisse les appliquer
