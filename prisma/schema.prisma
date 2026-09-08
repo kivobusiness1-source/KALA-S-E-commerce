@@ -98,14 +98,19 @@ model Order {
   assignedBy     Admin?      @relation("assignedBy", fields: [assignedToId], references: [id])
   delivererId    String?
   deliverer      Deliverer?  @relation(fields: [delivererId], references: [id])
+  customerId     String?     // Customer who placed the order (if logged in)
+  customer       Customer?   @relation(fields: [customerId], references: [id])
+  affiliateCode  String?     // Affiliate code used in this order
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   items          OrderItem[]
   orderNotes     OrderNote[]
+  referral       AffiliateReferral?
 
   @@index([assignedToId])
   @@index([delivererId])
   @@index([status])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -201,12 +206,14 @@ model ActivityLog {
 model Review {
   id          String   @id @default(cuid())
   productId   String
+  customerId  String?  // If review is from a logged-in customer
   customerName String
   rating      Int      // 1-5
   comment     String?
   isApproved  Boolean  @default(true)
   createdAt   DateTime @default(now())
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer    Customer? @relation(fields: [customerId], references: [id])
 
   @@index([productId])
 }
@@ -398,6 +405,122 @@ model WholesalePaymentMethod {
   orders      WholesaleOrder[]
 
   @@index([isActive])
+}
+
+// ==================== CUSTOMER AUTH ====================
+
+model Customer {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  phone       String?
+  password    String
+  address     String?
+  city        String    @default("Pointe-Noire")
+  quartier    String?   // Neighborhood
+  isActive    Boolean   @default(true)
+  emailVerified Boolean @default(false)
+  // Affiliate link
+  affiliateId String?   @unique // If this customer is also an affiliate
+  affiliate   Affiliate? @relation("customerAffiliate", fields: [affiliateId], references: [id])
+  // Referral tracking — which affiliate referred this customer
+  referredById String?
+  referredBy   Affiliate? @relation("referredCustomers", fields: [referredById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    CustomerSession[]
+  orders      Order[]
+  reviews     Review[]
+  referral    AffiliateReferral?
+
+  @@index([email])
+  @@index([referredById])
+}
+
+model CustomerSession {
+  id        String   @id @default(cuid())
+  customerId String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+// ==================== AFFILIATE / PARTNER SYSTEM ====================
+
+model Affiliate {
+  id              String    @id @default(cuid())
+  code            String    @unique // Unique affiliate code (e.g., "KALA-MARIAM")
+  name            String    // Partner full name
+  email           String    @unique
+  phone           String?
+  password        String    // Separate login for affiliate dashboard
+  company         String?   // Company name
+  commissionRate  Float     @default(5.0) // Commission % (e.g., 5.0 = 5%)
+  bankInfo        String?   // Bank account or mobile money info for payouts
+  isActive        Boolean   @default(true)
+  totalEarnings   Float     @default(0)  // Lifetime earnings in FCFA
+  pendingEarnings Float     @default(0)  // Unpaid earnings
+  paidEarnings    Float     @default(0)  // Already paid out
+  totalReferrals  Int       @default(0)  // Total customers referred
+  totalOrders     Int       @default(0)  // Total orders from referrals
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Relations
+  customer        Customer?  @relation("customerAffiliate")
+  referredCustomers Customer[] @relation("referredCustomers")
+  referrals       AffiliateReferral[]
+  payouts         AffiliatePayout[]
+  sessions        AffiliateSession[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model AffiliateSession {
+  id          String    @id @default(cuid())
+  affiliateId String
+  token       String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model AffiliateReferral {
+  id            String    @id @default(cuid())
+  affiliateId   String
+  customerId    String    @unique // One referral per customer
+  orderId       String?   @unique // First order that triggered the commission
+  orderAmount   Float     @default(0) // Amount of the referred order
+  commission    Float     @default(0) // Commission earned from this referral
+  status        String    @default("pending") // pending, earned, paid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  affiliate     Affiliate @relation(fields: [affiliateId], references: [id])
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order         Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([affiliateId])
+  @@index([status])
+}
+
+model AffiliatePayout {
+  id            String    @id @default(cuid())
+  affiliateId   String
+  amount        Float     // Amount paid out in FCFA
+  method        String    // "mobile_money", "bank_transfer", "cash"
+  reference     String?   // Transaction reference
+  status        String    @default("pending") // pending, completed, failed
+  notes         String?
+  createdAt     DateTime  @default(now())
+  affiliate     Affiliate @relation(fields: [affiliateId], references: [id])
+
+  @@index([affiliateId])
+  @@index([status])
 }
 
 // ==================== REMOVED OLD MODELS ====================

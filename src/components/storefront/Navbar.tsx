@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ShoppingCart, Search, Home, Package, Info, Phone, Menu, X, Building2 } from 'lucide-react'
+import { ShoppingCart, Search, Home, Package, Info, Phone, Menu, X, Building2, User, Handshake } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -11,6 +11,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import { useCustomerAuthStore } from '@/stores/customer-auth-store'
+import { useAffiliateAuthStore } from '@/stores/affiliate-auth-store'
 
 interface NavbarProps {
   scrolled: boolean
@@ -18,6 +20,10 @@ interface NavbarProps {
   setMobileMenuOpen: (open: boolean) => void
   cartTotalItems: number
   onCartOpen: () => void
+  onCustomerAuth: () => void
+  onAffiliateAuth: () => void
+  onCustomerDashboard: () => void
+  onAffiliateDashboard: () => void
 }
 
 const navLinks = [
@@ -28,8 +34,10 @@ const navLinks = [
   { label: 'Contact', href: '/contact', icon: Phone },
 ]
 
-export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalItems, onCartOpen }: NavbarProps) {
+export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalItems, onCartOpen, onCustomerAuth, onAffiliateAuth, onCustomerDashboard, onAffiliateDashboard }: NavbarProps) {
   const pathname = usePathname()
+  const customer = useCustomerAuthStore((s) => s.customer)
+  const affiliate = useAffiliateAuthStore((s) => s.affiliate)
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -73,8 +81,9 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
             ))}
           </div>
 
-          {/* Cart + Search + Mobile Menu */}
+          {/* Cart + Search + Account + Partner + Mobile Menu */}
           <div className="flex items-center gap-1">
+            {/* Search */}
             <button
               onClick={handleSearchClick}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150 text-[#888888] hover:text-[#1a1a1a]"
@@ -82,6 +91,34 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
             >
               <Search className="w-5 h-5" />
             </button>
+
+            {/* Partner/Affiliate Button */}
+            <button
+              onClick={affiliate ? onAffiliateDashboard : onAffiliateAuth}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150 text-[#888888] hover:text-emerald-600"
+              aria-label="Partenariat"
+              title={affiliate ? `Partenaire: ${affiliate.name}` : 'Devenir partenaire'}
+            >
+              <Handshake className="w-5 h-5" />
+            </button>
+
+            {/* Customer Account Button */}
+            <button
+              onClick={customer ? onCustomerDashboard : onCustomerAuth}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150 text-[#888888] hover:text-[#1a1a1a]"
+              aria-label="Mon compte"
+              title={customer ? `Connecté: ${customer.name}` : 'Mon compte'}
+            >
+              {customer ? (
+                <span className="w-5 h-5 bg-[#1a1a1a] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {customer.name.charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <User className="w-5 h-5" />
+              )}
+            </button>
+
+            {/* Cart */}
             <button
               onClick={onCartOpen}
               className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
@@ -94,6 +131,8 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                 </span>
               )}
             </button>
+
+            {/* Mobile Menu */}
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
@@ -149,6 +188,32 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
                 </Link>
               )
             })}
+
+            <div className="my-2 border-t border-gray-100" />
+
+            {/* Mobile: Customer Account */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false)
+                customer ? onCustomerDashboard() : onCustomerAuth()
+              }}
+              className="text-left px-4 py-3 rounded-lg transition-colors duration-150 font-medium flex items-center gap-3 text-[#1a1a1a] hover:bg-gray-50"
+            >
+              <User className="w-4 h-4 text-[#888888]" />
+              <span>{customer ? customer.name : 'Mon Compte'}</span>
+            </button>
+
+            {/* Mobile: Affiliate/Partner */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false)
+                affiliate ? onAffiliateDashboard() : onAffiliateAuth()
+              }}
+              className="text-left px-4 py-3 rounded-lg transition-colors duration-150 font-medium flex items-center gap-3 text-emerald-600 hover:bg-emerald-50"
+            >
+              <Handshake className="w-4 h-4" />
+              <span>{affiliate ? affiliate.name : 'Partenariat'}</span>
+            </button>
           </div>
 
           {/* Contact button at bottom */}

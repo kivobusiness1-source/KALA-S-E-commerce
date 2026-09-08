@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { X, Megaphone } from 'lucide-react'
 import { useCartStore } from '@/stores/cart-store'
 import { useWishlistStore } from '@/stores/wishlist-store'
+import { useCustomerAuthStore } from '@/stores/customer-auth-store'
+import { useAffiliateAuthStore } from '@/stores/affiliate-auth-store'
 
 import { Navbar } from '@/components/storefront/Navbar'
 import { MarqueeText } from '@/components/storefront/AnimatedComponents'
@@ -18,6 +20,10 @@ const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => 
 const ChatWidget = dynamic(() => import('@/components/storefront/ChatWidget'), { ssr: false })
 const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
 const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
+const CustomerAuthDialog = dynamic(() => import('@/components/storefront/CustomerAuthDialog'), { ssr: false })
+const CustomerDashboard = dynamic(() => import('@/components/storefront/CustomerDashboard'), { ssr: false })
+const AffiliateAuthDialog = dynamic(() => import('@/components/storefront/AffiliateAuthDialog'), { ssr: false })
+const AffiliateDashboard = dynamic(() => import('@/components/storefront/AffiliateDashboard'), { ssr: false })
 
 import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
 
@@ -107,6 +113,22 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
 
   // Wishlist store
   const wishlist = useWishlistStore()
+
+  // Customer auth store
+  const customerAuth = useCustomerAuthStore()
+  const [customerAuthOpen, setCustomerAuthOpen] = useState(false)
+  const [customerDashboardOpen, setCustomerDashboardOpen] = useState(false)
+
+  // Affiliate auth store
+  const affiliateAuth = useAffiliateAuthStore()
+  const [affiliateAuthOpen, setAffiliateAuthOpen] = useState(false)
+  const [affiliateDashboardOpen, setAffiliateDashboardOpen] = useState(false)
+
+  // Fetch auth state on mount
+  useEffect(() => {
+    customerAuth.fetchMe()
+    affiliateAuth.fetchMe()
+  }, [])
 
   // Page load animation
   const [pageLoaded, setPageLoaded] = useState(false)
@@ -411,6 +433,10 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
         setMobileMenuOpen={setMobileMenuOpen}
         cartTotalItems={cart.totalItems()}
         onCartOpen={() => cart.setCartOpen(true)}
+        onCustomerAuth={() => setCustomerAuthOpen(true)}
+        onAffiliateAuth={() => setAffiliateAuthOpen(true)}
+        onCustomerDashboard={() => setCustomerDashboardOpen(true)}
+        onAffiliateDashboard={() => setAffiliateDashboardOpen(true)}
       />
 
       {/* Promotional Banner Bar */}
@@ -487,6 +513,34 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
 
       <ChatWidget />
       <SocialProofToast products={products} />
+
+      {/* Customer Auth Dialog */}
+      <CustomerAuthDialog
+        open={customerAuthOpen}
+        onOpenChange={setCustomerAuthOpen}
+        onSwitchToDashboard={() => { setCustomerAuthOpen(false); setCustomerDashboardOpen(true) }}
+      />
+
+      {/* Customer Dashboard */}
+      <CustomerDashboard
+        open={customerDashboardOpen}
+        onOpenChange={setCustomerDashboardOpen}
+        onLogout={() => { setCustomerDashboardOpen(false) }}
+      />
+
+      {/* Affiliate Auth Dialog */}
+      <AffiliateAuthDialog
+        open={affiliateAuthOpen}
+        onOpenChange={setAffiliateAuthOpen}
+        onSwitchToDashboard={() => { setAffiliateAuthOpen(false); setAffiliateDashboardOpen(true) }}
+      />
+
+      {/* Affiliate Dashboard */}
+      <AffiliateDashboard
+        open={affiliateDashboardOpen}
+        onOpenChange={setAffiliateDashboardOpen}
+        onLogout={() => { setAffiliateDashboardOpen(false) }}
+      />
     </div>
   )
 }
