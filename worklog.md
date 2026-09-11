@@ -623,3 +623,33 @@ Stage Summary:
 - All 6 TypeScript errors resolved
 - npx tsc --noEmit passes cleanly with zero errors
 - Project is production-build ready
+
+---
+Task ID: security-audit
+Agent: Main
+Task: Full security audit + automated remediation (production readiness)
+
+Work Log:
+- Audited 54 API routes, config, env, cookies, uploads, deps (npm audit)
+- CRITICAL fixes:
+  1. .env was tracked by git → `git rm --cached .env`; .gitignore rule verified. NOTE: git history still contains old DATABASE_URL → recommend rotating Neon credentials.
+  2. GET /api/affiliate-transfer?action=processScheduled was unauthenticated (could trigger money payouts) → now requires CRON_SECRET (header x-cron-secret OR ?secret=). Secret generated in .env. **FUTURE CRON RUNS must read CRON_SECRET from /home/z/my-project/.env and append &secret=<value>** (header preferred).
+- HIGH fixes:
+  3. /api/orders/track returned full orders (phone/address/notes) for any email → slimmed select to TrackedOrder fields only (id, orderNumber, status, totalAmount, createdAt, items).
+  4. RBAC: added hasAdminRole() in lib/auth.ts; enforced server-side on 20 routes (products, stock, stock-history, site-settings, emails, contact, reviews, messages, livreurs, wholesale×5, partner-products, upload, activity). staff/livreur can no longer write outside their scope. Script: scripts/rbac_harden.py.
+  5. Chat: customer-<id> conversations now require matching customer_token (chat GET/POST + messages POST); guest sessions still work; chat GET rate-limited 30/min.
+- MEDIUM fixes:
+  6. Rate limits: customer-auth 10/min, affiliate-auth 10/min (brute force).
+  7. Legacy SHA-256 admin passwords → auto re-hash bcrypt on successful login (verified live: admin hash now bcrypt).
+  8. Loyalty GET: rate-limited + returns aggregate only ({points, totalPoints}) — also fixes dashboard bug (it read data.points).
+- LOW fixes: health no longer discloses version/NODE_ENV; contact GET limit capped at 100; products/[id] changeReason sanitized (strip tags, 200 chars).
+- Headers (next.config.ts): X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, CSP (dev allows unsafe-eval), HSTS in prod.
+- Deps: next 16.1.1→16.3.4 (fixed critical CVEs: DoS, request smuggling, CSRF bypass), uuid→11.1.1, next-intl + nanoid updated. Remaining (breaking, documented): sharp 0.35, react-syntax-highlighter 16.
+- Security tests PASSED: 401 on 8 private endpoints; processScheduled 401 w/o secret, 200 w/ secret; staff→403 on site-settings/emails/activity while 200 on allowed; track response = zero PII; tampered unitPrice=1 → server charged 5500 FCFA; XSS payload stored as text (React-escaped) + review deleted; rate limit 429 after 10 attempts; guest chat regression OK.
+- Prisma validate PASS, generate PASS (no schema change → no migration).
+- lint 0 errors (4 pre-existing warnings), tsc 0 errors, next build SUCCESS.
+- Dev server restarted on next 16.3.4; all pages 200; 404 custom OK; logo OK.
+
+Stage Summary:
+- Project hardened and production-ready. All fixes verified by live tests.
+- Action required by user: rotate Neon DB credentials (old ones in git history); set CRON_SECRET in production env vars.
