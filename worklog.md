@@ -404,3 +404,59 @@ Stage Summary:
 - Product API accepts and saves tiered commission fields
 - All lint checks pass (only pre-existing issues remain)
 - API endpoint verified working: GET /api/admin/partner-products returns 200
+
+---
+Task ID: tiered-commissions
+Agent: Main + Subagents
+Task: Implement tiered commission system (different rates for month 1 vs months 2-12 per product)
+
+Work Log:
+- Updated Prisma schema:
+  - Product: added `commissionMonth1PerUnit` (Float?), `commissionMonth2PlusPerUnit` (Float?)
+  - ProductVariant: same two fields for per-variant overrides
+  - Commission: added `commissionMonth` (Int?) — 1 = first month, 2+ = subsequent months
+  - New model `AffiliateProductTrack` with unique [affiliateId, productId], tracks `firstCommissionAt`
+- Pushed schema to Neon PostgreSQL (db:push)
+- Updated `src/lib/commission.ts`:
+  - Added `TieredCommissionRates` interface
+  - Added `determineCommissionMonth()` — calculates month number from firstCommissionAt
+  - Added `getTieredCommissionRate()` — selects correct rate based on month (m1 vs m2+, fallback)
+  - Added `calculateTieredItemCommission()` — full tiered calculation
+  - Kept legacy `calculateItemCommission()` for backward compatibility
+- Updated `src/app/api/orders/route.ts`:
+  - Pre-fetches AffiliateProductTrack for all products in order
+  - Determines commission month per item using `determineCommissionMonth()`
+  - Builds TieredCommissionRates with variant override (variant → product → null)
+  - Creates Commission records with `commissionMonth` field
+  - Upserts AffiliateProductTrack to record first commission date
+- Created `src/app/api/admin/partner-products/route.ts`:
+  - GET: returns AffiliateProductTrack for a partner with product details + current month number
+  - Admin-only auth
+- Updated `src/app/api/products/[id]/route.ts`:
+  - Added `commissionMonth1PerUnit` and `commissionMonth2PlusPerUnit` to update schema
+- Updated `src/components/admin/types.ts`:
+  - Product: added commissionMonth1PerUnit, commissionMonth2PlusPerUnit, wholesalePrice, packSize, packPrice, unit, variants
+  - Added ProductVariantType interface
+  - Commission: added commissionMonth field
+  - Added AffiliateProductTrack interface
+- Updated `src/components/admin/PartnersSection.tsx`:
+  - Added CalendarDays, Package icons
+  - Added "Mois" column to commissions table (Mois 1 amber badge, Mois 2+ emerald badge)
+  - Added "Suivi par produit" card section between Commission Summary and Commissions Table
+  - Shows product tracking with tiered rates, first commission date, current month
+- Updated `src/components/admin/ProductsSection.tsx`:
+  - Added commissionMonth1PerUnit and commissionMonth2PlusPerUnit to product form
+  - Added "Commission échelonnée par partenaire" section in product dialog
+  - Fields: "Commission 1er mois (FCFA/unité)" and "Commission mois 2+ (FCFA/unité)"
+- Seeded tiered commission rates on existing 5 products:
+  - Month 1 rates: 41.68-50 FCFA/unit
+  - Month 2+ rates: 25.01-30 FCFA/unit (60% of month 1)
+- Lint passes (only pre-existing issues)
+- Browser verified: Partners section shows "Suivi par produit" with tracking info, "Mois" column in commissions table
+
+Stage Summary:
+- Tiered commission system fully implemented: month 1 rate vs months 2+ rate per product/variant
+- AffiliateProductTrack model tracks when each partner first earned commission on each product
+- Commission records now include commissionMonth field for audit trail
+- Admin UI: product tracking section + commission month badges + product edit with tiered rates
+- All products seeded with sample tiered rates
