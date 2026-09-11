@@ -40,6 +40,21 @@ export async function GET(request: NextRequest) {
 
     // ─── Process Scheduled (cron endpoint) ──────────────
     if (action === 'processScheduled') {
+      // SECURITY: this endpoint moves real money (pendingEarnings → paidEarnings).
+      // It must never be callable without the shared cron secret.
+      // The secret is accepted via header (x-cron-secret) or query param (?secret=).
+      const cronSecret = process.env.CRON_SECRET
+      const providedSecret =
+        request.headers.get('x-cron-secret') ?? url.searchParams.get('secret')
+      if (
+        !cronSecret ||
+        !providedSecret ||
+        providedSecret.length !== cronSecret.length ||
+        providedSecret !== cronSecret
+      ) {
+        return err('Non autorisé — secret cron invalide', 401)
+      }
+
       const now = new Date()
 
       // Find all scheduled requests where scheduledAt <= now

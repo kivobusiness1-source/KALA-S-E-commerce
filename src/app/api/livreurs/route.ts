@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
 
 const delivererSchema = z.object({
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request)
     if (!session) return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
+    if (!hasAdminRole(session, ['super_admin', 'admin'])) return NextResponse.json({ success: false, error: 'Accès refusé pour votre rôle' }, { status: 403 })
 
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('active') === 'true'

@@ -24,13 +24,57 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     const data = encoder.encode(password)
     const hashBuffer = await crypto.subtle.digest('SHA-256', data)
     const sha256Hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
-    if (sha256Hash === hash) {
-      // Migrate to bcrypt on next use
-      return true
-    }
-    return false
+    return sha256Hash === hash
   }
   return bcrypt.compare(password, hash)
+}
+
+/**
+ * Returns true if the given hash is a legacy SHA-256 hex digest (not bcrypt).
+ * Used to transparently re-hash credentials with bcrypt after a successful login.
+ */
+export function isLegacyPasswordHash(hash: string): boolean {
+  return hash.length === 64 && /^[a-f0-9]{64}$/.test(hash)
+}
+
+/**
+ * Server-side RBAC helper. Roles are always enforced here (backend authority),
+ * never solely in the frontend.
+ */
+export function hasAdminRole(admin: { role: string }, allowedRoles: string[]): boolean {
+  return allowedRoles.includes(admin.role)
+}
+
+// ── Customer Session Validation ────────────────────────
+
+export interface CustomerPayload {
+  id: string
+  name: string
+  email: string
+}
+
+/**
+ * Validates a customer session token (customer_token cookie).
+ * Returns the customer payload, or null when the session is
+ * missing/invalid/expired or the account is deactivated.
+ */
+export async function validateCustomerSession(token: string): Promise<CustomerPayload | null> {
+  if (!token) return null
+  const session = await db.customerSession.findUnique({
+    where: { token },
+    include: { customer: true },
+  })
+  if (!session) return null
+  if (session.expiresAt < new Date()) {
+    await db.customerSession.delete({ where: { id: session.id } })
+    return null
+  }
+  if (!session.customer.isActive) return null
+  return {
+    id: session.customer.id,
+    name: session.customer.name,
+    email: session.customer.email,
+  }
 }
 
 export async function createSession(adminId: string, clientIp?: string): Promise<string> {

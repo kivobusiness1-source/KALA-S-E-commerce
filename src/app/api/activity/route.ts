@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, hasAdminRole } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     if (!admin) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
+    if (!hasAdminRole(admin, ['super_admin', 'admin'])) return NextResponse.json({ success: false, error: 'Accès refusé pour votre rôle' }, { status: 403 })
 
     const logs = await db.activityLog.findMany({
       orderBy: { createdAt: 'desc' },

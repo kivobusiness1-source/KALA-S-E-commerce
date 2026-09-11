@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin'])) return err('Accès refusé pour votre rôle', 403)
 
     // Check if wholesale products already exist
     const existingProductCount = await db.wholesaleProduct.count()

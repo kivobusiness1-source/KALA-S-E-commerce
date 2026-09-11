@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -28,6 +28,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
     const body = await request.json()
@@ -65,6 +66,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
     const existing = await db.wholesalePaymentMethod.findUnique({ where: { id } })

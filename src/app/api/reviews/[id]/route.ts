@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -19,6 +19,7 @@ export async function PUT(
     if (!token) return err('Non autorisé', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Non autorisé', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
     const body = await request.json()
@@ -55,6 +56,7 @@ export async function DELETE(
     if (!token) return err('Non autorisé', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Non autorisé', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole, validateCustomerSession, checkRateLimit } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const conversations = await db.conversation.findMany({
       include: {
@@ -98,8 +99,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 10 messages / min / IP
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`messages-post:${clientIp}`, 10, 60 * 1000)) {
+      return err('Trop de requêtes. Veuillez réessayer plus tard.', 429)
+    }
+
     const body = await request.json()
     const data = createMessageSchema.parse(body)
+
+    // Bind customer-<id> conversations to the authenticated customer session
+    if (data.sessionId.startsWith('customer-')) {
+      const customer = await validateCustomerSession(request.cookies.get('customer_token')?.value ?? '')
+      if (!customer || customer.id !== data.sessionId.slice('customer-'.length)) {
+        return err('Non autorisé', 403)
+      }
+    }
 
     // Find or create conversation
     let conversation = await db.conversation.findUnique({

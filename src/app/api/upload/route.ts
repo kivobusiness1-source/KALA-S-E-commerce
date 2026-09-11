@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateSession, checkRateLimit } from '@/lib/auth'
+import { validateSession, checkRateLimit, hasAdminRole } from '@/lib/auth'
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     if (!token) return err('Non autorisé', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Non autorisé', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     // ── Rate limit: 30 uploads / 5 min / IP ─────────────────
     const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'

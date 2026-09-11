@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hash, compare } from 'bcryptjs'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/auth'
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -105,6 +106,12 @@ function clearCookie(response: NextResponse) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Brute-force protection: 10 auth actions / min / IP
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`affiliate-auth:${clientIp}`, 10, 60 * 1000)) {
+      return err('Too many attempts. Please try again later.', 429)
+    }
+
     const body = await request.json()
     const { action } = body as { action?: string }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, checkRateLimit } from '@/lib/auth'
+import { validateSession, checkRateLimit, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -26,11 +26,13 @@ export async function GET(request: NextRequest) {
     if (!token) return err('Unauthorized', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = parseInt(searchParams.get('limit') || '20', 10)
+    // Cap page size to prevent bulk PII dumping in a single request
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 100)
     const skip = (page - 1) * limit
 
     const where: Record<string, unknown> = {}
@@ -68,6 +70,7 @@ export async function PUT(request: NextRequest) {
     if (!token) return err('Unauthorized', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const body = await request.json()
     const { id, isRead, isReplied } = contactUpdateSchema.parse(body)
@@ -98,6 +101,7 @@ export async function DELETE(request: NextRequest) {
     if (!token) return err('Unauthorized', 401)
     const admin = await validateSession(token)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

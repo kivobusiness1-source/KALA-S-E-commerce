@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyPassword, createSession, checkRateLimit } from '@/lib/auth'
+import { verifyPassword, isLegacyPasswordHash, hashPassword, createSession, checkRateLimit } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -31,6 +31,19 @@ export async function POST(request: NextRequest) {
     const isValid = await verifyPassword(password, admin.password)
     if (!isValid) {
       return err('Invalid email or password', 401)
+    }
+
+    // Transparent migration: legacy SHA-256 credentials are re-hashed with
+    // bcrypt immediately after a successful authentication.
+    if (isLegacyPasswordHash(admin.password)) {
+      try {
+        await db.admin.update({
+          where: { id: admin.id },
+          data: { password: await hashPassword(password) },
+        })
+      } catch (migrationError) {
+        console.error('Password migration error:', migrationError)
+      }
     }
 
     const token = await createSession(admin.id, clientIp)

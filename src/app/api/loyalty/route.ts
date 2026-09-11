@@ -19,6 +19,12 @@ const postBodySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit: 10 lookups / min / IP (email enumeration mitigation)
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`loyalty-get:${clientIp}`, 10, 60 * 1000)) {
+      return err('Trop de requêtes. Veuillez réessayer plus tard.', 429)
+    }
+
     const { searchParams } = new URL(request.url)
     const query = getQuerySchema.parse(Object.fromEntries(searchParams))
 
@@ -29,7 +35,10 @@ export async function GET(request: NextRequest) {
 
     const totalPoints = points.reduce((sum, p) => sum + p.points, 0)
 
-    return ok({ totalPoints, entries: points })
+    // SECURITY: only return the aggregate. Individual entries would leak
+    // internal order IDs and purchase history to anyone knowing the email.
+    // `points` keeps backward compatibility with the storefront dashboard.
+    return ok({ points: totalPoints, totalPoints })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return err('Paramètres invalides', 400)

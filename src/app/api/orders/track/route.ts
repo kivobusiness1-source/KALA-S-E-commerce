@@ -23,7 +23,14 @@ export async function POST(request: NextRequest) {
 
     const orders = await db.order.findMany({
       where: { customerEmail: parsed.data.email.toLowerCase() },
-      include: {
+      // SECURITY: expose only tracking-safe fields (matches TrackedOrder type).
+      // Never leak address, phone, notes, or affiliate data on a public endpoint.
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        totalAmount: true,
+        createdAt: true,
         items: { select: { productName: true, quantity: true, unitPrice: true, totalPrice: true } },
       },
       orderBy: { createdAt: 'desc' },

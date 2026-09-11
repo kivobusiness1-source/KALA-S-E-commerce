@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { hash, compare } from 'bcryptjs'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
+import { checkRateLimit } from '@/lib/auth'
 
 // ── Helpers ────────────────────────────────────────────────────────
 function ok(data: Record<string, unknown>, status = 200) {
@@ -61,6 +62,12 @@ const loginSchema = z.object({
 // ── POST Handler ───────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
+    // Brute-force protection: 10 auth actions / min / IP
+    const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown'
+    if (!checkRateLimit(`customer-auth:${clientIp}`, 10, 60 * 1000)) {
+      return err('Trop de tentatives. Veuillez réessayer plus tard.', 429)
+    }
+
     const body = await request.json()
     const { action } = body
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { validateSession, logActivity } from '@/lib/auth'
+import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -55,6 +55,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
     const body = await request.json()
@@ -69,7 +70,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             productId: id,
             previousQty: prevProduct.stockQty,
             newQty: data.stockQty,
-            changeReason: body.changeReason || 'Ajustement manuel',
+            // Sanitize: raw body field, never trust client input blindly
+            changeReason: typeof body.changeReason === 'string'
+              ? body.changeReason.replace(/<[^>]*>/g, '').slice(0, 200) || 'Ajustement manuel'
+              : 'Ajustement manuel',
             adminId: admin.id,
           },
         })
@@ -98,6 +102,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const admin = await getAdmin(request)
     if (!admin) return err('Unauthorized', 401)
+    if (!hasAdminRole(admin, ['super_admin', 'admin', 'staff'])) return err('Accès refusé pour votre rôle', 403)
 
     const { id } = await params
     const product = await db.product.findUnique({ where: { id } })
