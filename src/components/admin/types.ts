@@ -1,4 +1,4 @@
-export type Section = 'dashboard' | 'products' | 'orders' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews' | 'team' | 'livreurs' | 'catchphrases' | 'wholesale'
+export type Section = 'dashboard' | 'products' | 'orders' | 'partners' | 'messages' | 'contact' | 'emails' | 'settings' | 'stock-history' | 'reviews' | 'team' | 'livreurs' | 'catchphrases' | 'wholesale'
 
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -207,3 +207,60 @@ export interface Review {
 }
 
 export type ReviewFilter = 'all' | 'pending' | 'approved' | 'rejected'
+
+// ── Affiliate / Partner types ────────────────────────────
+
+export interface Affiliate {
+  id: string
+  code: string
+  name: string
+  email: string
+  phone: string | null
+  company: string | null
+  commissionRate: number
+  bankInfo: string | null
+  isActive: boolean
+  totalEarnings: number
+  pendingEarnings: number
+  paidEarnings: number
+  totalReferrals: number
+  totalOrders: number
+  createdAt: string
+  _count?: { commissions: number }
+}
+
+export interface Commission {
+  id: string
+  affiliateId: string
+  orderId: string
+  affiliateCode: string
+  productName: string
+  variantName: string | null
+  quantity: number
+  unitPrice: number
+  totalSaleAmount: number
+  commissionPerUnit: number
+  commissionTotal: number
+  status: string
+  validatedAt: string | null
+  paidAt: string | null
+  notes: string | null
+  createdAt: string
+  affiliate?: { id: string; name: string; code: string; email: string }
+  order?: { id: string; orderNumber: string; status: string }
+  product?: { id: string; name: string; image: string | null }
+  variant?: { id: string; name: string } | null
+}
+
+export interface AffiliatePayout {
+  id: string
+  affiliateId: string
+  amount: number
+  method: string
+  reference: string | null
+  status: string
+  notes: string | null
+  createdAt: string
+}
+
+export type CommissionStatus = 'pending' | 'validated' | 'paid' | 'cancelled'

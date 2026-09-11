@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { validateSession, logActivity, checkRateLimit } from '@/lib/auth'
+import { calculateTotalUnits, calculateItemCommission, sumCommissions, type CommissionInput } from '@/lib/commission'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -14,7 +15,10 @@ async function getAdmin(request: NextRequest) {
 
 const orderItemSchema = z.object({
   productId: z.string().min(1),
+  variantId: z.string().optional(),
   quantity: z.number().int().positive().min(1),
+  isPack: z.boolean().optional().default(false),
+  packSize: z.number().int().positive().optional(),
 })
 
 const createOrderSchema = z.object({
@@ -25,6 +29,7 @@ const createOrderSchema = z.object({
   city: z.string().max(200).optional().default('Pointe-Noire'),
   notes: z.string().max(5000).optional(),
   items: z.array(orderItemSchema).min(1, 'At least one item is required'),
+  affiliateCode: z.string().max(50).optional(), // Affiliate promo code
 })
 
 const listOrdersQuerySchema = z.object({
@@ -97,41 +102,115 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = createOrderSchema.parse(body)
 
-    // Validate all products exist and have enough stock
-    const products = await db.product.findMany({
-      where: { id: { in: data.items.map(i => i.productId) } },
-    })
+    // ── Validate products and variants ──────────────────────
+    const productIds = [...new Set(data.items.map(i => i.productId))]
+    const variantIds = data.items.map(i => i.variantId).filter(Boolean) as string[]
+
+    const [products, variants] = await Promise.all([
+      db.product.findMany({ where: { id: { in: productIds } } }),
+      variantIds.length > 0
+        ? db.productVariant.findMany({ where: { id: { in: variantIds } } })
+        : Promise.resolve([] as Awaited<ReturnType<typeof db.productVariant.findMany>>),
+    ])
 
     const productMap = new Map(products.map(p => [p.id, p]))
+    const variantMap = new Map(variants.map(v => [v.id, v]))
 
     for (const item of data.items) {
       const product = productMap.get(item.productId)
       if (!product) return err(`Product not found: ${item.productId}`, 400)
       if (!product.isActive) return err(`Product is not available: ${product.name}`, 400)
-      if (!product.inStock || product.stockQty < item.quantity) {
-        return err(`Insufficient stock for: ${product.name} (available: ${product.stockQty})`, 400)
+
+      // Check variant if provided
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId)
+        if (!variant) return err(`Variant not found: ${item.variantId}`, 400)
+        if (!variant.isActive) return err(`Variant is not available: ${variant.name}`, 400)
+        if (!variant.inStock || variant.stockQty < item.quantity) {
+          return err(`Insufficient stock for variant: ${variant.name} (available: ${variant.stockQty})`, 400)
+        }
+      } else {
+        if (!product.inStock || product.stockQty < item.quantity) {
+          return err(`Insufficient stock for: ${product.name} (available: ${product.stockQty})`, 400)
+        }
       }
     }
 
-    // Generate order number
+    // ── Validate affiliate code (if provided) ──────────────
+    let affiliate: { id: string; code: string } | null = null
+    if (data.affiliateCode) {
+      const found = await db.affiliate.findUnique({
+        where: { code: data.affiliateCode },
+        select: { id: true, code: true, isActive: true },
+      })
+      if (found && found.isActive) {
+        affiliate = { id: found.id, code: found.code }
+      }
+      // If affiliate code is invalid/inactive, we still create the order — just no commission
+    }
+
+    // ── Build order items and calculate totals ──────────────
     const count = await db.order.count()
     const orderNumber = `CGC-${String(count + 1).padStart(6, '0')}`
 
     let totalAmount = 0
-    const orderItems = data.items.map(item => {
+    const orderItemsData: Array<{
+      productId: string
+      variantId?: string
+      productName: string
+      variantName?: string
+      quantity: number
+      unitPrice: number
+      totalPrice: number
+      isPack: boolean
+      packSize?: number
+      totalUnits?: number
+    }> = []
+
+    // Track commission inputs for post-order calculation
+    const commissionInputs: CommissionInput[] = []
+
+    for (const item of data.items) {
       const product = productMap.get(item.productId)!
-      const unitPrice = product.price
+      const variant = item.variantId ? variantMap.get(item.variantId) : undefined
+
+      // Determine unit price: variant overrides product
+      const unitPrice = variant ? variant.price : product.price
       const totalPrice = unitPrice * item.quantity
       totalAmount += totalPrice
-      return {
+
+      const isPack = item.isPack ?? false
+      const packSize = isPack ? (item.packSize ?? product.packSize ?? 1) : undefined
+      const totalUnits = calculateTotalUnits(item.quantity, isPack, packSize)
+
+      orderItemsData.push({
         productId: product.id,
+        variantId: variant?.id,
         productName: product.name,
+        variantName: variant?.name,
         quantity: item.quantity,
         unitPrice,
         totalPrice,
-      }
-    })
+        isPack,
+        packSize,
+        totalUnits,
+      })
 
+      // Prepare commission input (will only be used if affiliate is valid)
+      commissionInputs.push({
+        productId: product.id,
+        variantId: variant?.id,
+        productName: product.name,
+        variantName: variant?.name,
+        quantity: item.quantity,
+        unitPrice,
+        isPack,
+        packSize,
+        totalUnits,
+      })
+    }
+
+    // ── Create order ────────────────────────────────────────
     const order = await db.order.create({
       data: {
         orderNumber,
@@ -142,14 +221,104 @@ export async function POST(request: NextRequest) {
         city: data.city,
         totalAmount,
         notes: data.notes,
+        affiliateCode: affiliate?.code ?? null,
+        affiliateId: affiliate?.id ?? null,
         items: {
-          create: orderItems,
+          create: orderItemsData,
         },
       },
       include: { items: true },
     })
 
-    // Deduct stock
+    // ── Calculate and create commissions (if affiliate is valid) ──
+    let totalCommission = 0
+    if (affiliate) {
+      const commissionResults: Array<{
+        orderItemId: string
+        commissionPerUnit: number
+        commissionTotal: number
+      }> = []
+
+      for (let i = 0; i < commissionInputs.length; i++) {
+        const cInput = commissionInputs[i]
+        const orderItem = order.items[i]
+
+        // Get commissionPerUnit: variant overrides product
+        const product = productMap.get(cInput.productId)!
+        const variant = cInput.variantId ? variantMap.get(cInput.variantId) : undefined
+
+        const commissionPerUnit = variant?.commissionPerUnit ?? product.commissionPerUnit ?? null
+
+        const result = calculateItemCommission(cInput, commissionPerUnit)
+        if (result) {
+          commissionResults.push({
+            orderItemId: orderItem.id,
+            commissionPerUnit: result.commissionPerUnit,
+            commissionTotal: result.commissionTotal,
+          })
+        }
+      }
+
+      // Create Commission records and update OrderItems in a transaction
+      if (commissionResults.length > 0) {
+        await db.$transaction(async (tx) => {
+          for (const cr of commissionResults) {
+            const orderItem = order.items.find(oi => oi.id === cr.orderItemId)!
+            const cInput = commissionInputs[order.items.indexOf(orderItem)]!
+
+            // Create Commission record
+            await tx.commission.create({
+              data: {
+                affiliateId: affiliate!.id,
+                orderId: order.id,
+                orderItemId: cr.orderItemId,
+                affiliateCode: affiliate!.code,
+                productId: cInput.productId,
+                variantId: cInput.variantId,
+                productName: cInput.productName,
+                variantName: cInput.variantName,
+                quantity: cInput.totalUnits,
+                unitPrice: cInput.unitPrice,
+                totalSaleAmount: cInput.quantity * cInput.unitPrice,
+                commissionPerUnit: cr.commissionPerUnit,
+                commissionTotal: cr.commissionTotal,
+                status: 'pending',
+              },
+            })
+
+            // Update OrderItem with commission data
+            await tx.orderItem.update({
+              where: { id: cr.orderItemId },
+              data: {
+                commissionPerUnit: cr.commissionPerUnit,
+                commissionTotal: cr.commissionTotal,
+                affiliateCode: affiliate!.code,
+              },
+            })
+          }
+
+          // Sum total commission
+          totalCommission = commissionResults.reduce((sum, cr) => sum + cr.commissionTotal, 0)
+
+          // Update affiliate earnings
+          await tx.affiliate.update({
+            where: { id: affiliate!.id },
+            data: {
+              pendingEarnings: { increment: totalCommission },
+              totalOrders: { increment: 1 },
+            },
+          })
+        })
+      } else {
+        // No commission items, but still increment totalOrders
+        await db.affiliate.update({
+          where: { id: affiliate.id },
+          data: { totalOrders: { increment: 1 } },
+        })
+      }
+    }
+
+    // ── Deduct stock ────────────────────────────────────────
     for (const item of data.items) {
       const product = productMap.get(item.productId)!
       const newStock = product.stockQty - item.quantity
@@ -160,9 +329,22 @@ export async function POST(request: NextRequest) {
           inStock: newStock > 0,
         },
       })
+
+      // Also deduct variant stock if applicable
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId)!
+        const newVariantStock = variant.stockQty - item.quantity
+        await db.productVariant.update({
+          where: { id: variant.id },
+          data: {
+            stockQty: newVariantStock,
+            inStock: newVariantStock > 0,
+          },
+        })
+      }
     }
 
-    // Award loyalty points: 1 point per 1000 FCFA spent
+    // ── Award loyalty points: 1 point per 1000 FCFA spent ──
     const earnedPoints = Math.floor(totalAmount / 1000)
     if (earnedPoints > 0) {
       await db.loyaltyPoint.create({
@@ -175,10 +357,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return ok({ ...order, earnedPoints }, 201)
+    return ok({ ...order, earnedPoints, totalCommission }, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(e => e.message).join(', ')
+      const messages = error.issues.map(e => e.message).join(', ')
       return err(messages, 400)
     }
     console.error('Orders POST error:', error)

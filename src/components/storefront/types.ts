@@ -1,3 +1,17 @@
+export interface ProductVariantType {
+  id: string
+  name: string
+  slug: string
+  price: number
+  wholesalePrice: number | null
+  packPrice: number | null
+  commissionPerUnit: number | null
+  image: string | null
+  inStock: boolean
+  stockQty: number
+  isActive: boolean
+}
+
 export interface ProductType {
   id: string
   name: string
@@ -19,6 +33,10 @@ export interface ProductType {
   createdAt?: string | null
   averageRating?: number
   reviewCount?: number
+  variants?: ProductVariantType[]
+  packSize?: number | null
+  packPrice?: number | null
+  commissionPerUnit?: number | null
 }
 
 export interface CategoryType {

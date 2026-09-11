@@ -7,17 +7,23 @@ export interface CartItem {
   image: string | null
   volume: string | null
   quantity: number
+  variantId?: string | null
+  variantName?: string | null
 }
 
 interface CartStore {
   items: CartItem[]
   isOpen: boolean
+  affiliateCode: string | null
+  affiliateName: string | null
   addItem: (item: Omit<CartItem, 'quantity'>) => void
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
   toggleCart: () => void
   setCartOpen: (open: boolean) => void
+  setAffiliateCode: (code: string | null, name?: string | null) => void
+  clearAffiliateCode: () => void
   totalItems: () => number
   totalPrice: () => number
 }
@@ -25,16 +31,24 @@ interface CartStore {
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
   isOpen: false,
+  affiliateCode: null,
+  affiliateName: null,
   
   addItem: (item) => {
     const items = get().items
-    const existing = items.find((i) => i.id === item.id)
+    // Use composite key: id + variantId for uniqueness
+    const itemKey = item.variantId ? `${item.id}_${item.variantId}` : item.id
+    const existing = items.find((i) => {
+      const existingKey = i.variantId ? `${i.id}_${i.variantId}` : i.id
+      return existingKey === itemKey
+    })
     
     if (existing) {
       set({
-        items: items.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-        ),
+        items: items.map((i) => {
+          const iKey = i.variantId ? `${i.id}_${i.variantId}` : i.id
+          return iKey === itemKey ? { ...i, quantity: i.quantity + 1 } : i
+        }),
       })
     } else {
       set({ items: [...items, { ...item, quantity: 1 }] })
@@ -60,6 +74,9 @@ export const useCartStore = create<CartStore>((set, get) => ({
   
   toggleCart: () => set({ isOpen: !get().isOpen }),
   setCartOpen: (open) => set({ isOpen: open }),
+  
+  setAffiliateCode: (code, name) => set({ affiliateCode: code, affiliateName: name ?? null }),
+  clearAffiliateCode: () => set({ affiliateCode: null, affiliateName: null }),
   
   totalItems: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
   

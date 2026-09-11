@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import { Star, Package, Search, SlidersHorizontal, RotateCcw, Check, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,9 +10,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { formatPrice } from './helpers'
-import type { ProductType, CategoryType } from './types'
+import type { ProductType, CategoryType, ProductVariantType } from './types'
 
 const MAX_COMPARISON = 4
+
+// ── Variant Selector Component ──────────────────────────────
+function VariantSelector({
+  variants,
+  selectedVariantId,
+  onSelect,
+  size = 'sm',
+}: {
+  variants: ProductVariantType[]
+  selectedVariantId: string | null
+  onSelect: (variant: ProductVariantType) => void
+  size?: 'sm' | 'md'
+}) {
+  if (!variants || variants.length === 0) return null
+  const btnBase = size === 'sm'
+    ? 'px-2.5 py-1 text-[11px] rounded-md'
+    : 'px-3 py-1.5 text-xs rounded-lg'
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {variants.map((v) => {
+        const isSelected = selectedVariantId === v.id
+        return (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => onSelect(v)}
+            className={`${btnBase} border transition-all duration-150 font-medium ${
+              isSelected
+                ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                : 'bg-white text-[#555555] border-[#e5e5e5] hover:border-[#1a1a1a]/30 hover:bg-[#f5f5f5]'
+            } ${!v.inStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+            disabled={!v.inStock}
+          >
+            {v.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 interface ProductsSectionProps {
   products: ProductType[] | undefined
@@ -237,122 +277,20 @@ export function ProductsSection({
           <ProductsLoadingSkeleton />
         ) : sortedProducts && sortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {sortedProducts.map((product) => {
-              const discount = product.comparePrice && product.comparePrice > product.price
-                ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
-                : 0
-              const isAdded = quickAddedId === product.id
-
-              return (
-                <div
-                  key={product.id}
-                  className={`group bg-white border border-[#e5e5e5] rounded-xl overflow-hidden hover:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer shadow-sm ${isAdded ? 'ring-1 ring-[#1a1a1a]' : ''}`}
-                  onClick={() => onQuickAdd(product)}
-                >
-                  <div className="relative h-56 bg-[#f5f5f5] overflow-hidden">
-                    {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#f5f5f5] flex items-center justify-center">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4d4d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
-                      className="absolute inset-0 flex items-end justify-center pb-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                      aria-label="Voir les details"
-                    >
-                      <span className="bg-white/90 text-[#1a1a1a] text-xs font-medium px-4 py-2 rounded-lg border border-[#e5e5e5]">
-                        Voir les details
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={(e) => handleWishlistToggle(e, product.id)}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-white"
-                      aria-label="Favori"
-                    >
-                      <Heart className={`w-4 h-4 transition-colors duration-150 ${isWishlisted(product.id) ? 'text-[#dc2626] fill-[#dc2626]' : 'text-[#555555]'}`} />
-                    </button>
-
-                    {discount > 0 && (
-                      <span className="absolute top-3 left-3 bg-[#dc2626] text-white text-[11px] font-medium px-2 py-0.5 rounded">
-                        -{discount}%
-                      </span>
-                    )}
-
-                    <label
-                      className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/90 rounded-full px-2.5 py-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={comparisonIds.includes(product.id)}
-                        onCheckedChange={() => handleCompareToggle(product.id)}
-                      />
-                      <span className="text-[11px] text-[#555555] font-medium">Comparer</span>
-                    </label>
-                  </div>
-
-                  <div className="p-4 flex flex-col flex-1">
-                    {product.category && (
-                      <span className="text-xs text-[#888888] mb-1">{product.category.name}</span>
-                    )}
-                    <h3
-                      onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
-                      className="font-medium text-[#1a1a1a] text-sm mb-1 line-clamp-2 cursor-pointer hover:underline transition-colors duration-150"
-                    >
-                      {product.name}
-                    </h3>
-                    {product.volume && (
-                      <p className="text-xs text-[#888888] mb-2">{product.volume}</p>
-                    )}
-
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <StarRating rating={product.averageRating || 0} size="sm" />
-                      {product.reviewCount && product.reviewCount > 0 && (
-                        <span className="text-xs text-[#888888]">({product.reviewCount})</span>
-                      )}
-                    </div>
-
-                    {!product.inStock && (
-                      <span className="text-xs text-[#dc2626] mb-2 font-medium">Rupture de stock</span>
-                    )}
-                    {product.inStock && product.stockQty > 0 && product.stockQty <= (product.minStockAlert || 10) && (
-                      <span className="text-xs text-[#888888] mb-2">Derniers exemplaires</span>
-                    )}
-
-                    <div className="flex-1" />
-
-                    <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-lg font-bold text-[#1a1a1a]">{formatPrice(product.price)}</span>
-                      {product.comparePrice && product.comparePrice > product.price && (
-                        <span className="text-sm text-[#888888] line-through">{formatPrice(product.comparePrice)}</span>
-                      )}
-                    </div>
-
-                    <Button
-                      onClick={(e) => { e.stopPropagation(); onAddToCart(product) }}
-                      disabled={!product.inStock}
-                      className="w-full font-medium h-10 text-sm bg-[#1a1a1a] hover:bg-[#333] text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {isAdded ? (
-                        <>
-                          <Check className="w-4 h-4 mr-1.5" />
-                          Ajoute
-                        </>
-                      ) : (
-                        'Ajouter'
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
+            {sortedProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                quickAddedId={quickAddedId}
+                comparisonIds={comparisonIds}
+                isWishlisted={isWishlisted}
+                onQuickAdd={onQuickAdd}
+                onViewProduct={onViewProduct}
+                onAddToCart={onAddToCart}
+                onWishlistToggle={handleWishlistToggle}
+                onCompareToggle={handleCompareToggle}
+              />
+            ))}
           </div>
         ) : (
           <div className="text-center py-20">
@@ -374,5 +312,170 @@ export function ProductsSection({
         )}
       </div>
     </section>
+  )
+}
+
+// ── ProductCard with variant state ──────────────────────────
+function ProductCard({
+  product,
+  quickAddedId,
+  comparisonIds,
+  isWishlisted,
+  onQuickAdd,
+  onViewProduct,
+  onAddToCart,
+  onWishlistToggle,
+  onCompareToggle,
+}: {
+  product: ProductType
+  quickAddedId: string | null
+  comparisonIds: string[]
+  isWishlisted: (id: string) => boolean
+  onQuickAdd: (product: ProductType) => void
+  onViewProduct: (product: ProductType) => void
+  onAddToCart: (product: ProductType) => void
+  onWishlistToggle: (e: React.MouseEvent, id: string) => void
+  onCompareToggle: (id: string) => void
+}) {
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+  const variants = product.variants || []
+  const selectedVariant = selectedVariantId ? variants.find(v => v.id === selectedVariantId) : null
+  const displayPrice = selectedVariant ? selectedVariant.price : product.price
+  const displayImage = selectedVariant?.image || product.image
+  const discount = product.comparePrice && product.comparePrice > displayPrice
+    ? Math.round(((product.comparePrice - displayPrice) / product.comparePrice) * 100)
+    : 0
+  const isAdded = quickAddedId === product.id
+  const canAddToCart = selectedVariant ? selectedVariant.inStock : product.inStock
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    // We pass variant info via the cart store addItem through onAddToCart
+    // The parent (StorefrontLayout) will need to handle variant-aware adding
+    onAddToCart(product)
+  }
+
+  return (
+    <div
+      className={`group bg-white border border-[#e5e5e5] rounded-xl overflow-hidden hover:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer shadow-sm ${isAdded ? 'ring-1 ring-[#1a1a1a]' : ''}`}
+      onClick={() => onQuickAdd(product)}
+    >
+      <div className="relative h-56 bg-[#f5f5f5] overflow-hidden">
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="w-full h-full bg-[#f5f5f5] flex items-center justify-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4d4d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          </div>
+        )}
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
+          className="absolute inset-0 flex items-end justify-center pb-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          aria-label="Voir les details"
+        >
+          <span className="bg-white/90 text-[#1a1a1a] text-xs font-medium px-4 py-2 rounded-lg border border-[#e5e5e5]">
+            Voir les details
+          </span>
+        </button>
+
+        <button
+          onClick={(e) => onWishlistToggle(e, product.id)}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-white"
+          aria-label="Favori"
+        >
+          <Heart className={`w-4 h-4 transition-colors duration-150 ${isWishlisted(product.id) ? 'text-[#dc2626] fill-[#dc2626]' : 'text-[#555555]'}`} />
+        </button>
+
+        {discount > 0 && (
+          <span className="absolute top-3 left-3 bg-[#dc2626] text-white text-[11px] font-medium px-2 py-0.5 rounded">
+            -{discount}%
+          </span>
+        )}
+
+        <label
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/90 rounded-full px-2.5 py-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Checkbox
+            checked={comparisonIds.includes(product.id)}
+            onCheckedChange={() => onCompareToggle(product.id)}
+          />
+          <span className="text-[11px] text-[#555555] font-medium">Comparer</span>
+        </label>
+      </div>
+
+      <div className="p-4 flex flex-col flex-1">
+        {product.category && (
+          <span className="text-xs text-[#888888] mb-1">{product.category.name}</span>
+        )}
+        <h3
+          onClick={(e) => { e.stopPropagation(); onViewProduct(product) }}
+          className="font-medium text-[#1a1a1a] text-sm mb-1 line-clamp-2 cursor-pointer hover:underline transition-colors duration-150"
+        >
+          {product.name}
+        </h3>
+        {product.volume && (
+          <p className="text-xs text-[#888888] mb-2">{product.volume}</p>
+        )}
+
+        <div className="flex items-center gap-1.5 mb-2">
+          <StarRating rating={product.averageRating || 0} size="sm" />
+          {product.reviewCount && product.reviewCount > 0 && (
+            <span className="text-xs text-[#888888]">({product.reviewCount})</span>
+          )}
+        </div>
+
+        {!canAddToCart && (
+          <span className="text-xs text-[#dc2626] mb-2 font-medium">Rupture de stock</span>
+        )}
+        {canAddToCart && product.stockQty > 0 && product.stockQty <= (product.minStockAlert || 10) && !selectedVariant && (
+          <span className="text-xs text-[#888888] mb-2">Derniers exemplaires</span>
+        )}
+
+        {/* Variant selector */}
+        {variants.length > 0 && (
+          <div className="mb-2">
+            <VariantSelector
+              variants={variants}
+              selectedVariantId={selectedVariantId}
+              onSelect={(v) => setSelectedVariantId(prev => prev === v.id ? null : v.id)}
+              size="sm"
+            />
+          </div>
+        )}
+
+        <div className="flex-1" />
+
+        <div className="flex items-baseline gap-2 mb-4">
+          <span className="text-lg font-bold text-[#1a1a1a]">{formatPrice(displayPrice)}</span>
+          {product.comparePrice && product.comparePrice > displayPrice && (
+            <span className="text-sm text-[#888888] line-through">{formatPrice(product.comparePrice)}</span>
+          )}
+          {selectedVariant && (
+            <span className="text-[11px] text-[#888888]">({selectedVariant.name})</span>
+          )}
+        </div>
+
+        <Button
+          onClick={handleAddToCart}
+          disabled={!canAddToCart}
+          className="w-full font-medium h-10 text-sm bg-[#1a1a1a] hover:bg-[#333] text-white disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isAdded ? (
+            <>
+              <Check className="w-4 h-4 mr-1.5" />
+              Ajoute
+            </>
+          ) : (
+            'Ajouter'
+          )}
+        </Button>
+      </div>
+    </div>
   )
 }

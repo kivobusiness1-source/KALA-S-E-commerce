@@ -3,12 +3,9 @@ generator client {
 }
 
 datasource db {
-  // ╔══════════════════════════════════════════════════════════════╗
-  // ║  DÉVELOPPEMENT LOCAL → sqlite                              ║
-  // ║  PRODUCTION VERCEL  → postgresql (changer provider + url)   ║
-  // ╚══════════════════════════════════════════════════════════════╝
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // ==================== ADMIN AUTH ====================
@@ -20,13 +17,13 @@ model Admin {
   password  String
   phone     String?
   role      String   @default("staff") // super_admin, admin, staff
-  isActive   Boolean  @default(true)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  sessions       AdminSession[]
-  stockHistories StockHistory[]
-  createdOrders  Order[]       @relation("assignedBy")
-  createdWholesaleOrders WholesaleOrder[] @relation("wholesaleAssignedBy")
+  sessions             AdminSession[]
+  stockHistories       StockHistory[]
+  createdOrders        Order[]              @relation("assignedBy")
+  createdWholesaleOrders WholesaleOrder[]  @relation("wholesaleAssignedBy")
 }
 
 model AdminSession {
@@ -56,28 +53,62 @@ model Category {
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  description String?
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  description     String?
   longDescription String?
-  price       Float
-  comparePrice Float?
-  categoryId  String
-  image       String?
-  images      String    @default("[]") // JSON array of image URLs
-  volume      String?   // e.g. "1L", "5L", "10L"
-  isActive    Boolean   @default(true)
-  isFeatured  Boolean   @default(false)
-  inStock     Boolean   @default(true)
-  stockQty    Int       @default(0)
-  minStockAlert Int     @default(10)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  category    Category  @relation(fields: [categoryId], references: [id])
-  orderItems     OrderItem[]
-  reviews        Review[]
-  stockHistories StockHistory[]
+  price           Float                          // Prix détail (FCFA)
+  comparePrice    Float?                         // Prix barré
+  wholesalePrice  Float?                         // Prix gros (FCFA)
+  packSize        Int?                           // Taille pack (ex: 12 bouteilles, 10 bidons)
+  packPrice       Float?                         // Prix du pack (FCFA)
+  commissionPerUnit Float?                       // Commission partenaire par unité (FCFA)
+  categoryId      String
+  image           String?
+  images          String    @default("[]")       // JSON array of image URLs
+  volume          String?                       // e.g. "750ml", "2.5L", "5L"
+  unit            String    @default("bouteille") // bouteille, bidon, sachet
+  isActive        Boolean   @default(true)
+  isFeatured      Boolean   @default(false)
+  inStock         Boolean   @default(true)
+  stockQty        Int       @default(0)
+  minStockAlert   Int       @default(10)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  category        Category  @relation(fields: [categoryId], references: [id])
+  variants        ProductVariant[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  stockHistories  StockHistory[]
+  commissions     Commission[]
+
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model ProductVariant {
+  id                String   @id @default(cuid())
+  productId         String
+  name              String                        // ex: "Citron", "Pomme", "Fraise"
+  slug              String                        // ex: "citron", "pomme", "fraise"
+  price             Float                         // Prix détail (override parent si défini)
+  wholesalePrice    Float?                        // Prix gros (override parent si défini)
+  packPrice         Float?                        // Prix pack (override parent si défini)
+  commissionPerUnit Float?                        // Commission par unité (override parent si défini)
+  image             String?
+  inStock           Boolean  @default(true)
+  stockQty          Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+  commissions       Commission[]
+
+  @@unique([productId, slug])
+  @@index([productId])
+  @@index([isActive])
 }
 
 // ==================== ORDERS ====================
@@ -98,46 +129,97 @@ model Order {
   assignedBy     Admin?      @relation("assignedBy", fields: [assignedToId], references: [id])
   delivererId    String?
   deliverer      Deliverer?  @relation(fields: [delivererId], references: [id])
-  customerId     String?     // Customer who placed the order (if logged in)
+  customerId     String?
   customer       Customer?   @relation(fields: [customerId], references: [id])
-  affiliateCode  String?     // Affiliate code used in this order
+  affiliateCode  String?     // Code promo partenaire utilisé
+  affiliateId    String?     // ID du partenaire (pour requêtes rapides)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   items          OrderItem[]
   orderNotes     OrderNote[]
-  referral       AffiliateReferral?
+  commissions    Commission[]
 
   @@index([assignedToId])
   @@index([delivererId])
   @@index([status])
   @@index([customerId])
+  @@index([affiliateCode])
+  @@index([affiliateId])
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  orderId     String
-  productId   String
-  productName String
-  quantity    Int
-  unitPrice   Float
-  totalPrice  Float
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product @relation(fields: [productId], references: [id])
+  id               String  @id @default(cuid())
+  orderId          String
+  productId        String
+  variantId        String?                     // ProductVariant ID (si applicable)
+  productName      String
+  variantName      String?                     // ex: "Citron", "Pomme"
+  quantity         Int                         // Quantité commandée (packs ou unités)
+  unitPrice        Float                       // Prix unitaire appliqué
+  totalPrice       Float                       // quantity × unitPrice
+  isPack           Boolean  @default(false)    // Vrai si c'est une vente par pack
+  packSize         Int?                        // Taille du pack (ex: 12, 10)
+  totalUnits       Int?                        // Quantité réelle d'unités (quantity × packSize si pack)
+  commissionPerUnit Float?                     // Commission par unité (FCFA) — snapshot au moment de la vente
+  commissionTotal   Float?                     // Commission totale pour cet item
+  affiliateCode   String?                      // Code promo partenaire (snapshot)
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product @relation(fields: [productId], references: [id])
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  commission      Commission?
 
   @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+// ==================== COMMISSION SYSTEM ====================
+
+model Commission {
+  id              String    @id @default(cuid())
+  affiliateId     String
+  orderId         String
+  orderItemId     String?   @unique                  // Lien vers l'OrderItem spécifique
+  affiliateCode   String                      // Code promo utilisé (snapshot)
+  productId       String
+  variantId       String?                     // ProductVariant ID
+  productName     String                      // Nom du produit (snapshot)
+  variantName     String?                     // Variante (snapshot)
+  quantity        Int                         // Quantité d'unités vendues
+  unitPrice       Float                       // Prix unitaire de vente (snapshot)
+  totalSaleAmount Float                       // Montant total de la vente pour cet item
+  commissionPerUnit Float                     // Commission par unité (snapshot — calculée serveur)
+  commissionTotal   Float                     // Commission totale (quantity × commissionPerUnit)
+  status          String    @default("pending") // pending, validated, paid, cancelled
+  validatedAt     DateTime?
+  paidAt          DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  affiliate       Affiliate @relation(fields: [affiliateId], references: [id])
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product         Product   @relation(fields: [productId], references: [id])
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([affiliateId])
+  @@index([orderId])
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // ==================== CUSTOMER MESSAGES ====================
 
 model Conversation {
-  id        String    @id @default(cuid())
-  sessionId String    @unique // Browser fingerprint / session ID
-  customerName String?
+  id            String    @id @default(cuid())
+  sessionId     String    @unique
+  customerName  String?
   customerEmail String?
-  isRead    Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  messages  Message[]
+  isRead        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  messages      Message[]
 }
 
 model Message {
@@ -158,7 +240,7 @@ model EmailSubscriber {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  source    String   @default("website") // website, order, contact
+  source    String   @default("website")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
@@ -180,10 +262,10 @@ model ContactSubmission {
 // ==================== SITE SETTINGS ====================
 
 model SiteSetting {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
-  type  String @default("string") // string, number, boolean, json
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string")
   updatedAt DateTime @updatedAt
 }
 
@@ -204,16 +286,16 @@ model ActivityLog {
 // ==================== PRODUCT REVIEWS ====================
 
 model Review {
-  id          String   @id @default(cuid())
-  productId   String
-  customerId  String?  // If review is from a logged-in customer
+  id           String   @id @default(cuid())
+  productId    String
+  customerId   String?
   customerName String
-  rating      Int      // 1-5
-  comment     String?
-  isApproved  Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  customer    Customer? @relation(fields: [customerId], references: [id])
+  rating       Int
+  comment      String?
+  isApproved   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer     Customer? @relation(fields: [customerId], references: [id])
 
   @@index([productId])
 }
@@ -228,9 +310,8 @@ model StockHistory {
   changeReason String?
   adminId      String?
   createdAt    DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id])
-  admin   Admin?   @relation(fields: [adminId], references: [id])
+  product      Product  @relation(fields: [productId], references: [id])
+  admin        Admin?   @relation(fields: [adminId], references: [id])
 
   @@index([productId])
   @@index([createdAt])
@@ -255,7 +336,7 @@ model OrderNote {
   id         String   @id @default(cuid())
   orderId    String
   content    String
-  senderType String   @default("admin") // admin, system
+  senderType String   @default("admin")
   createdAt  DateTime @default(now())
   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -266,20 +347,32 @@ model OrderNote {
 // ==================== DELIVERER (LIVREUR) ====================
 
 model Deliverer {
-  id          String   @id @default(cuid())
-  name        String
-  phone       String   @unique
-  email       String?
-  zone        String?  // Zone de livraison (ex: Centre-ville, Loandjili)
-  vehicle     String?  // Type de véhicule (moto, vélo, camionnette)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  orders      Order[]
-  wholesaleOrders WholesaleOrder[]
+  id                String   @id @default(cuid())
+  name              String
+  phone             String   @unique
+  email             String?
+  zone              String?
+  vehicle           String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  orders            Order[]
+  wholesaleOrders   WholesaleOrder[]
+  sessions          DelivererSession[]
 
   @@index([zone])
   @@index([isActive])
+}
+
+model DelivererSession {
+  id          String    @id @default(cuid())
+  delivererId String
+  token       String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  deliverer   Deliverer @relation(fields: [delivererId], references: [id], onDelete: Cascade)
+
+  @@index([token])
 }
 
 // ==================== ADVERTISING / CATCHPHRASES ====================
@@ -287,7 +380,7 @@ model Deliverer {
 model Catchphrase {
   id        String   @id @default(cuid())
   text      String
-  position  String   @default("hero") // hero, promo_bar, product_page, footer
+  position  String   @default("hero")
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
@@ -303,14 +396,14 @@ model WholesaleProduct {
   id            String   @id @default(cuid())
   name          String
   description   String?
-  lotSize       Int      // Number of units per lot (e.g., 10 bottles for liquid soap)
-  lotUnit       String   @default("bouteilles") // Unit name: bouteilles, bidons, sachets, etc.
-  pricePerLot   Float    // Price per lot in FCFA
-  comparePrice  Float?   // Compare/strikethrough price per lot
+  lotSize       Int
+  lotUnit       String   @default("bouteilles")
+  pricePerLot   Float
+  comparePrice  Float?
   image         String?
   isActive      Boolean  @default(true)
-  minLots       Int      @default(5) // Minimum number of lots per order
-  stockLots     Int      @default(0) // Available stock in lots
+  minLots       Int      @default(5)
+  stockLots     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   orderItems    WholesaleOrderItem[]
@@ -320,37 +413,31 @@ model WholesaleProduct {
 
 model WholesaleOrder {
   id              String      @id @default(cuid())
-  orderNumber     String      @unique // e.g., GRO-XXXXXX
-  trackingCode    String      @unique // Code for customer to track order
-  // Customer info
+  orderNumber     String      @unique
+  trackingCode    String      @unique
   customerName    String
   customerEmail   String
   customerPhone   String
-  companyName     String?     // Company / business name
-  nif             String?     // NIF (Numéro d'Identification Fiscale)
-  stat            String?     // STAT
+  companyName     String?
+  nif             String?
+  stat            String?
   address         String
   city            String      @default("Brazzaville")
-  quartier        String?     // Neighborhood
-  // Order details
-  status          String      @default("pending") // pending, confirmed, processing, ready, shipped, delivered, cancelled
+  quartier        String?
+  status          String      @default("pending")
   totalAmount     Float
   notes           String?
-  // Payment
   paymentMethodId String?
   paymentMethod   WholesalePaymentMethod? @relation(fields: [paymentMethodId], references: [id])
-  paymentStatus   String      @default("unpaid") // unpaid, partial, paid
-  paymentRef      String?     // Payment reference/transaction ID
-  paymentProof    String?     // Uploaded proof of payment (image URL)
-  // Delivery
-  deliveryAddress String?     // If different from address
+  paymentStatus   String      @default("unpaid")
+  paymentRef      String?
+  paymentProof    String?
+  deliveryAddress String?
   deliveryZone    String?
   delivererId     String?
   deliverer       Deliverer?  @relation(fields: [delivererId], references: [id])
-  // Admin
   assignedToId    String?
   assignedBy      Admin?      @relation("wholesaleAssignedBy", fields: [assignedToId], references: [id])
-  // Timestamps
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           WholesaleOrderItem[]
@@ -367,12 +454,12 @@ model WholesaleOrderItem {
   orderId             String
   wholesaleProductId  String
   productName         String
-  lotsQuantity        Int      // Number of lots
-  lotSize             Int      // Units per lot (snapshot)
-  lotUnit             String   // Unit name (snapshot)
-  totalUnits          Int      // lotsQuantity * lotSize
-  pricePerLot         Float    // Price per lot (snapshot)
-  totalPrice          Float    // lotsQuantity * pricePerLot
+  lotsQuantity        Int
+  lotSize             Int
+  lotUnit             String
+  totalUnits          Int
+  pricePerLot         Float
+  totalPrice          Float
   order               WholesaleOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product             WholesaleProduct      @relation(fields: [wholesaleProductId], references: [id])
 
@@ -383,7 +470,7 @@ model WholesaleOrderNote {
   id         String   @id @default(cuid())
   orderId    String
   content    String
-  senderType String   @default("admin") // admin, system, customer
+  senderType String   @default("admin")
   createdAt  DateTime @default(now())
   order      WholesaleOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -393,13 +480,13 @@ model WholesaleOrderNote {
 
 model WholesalePaymentMethod {
   id          String   @id @default(cuid())
-  name        String   // e.g., "M-Pesa", "Airtel Money", "Espèces"
-  description String?  // Instructions or details
-  accountInfo String?  // Phone number or account for mobile money
-  icon        String?  // Icon name or emoji
+  name        String
+  description String?
+  accountInfo String?
+  icon        String?
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
-  isCash      Boolean  @default(false) // Whether this is cash payment
+  isCash      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   orders      WholesaleOrder[]
@@ -410,28 +497,26 @@ model WholesalePaymentMethod {
 // ==================== CUSTOMER AUTH ====================
 
 model Customer {
-  id          String    @id @default(cuid())
-  email       String    @unique
-  name        String
-  phone       String?
-  password    String
-  address     String?
-  city        String    @default("Pointe-Noire")
-  quartier    String?   // Neighborhood
-  isActive    Boolean   @default(true)
-  emailVerified Boolean @default(false)
-  // Affiliate link
-  affiliateId String?   @unique // If this customer is also an affiliate
-  affiliate   Affiliate? @relation("customerAffiliate", fields: [affiliateId], references: [id])
-  // Referral tracking — which affiliate referred this customer
-  referredById String?
-  referredBy   Affiliate? @relation("referredCustomers", fields: [referredById], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  sessions    CustomerSession[]
-  orders      Order[]
-  reviews     Review[]
-  referral    AffiliateReferral?
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  phone         String?
+  password      String
+  address       String?
+  city          String    @default("Pointe-Noire")
+  quartier      String?
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  affiliateId   String?   @unique
+  affiliate     Affiliate? @relation("customerAffiliate", fields: [affiliateId], references: [id])
+  referredById  String?
+  referredBy    Affiliate? @relation("referredCustomers", fields: [referredById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      CustomerSession[]
+  orders        Order[]
+  reviews       Review[]
+  referrals     AffiliateReferral[]
 
   @@index([email])
   @@index([referredById])
@@ -452,28 +537,28 @@ model CustomerSession {
 
 model Affiliate {
   id              String    @id @default(cuid())
-  code            String    @unique // Unique affiliate code (e.g., "KALA-MARIAM")
-  name            String    // Partner full name
+  code            String    @unique // Code promo unique (ex: "ALDI001", "KALA-MARIAM")
+  name            String
   email           String    @unique
   phone           String?
-  password        String    // Separate login for affiliate dashboard
-  company         String?   // Company name
-  commissionRate  Float     @default(5.0) // Commission % (e.g., 5.0 = 5%)
-  bankInfo        String?   // Bank account or mobile money info for payouts
+  password        String
+  company         String?
+  commissionRate  Float     @default(5.0) // Taux global (%) — peut être overridden per-produit
+  bankInfo        String?
   isActive        Boolean   @default(true)
-  totalEarnings   Float     @default(0)  // Lifetime earnings in FCFA
-  pendingEarnings Float     @default(0)  // Unpaid earnings
-  paidEarnings    Float     @default(0)  // Already paid out
-  totalReferrals  Int       @default(0)  // Total customers referred
-  totalOrders     Int       @default(0)  // Total orders from referrals
+  totalEarnings   Float     @default(0)
+  pendingEarnings Float     @default(0)
+  paidEarnings    Float     @default(0)
+  totalReferrals  Int       @default(0)
+  totalOrders     Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  // Relations
   customer        Customer?  @relation("customerAffiliate")
   referredCustomers Customer[] @relation("referredCustomers")
   referrals       AffiliateReferral[]
   payouts         AffiliatePayout[]
   sessions        AffiliateSession[]
+  commissions     Commission[]
 
   @@index([code])
   @@index([isActive])
@@ -493,27 +578,27 @@ model AffiliateSession {
 model AffiliateReferral {
   id            String    @id @default(cuid())
   affiliateId   String
-  customerId    String    @unique // One referral per customer
-  orderId       String?   @unique // First order that triggered the commission
-  orderAmount   Float     @default(0) // Amount of the referred order
-  commission    Float     @default(0) // Commission earned from this referral
-  status        String    @default("pending") // pending, earned, paid
+  customerId    String    // Client référé
+  orderId       String?   // Première commande
+  orderAmount   Float     @default(0)
+  commission    Float     @default(0)
+  status        String    @default("pending") // pending, earned, paid, cancelled
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   affiliate     Affiliate @relation(fields: [affiliateId], references: [id])
   customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  order         Order?    @relation(fields: [orderId], references: [id])
 
   @@index([affiliateId])
+  @@index([customerId])
   @@index([status])
 }
 
 model AffiliatePayout {
   id            String    @id @default(cuid())
   affiliateId   String
-  amount        Float     // Amount paid out in FCFA
+  amount        Float
   method        String    // "mobile_money", "bank_transfer", "cash"
-  reference     String?   // Transaction reference
+  reference     String?
   status        String    @default("pending") // pending, completed, failed
   notes         String?
   createdAt     DateTime  @default(now())
@@ -523,5 +608,52 @@ model AffiliatePayout {
   @@index([status])
 }
 
-// ==================== REMOVED OLD MODELS ====================
-// User and Post models have been replaced with the above business models.
+// ==================== ENTERPRISE / BUSINESS DATA ====================
+
+model Contract {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  type          String    @default("service") // service, partnership, supply, distribution
+  status        String    @default("draft") // draft, active, expired, terminated
+  ownerId       String
+  ownerType     String    // "customer" or "affiliate"
+  value         Float     @default(0)
+  startDate     DateTime?
+  endDate       DateTime?
+  terms         String?
+  documentUrl   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([ownerType])
+  @@index([status])
+}
+
+model BusinessProfile {
+  id                  String    @id @default(cuid())
+  ownerId             String    @unique
+  ownerType           String    // "customer" or "affiliate"
+  businessName        String?
+  businessType        String?
+  registrationNumber  String?
+  nif                 String?
+  stat                String?
+  rccm                String?
+  businessEmail       String?
+  businessPhone       String?
+  website             String?
+  businessAddress     String?
+  businessCity        String?
+  businessCountry     String    @default("Congo")
+  description         String?
+  logoUrl             String?
+  isVerified          Boolean   @default(false)
+  verifiedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([ownerType])
+}

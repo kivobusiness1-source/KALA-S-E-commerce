@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Truck, Star, Heart } from 'lucide-react'
+import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Truck, Star, Heart, Tag, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -32,8 +32,10 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { formatPrice, getInitials } from './helpers'
 import type { CartItem } from '@/stores/cart-store'
+import { useCartStore } from '@/stores/cart-store'
 import type { ProductType, ReviewType } from './types'
 
 export const DELIVERY_ZONES = [
@@ -98,6 +100,11 @@ interface CartSheetProps {
   earnedPoints: number
   // Related products
   products: ProductType[]
+  // Affiliate
+  affiliateCode: string | null
+  affiliateName: string | null
+  setAffiliateCode: (code: string | null, name?: string | null) => void
+  clearAffiliateCode: () => void
 }
 
 function QuantityControl({
@@ -162,12 +169,60 @@ export function CartSheet({
   onReviewSubmit,
   earnedPoints,
   products: allProducts,
+  affiliateCode,
+  affiliateName,
+  setAffiliateCode,
+  clearAffiliateCode,
 }: CartSheetProps) {
   const [productQty, setProductQty] = useState(1)
   const [isFavorited, setIsFavorited] = useState(false)
   const [selectedImageIdx, setSelectedImageIdx] = useState(0)
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number } | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
+
+  // Promo / affiliate code state
+  const [promoInput, setPromoInput] = useState('')
+  const [promoValidating, setPromoValidating] = useState(false)
+  const [promoError, setPromoError] = useState('')
+
+  // Variant selector state for product detail
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+
+  const handleApplyPromo = useCallback(async () => {
+    const code = promoInput.trim().toUpperCase()
+    if (!code) return
+    setPromoValidating(true)
+    setPromoError('')
+    try {
+      const res = await fetch(`/api/affiliate-validate?code=${encodeURIComponent(code)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.valid && data.affiliate) {
+          setAffiliateCode(code, data.affiliate.name)
+          // Persist in localStorage and cookie
+          localStorage.setItem('kalas_affiliate_ref', code)
+          document.cookie = `kalas_affiliate_ref=${encodeURIComponent(code)};path=/;max-age=${30 * 24 * 60 * 60};SameSite=Lax`
+        } else {
+          setPromoError('Code invalide ou inactif')
+          setAffiliateCode(null)
+        }
+      } else {
+        setPromoError('Erreur de validation')
+      }
+    } catch {
+      setPromoError('Erreur de connexion')
+    } finally {
+      setPromoValidating(false)
+    }
+  }, [promoInput, setAffiliateCode])
+
+  const handleRemovePromo = useCallback(() => {
+    clearAffiliateCode()
+    setPromoInput('')
+    setPromoError('')
+    localStorage.removeItem('kalas_affiliate_ref')
+    document.cookie = 'kalas_affiliate_ref=;path=/;max-age=0'
+  }, [clearAffiliateCode])
 
   const zone = DELIVERY_ZONES.find((z) => z.id === deliveryZone) || DELIVERY_ZONES[0]
   const deliveryFee = useMemo(() => {
@@ -363,6 +418,62 @@ export function CartSheet({
                     </div>
                   )}
                   <Separator className="bg-[#e5e5e5]" />
+
+                  {/* Promo / affiliate code section */}
+                  <div className="space-y-2">
+                    {affiliateCode ? (
+                      <div className="flex items-center justify-between bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-[#16a34a] shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[#16a34a] truncate">Code partenaire appliqué</p>
+                            <p className="text-[11px] text-[#15803d] truncate">
+                              {affiliateCode}{affiliateName ? ` — ${affiliateName}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleRemovePromo}
+                          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#dcfce7] text-[#16a34a] transition-colors"
+                          aria-label="Retirer le code"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-[#888888]" />
+                          <span className="text-xs font-medium text-[#1a1a1a]">Code promo partenaire</span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input
+                            placeholder="Ex : ALDI001"
+                            value={promoInput}
+                            onChange={(e) => { setPromoInput(e.target.value); setPromoError('') }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyPromo() } }}
+                            className="h-8 text-xs border-[#e5e5e5] focus-visible:ring-[#1a1a1a]/10 focus-visible:border-[#1a1a1a]/30"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleApplyPromo}
+                            disabled={promoValidating || !promoInput.trim()}
+                            className="shrink-0 h-8 px-3 text-xs border-[#e5e5e5] text-[#1a1a1a] hover:bg-[#f5f5f5]"
+                          >
+                            {promoValidating ? <Loader2 className="w-3 h-3 animate-spin" /> : 'OK'}
+                          </Button>
+                        </div>
+                        {promoError && (
+                          <div className="flex items-center gap-1 text-[#dc2626]">
+                            <XCircle className="w-3 h-3 shrink-0" />
+                            <span className="text-[11px]">{promoError}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <span className="text-[#1a1a1a] font-semibold">Total</span>
                     <span className="text-xl font-bold text-[#1a1a1a]">{formatPrice(totalPrice + deliveryFee)}</span>
@@ -441,6 +552,58 @@ export function CartSheet({
                   className="border-[#e5e5e5] focus-visible:ring-[#1a1a1a]/10 focus-visible:border-[#1a1a1a]/30"
                 />
               </div>
+
+              {/* Promo / affiliate code in order form */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-[#888888]" />
+                  <Label className="text-xs font-medium text-[#1a1a1a] cursor-default">Code promo partenaire</Label>
+                </div>
+                {affiliateCode ? (
+                  <div className="flex items-center justify-between bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-[#16a34a] shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[#16a34a] truncate">{affiliateCode}</p>
+                        {affiliateName && <p className="text-[11px] text-[#15803d] truncate">{affiliateName}</p>}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#dcfce7] text-[#16a34a] transition-colors"
+                      aria-label="Retirer le code"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ex : ALDI001"
+                      value={promoInput}
+                      onChange={(e) => { setPromoInput(e.target.value); setPromoError('') }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyPromo() } }}
+                      className="h-9 text-sm border-[#e5e5e5] focus-visible:ring-[#1a1a1a]/10 focus-visible:border-[#1a1a1a]/30"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleApplyPromo}
+                      disabled={promoValidating || !promoInput.trim()}
+                      className="shrink-0 h-9 px-4 text-sm border-[#e5e5e5] text-[#1a1a1a] hover:bg-[#f5f5f5]"
+                    >
+                      {promoValidating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Appliquer'}
+                    </Button>
+                  </div>
+                )}
+                {promoError && !affiliateCode && (
+                  <div className="flex items-center gap-1 text-[#dc2626]">
+                    <XCircle className="w-3 h-3 shrink-0" />
+                    <span className="text-xs">{promoError}</span>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3">
                 <Button
                   type="button"
@@ -494,6 +657,14 @@ export function CartSheet({
                     <span>Livraison</span>
                     <span className={deliveryFee === 0 ? 'text-[#16a34a]' : ''}>{deliveryFee === 0 ? 'Gratuite' : formatPrice(deliveryFee)}</span>
                   </div>
+                  {affiliateCode && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#16a34a]">Code partenaire</span>
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-[#bbf7d0] text-[#16a34a] bg-[#f0fdf4] font-normal">
+                        {affiliateCode}
+                      </Badge>
+                    </div>
+                  )}
                   <Separator className="bg-[#e5e5e5]" />
                   <div className="flex justify-between font-bold text-sm">
                     <span className="text-[#1a1a1a]">Total</span>
@@ -507,7 +678,7 @@ export function CartSheet({
       </Dialog>
 
       {/* Product Detail Dialog */}
-      <Dialog key={selectedProduct?.id || 'none'} open={!!selectedProduct} onOpenChange={(open) => { if (!open) { setSelectedProduct(null); setProductQty(1); setIsFavorited(false) } }}>
+      <Dialog key={selectedProduct?.id || 'none'} open={!!selectedProduct} onOpenChange={(open) => { if (!open) { setSelectedProduct(null); setProductQty(1); setIsFavorited(false); setSelectedVariantId(null) } }}>
         <DialogContent className="sm:max-w-3xl max-w-[95vw] max-h-[90vh] overflow-y-auto p-0">
           {selectedProduct && (
             <div className="flex flex-col md:flex-row">
@@ -615,7 +786,13 @@ export function CartSheet({
 
                 {/* Price */}
                 <div className="flex items-baseline gap-3 mb-3">
-                  <span className="text-2xl font-bold text-[#1a1a1a]">{formatPrice(selectedProduct.price)}</span>
+                  <span className="text-2xl font-bold text-[#1a1a1a]">
+                    {formatPrice(
+                      selectedVariantId && selectedProduct.variants
+                        ? (selectedProduct.variants.find(v => v.id === selectedVariantId)?.price ?? selectedProduct.price)
+                        : selectedProduct.price
+                    )}
+                  </span>
                   {selectedProduct.comparePrice && selectedProduct.comparePrice > selectedProduct.price && (
                     <>
                       <span className="text-base text-[#888888] line-through">{formatPrice(selectedProduct.comparePrice)}</span>
@@ -624,7 +801,47 @@ export function CartSheet({
                       </span>
                     </>
                   )}
+                  {selectedVariantId && selectedProduct.variants && (
+                    <span className="text-sm text-[#888888] font-medium">
+                      ({selectedProduct.variants.find(v => v.id === selectedVariantId)?.name})
+                    </span>
+                  )}
                 </div>
+
+                {/* Variant selector */}
+                {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-[#1a1a1a] mb-2">Variante :</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVariantId(null)}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-all duration-150 font-medium ${
+                          !selectedVariantId
+                            ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                            : 'bg-white text-[#555555] border-[#e5e5e5] hover:border-[#1a1a1a]/30 hover:bg-[#f5f5f5]'
+                        }`}
+                      >
+                        Standard
+                      </button>
+                      {selectedProduct.variants.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setSelectedVariantId(v.id)}
+                          className={`px-3 py-1.5 text-xs rounded-lg border transition-all duration-150 font-medium ${
+                            selectedVariantId === v.id
+                              ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
+                              : 'bg-white text-[#555555] border-[#e5e5e5] hover:border-[#1a1a1a]/30 hover:bg-[#f5f5f5]'
+                          } ${!v.inStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                          disabled={!v.inStock}
+                        >
+                          {v.name} — {formatPrice(v.price)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Stock status */}
                 <div className="flex items-center gap-2 mb-4">
@@ -679,7 +896,22 @@ export function CartSheet({
                       <Heart className={`w-4 h-4 ${isFavorited ? 'fill-[#dc2626] text-[#dc2626]' : ''}`} />
                     </Button>
                     <Button
-                      onClick={() => { onAddToCart(selectedProduct, productQty); setSelectedProduct(null); setProductQty(1) }}
+                      onClick={() => {
+                        const variant = selectedVariantId && selectedProduct.variants
+                          ? selectedProduct.variants.find(v => v.id === selectedVariantId)
+                          : undefined
+                        onAddToCart(
+                          {
+                            ...selectedProduct,
+                            price: variant ? variant.price : selectedProduct.price,
+                            image: variant?.image || selectedProduct.image,
+                          },
+                          productQty
+                        )
+                        setSelectedProduct(null)
+                        setProductQty(1)
+                        setSelectedVariantId(null)
+                      }}
                       className="flex-1 bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-semibold h-11"
                     >
                       <ShoppingCart className="w-4 h-4 mr-2" />

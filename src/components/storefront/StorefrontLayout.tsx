@@ -130,6 +130,60 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
     affiliateAuth.fetchMe()
   }, [])
 
+  // Capture ?ref= affiliate URL parameter on mount
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const refCode = params.get('ref')
+      if (refCode) {
+        // Store in localStorage for persistence
+        localStorage.setItem('kalas_affiliate_ref', refCode)
+        // Store in cookie (expires in 30 days)
+        document.cookie = `kalas_affiliate_ref=${encodeURIComponent(refCode)};path=/;max-age=${30 * 24 * 60 * 60};SameSite=Lax`
+        // Apply to cart store (validate async)
+        ;(async () => {
+          try {
+            const res = await fetch(`/api/affiliate-validate?code=${encodeURIComponent(refCode)}`)
+            if (res.ok) {
+              const data = await res.json()
+              if (data.valid && data.affiliate) {
+                cart.setAffiliateCode(refCode, data.affiliate.name)
+              } else {
+                cart.setAffiliateCode(refCode)
+              }
+            }
+          } catch {
+            cart.setAffiliateCode(refCode)
+          }
+        })()
+        // Clean up URL without reloading
+        const url = new URL(window.location.href)
+        url.searchParams.delete('ref')
+        window.history.replaceState({}, '', url.pathname + url.hash)
+      } else {
+        // Check localStorage / cookie for previously stored code
+        const storedCode = localStorage.getItem('kalas_affiliate_ref')
+        if (storedCode && !cart.affiliateCode) {
+          ;(async () => {
+            try {
+              const res = await fetch(`/api/affiliate-validate?code=${encodeURIComponent(storedCode)}`)
+              if (res.ok) {
+                const data = await res.json()
+                if (data.valid && data.affiliate) {
+                  cart.setAffiliateCode(storedCode, data.affiliate.name)
+                }
+              }
+            } catch {
+              // silently ignore
+            }
+          })()
+        }
+      }
+    } catch {
+      // SSR or no window
+    }
+  }, [])
+
   // Page load animation
   const [pageLoaded, setPageLoaded] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
@@ -325,10 +379,12 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
           ...orderForm,
           items: cart.items.map((item) => ({
             productId: item.id,
+            variantId: item.variantId || undefined,
             name: item.name,
             quantity: item.quantity,
             unitPrice: item.price,
           })),
+          affiliateCode: cart.affiliateCode || undefined,
         }),
       })
       if (res.ok) {
@@ -509,6 +565,10 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
         onReviewSubmit={handleReviewSubmit}
         earnedPoints={earnedPoints}
         products={products || []}
+        affiliateCode={cart.affiliateCode}
+        affiliateName={cart.affiliateName}
+        setAffiliateCode={cart.setAffiliateCode}
+        clearAffiliateCode={cart.clearAffiliateCode}
       />
 
       <ChatWidget />

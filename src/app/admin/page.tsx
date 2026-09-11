@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminStore } from '@/stores/admin-store'
 import { toast } from 'sonner'
 import {
-  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, RefreshCw, History, Star, Inbox, Users, Bike, Megaphone, Warehouse,
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Settings, LogOut, Menu, RefreshCw, History, Star, Inbox, Users, Bike, Megaphone, Warehouse, Handshake,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -27,11 +27,13 @@ import TeamSection from '@/components/admin/TeamSection'
 import LivreursSection from '@/components/admin/LivreursSection'
 import CatchphraseSection from '@/components/admin/CatchphraseSection'
 import WholesaleSection from '@/components/admin/WholesaleSection'
+import PartnersSection from '@/components/admin/PartnersSection'
 
 const ALL_NAV_ITEMS: { key: Section; label: string; icon: React.ReactNode; roles: string[] }[] = [
   { key: 'dashboard', label: 'Tableau de Bord', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff', 'livreur'] },
   { key: 'products', label: 'Produits', icon: <Package className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff'] },
   { key: 'orders', label: 'Commandes', icon: <ShoppingCart className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff', 'livreur'] },
+  { key: 'partners', label: 'Partenaires', icon: <Handshake className="h-5 w-5" />, roles: ['super_admin', 'admin'] },
   { key: 'messages', label: 'Messages', icon: <MessageSquare className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff'] },
   { key: 'contact', label: 'Contact', icon: <Inbox className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff'] },
   { key: 'emails', label: 'Emails', icon: <Mail className="h-5 w-5" />, roles: ['super_admin', 'admin'] },
@@ -292,6 +294,7 @@ export default function AdminPage() {
           {section === 'livreurs' && <LivreursSection />}
           {section === 'catchphrases' && <CatchphraseSection />}
           {section === 'wholesale' && <WholesaleSection />}
+          {section === 'partners' && <PartnersSection />}
         </div>
       </main>
     </div>

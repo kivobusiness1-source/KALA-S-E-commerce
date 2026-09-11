@@ -58,6 +58,10 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         category: true,
+        variants: {
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+        },
         _count: { select: { reviews: true } },
       },
       orderBy: { createdAt: 'desc' },

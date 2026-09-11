@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 
 // ── Helpers ──────────────────────────────────────────────
 
-function ok(data: unknown, status = 200) {
+function ok(data: Record<string, unknown>, status = 200) {
   return NextResponse.json({ success: true, ...data }, { status })
 }
 function err(message: string, status = 400) {
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        code: true,
         isActive: true,
         commissionRate: true,
       },
@@ -35,10 +36,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false })
     }
 
+    // Return affiliate name, code, and isActive status (public endpoint for checkout)
     return NextResponse.json({
       valid: true,
       affiliate: {
+        id: affiliate.id,
         name: affiliate.name,
+        code: affiliate.code,
+        isActive: affiliate.isActive,
         commissionRate: affiliate.commissionRate,
       },
     })
