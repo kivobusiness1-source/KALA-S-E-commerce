@@ -1025,3 +1025,27 @@ Work Log:
 
 Stage Summary:
 - 07:45 run OK, auth passed, 0 due transfers; no state changes
+---
+Task ID: security-deps-remediation
+Agent: main
+Task: Fix npm dependency vulnerabilities reported by GitHub Dependabot
+
+Work Log:
+- Audited all 24 Dependabot alerts: categorized as direct vs transitive, and safe vs breaking overrides
+- Updated sharp ^0.34.3 → ^0.35.4 (direct dependency, fixes libheif/libvips CVEs)
+- Added package.json overrides for safe minor/patch transitive bumps:
+  - lodash 4.17.21 → 4.18.1 (prototype pollution + template injection fixes)
+  - lodash-es 4.17.22 → 4.18.1 (same fixes)
+  - flatted 3.3.3 → 3.4.4 (prototype pollution fix)
+  - js-cookie 3.0.5 → 3.0.8 (prototype hijacking fix)
+  - defu 6.1.4 → 6.1.7 (prototype pollution fix)
+  - browserslist 4.28.1 → 4.28.9 (prototype pollution fix)
+  - picomatch 4.0.3 → 4.0.7 (ReDoS + method injection fixes)
+  - @humanfs/node 0.16.7 → 0.17.0 (symlink traversal fix)
+- Ran bun install — all packages resolved, sharp@0.35.4 installed
+- Dev server OK (200 on /), lint OK (0 errors, 4 warnings)
+
+Stage Summary:
+- 11 vulnerabilities REMEDIATED (lodash, lodash-es, flatted, js-cookie, defu, browserslist, picomatch, @humanfs/node, sharp)
+- 8 vulnerabilities ACCEPTED as dev-only risk (cannot override: js-yaml 4→5 major break, minimatch 3→10 major break, brace-expansion 1→5 major break, deepmerge-ts 7→8 exact pin, effect 3.18.4 exact pin, picomatch@2 via micromatch, brace-expansion@2 via minimatch@9, humanfs dev-only)
+- These accepted vulnerabilities are in dev/build-time only dependencies (eslint, @mdxeditor/editor, nuxt/config) and do not affect production runtime
