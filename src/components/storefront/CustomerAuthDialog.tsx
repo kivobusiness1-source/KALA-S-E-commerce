@@ -20,9 +20,10 @@ interface CustomerAuthDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   defaultTab?: 'login' | 'register'
+  onSwitchToDashboard?: () => void
 }
 
-export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login' }: CustomerAuthDialogProps) {
+export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', onSwitchToDashboard }: CustomerAuthDialogProps) {
   const { login, register } = useCustomerAuthStore()
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab)
 
@@ -77,6 +78,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login' }:
         const customer = useCustomerAuthStore.getState().customer
         toast.success(`Bienvenue, ${customer?.name || 'client'} !`)
         handleClose(false)
+        onSwitchToDashboard?.()
       } else {
         toast.error('Email ou mot de passe incorrect')
       }
@@ -114,6 +116,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login' }:
         const customer = useCustomerAuthStore.getState().customer
         toast.success(`Bienvenue, ${customer?.name || 'client'} !`)
         handleClose(false)
+        onSwitchToDashboard?.()
       } else {
         toast.error('Erreur lors de l\'inscription. Cet email est peut-être déjà utilisé.')
       }

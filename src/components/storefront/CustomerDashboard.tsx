@@ -16,6 +16,12 @@ import {
   Receipt,
   MapPin,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -75,10 +81,12 @@ function StatusBadge({ status }: { status: string }) {
 
 // --- Main component ---
 interface CustomerDashboardProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onLogout?: () => void
 }
 
-export function CustomerDashboard({ onLogout }: CustomerDashboardProps) {
+export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDashboardProps) {
   const { customer, logout, isAuthenticated } = useCustomerAuthStore()
 
   // Orders state
@@ -154,7 +162,12 @@ export function CustomerDashboard({ onLogout }: CustomerDashboardProps) {
   if (!customer) return null
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-6 pb-0 sr-only">
+          <DialogTitle>Mon Compte</DialogTitle>
+        </DialogHeader>
+    <div className="w-full max-w-4xl mx-auto space-y-6 px-6 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -435,5 +448,7 @@ export function CustomerDashboard({ onLogout }: CustomerDashboardProps) {
         )}
       </div>
     </div>
+      </DialogContent>
+    </Dialog>
   )
 }

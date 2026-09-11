@@ -15,6 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAffiliateAuthStore } from '@/stores/affiliate-auth-store'
 import {
   Users,
@@ -181,7 +187,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── Component ────────────────────────────────────────────
 
-export function AffiliateDashboard() {
+interface AffiliateDashboardProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onLogout?: () => void
+}
+
+export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDashboardProps) {
   const { affiliate, logout, isLoading } = useAffiliateAuthStore()
   const [stats, setStats] = useState<AffiliateStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
@@ -259,6 +271,7 @@ export function AffiliateDashboard() {
   const handleLogout = async () => {
     await logout()
     toast.success('Déconnexion réussie')
+    onLogout?.()
   }
 
   if (isLoading) {
@@ -328,7 +341,12 @@ export function AffiliateDashboard() {
   // ── Render ───────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-6 pb-0 sr-only">
+          <DialogTitle>Espace Partenaire</DialogTitle>
+        </DialogHeader>
+    <div className="space-y-6 px-6 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -424,7 +442,7 @@ export function AffiliateDashboard() {
             </div>
             <p className="text-xs text-gray-500 font-medium">Gains totaux</p>
             <p className="text-lg font-bold text-emerald-600">
-              {formatFCFA(affiliate.totalEarnings)}
+              {formatFCFA(stats?.totalEarnings ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -437,7 +455,7 @@ export function AffiliateDashboard() {
             </div>
             <p className="text-xs text-gray-500 font-medium">En attente</p>
             <p className="text-lg font-bold text-orange-600">
-              {formatFCFA(affiliate.pendingEarnings)}
+              {formatFCFA(stats?.pendingEarnings ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -450,7 +468,7 @@ export function AffiliateDashboard() {
             </div>
             <p className="text-xs text-gray-500 font-medium">Gains payés</p>
             <p className="text-lg font-bold text-sky-600">
-              {formatFCFA(affiliate.paidEarnings)}
+              {formatFCFA(stats?.paidEarnings ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -476,7 +494,7 @@ export function AffiliateDashboard() {
             </div>
             <p className="text-xs text-gray-500 font-medium">Filleuls</p>
             <p className="text-lg font-bold text-rose-600">
-              {affiliate.totalReferrals}
+              {stats?.totalReferrals ?? 0}
             </p>
           </CardContent>
         </Card>
@@ -489,7 +507,7 @@ export function AffiliateDashboard() {
             </div>
             <p className="text-xs text-gray-500 font-medium">Commandes</p>
             <p className="text-lg font-bold text-amber-600">
-              {affiliate.totalOrders}
+              {stats?.totalOrders ?? 0}
             </p>
           </CardContent>
         </Card>
@@ -1031,5 +1049,7 @@ export function AffiliateDashboard() {
         </CardContent>
       </Card>
     </div>
+      </DialogContent>
+    </Dialog>
   )
 }

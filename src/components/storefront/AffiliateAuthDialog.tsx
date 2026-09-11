@@ -20,9 +20,10 @@ import { toast } from 'sonner'
 interface AffiliateAuthDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSwitchToDashboard?: () => void
 }
 
-export function AffiliateAuthDialog({ open, onOpenChange }: AffiliateAuthDialogProps) {
+export function AffiliateAuthDialog({ open, onOpenChange, onSwitchToDashboard }: AffiliateAuthDialogProps) {
   const { login, register, isLoading } = useAffiliateAuthStore()
 
   // Login form state
@@ -59,6 +60,7 @@ export function AffiliateAuthDialog({ open, onOpenChange }: AffiliateAuthDialogP
       toast.success('Connexion réussie !')
       resetForms()
       onOpenChange(false)
+      onSwitchToDashboard?.()
     } else {
       toast.error('Email ou mot de passe incorrect')
     }
@@ -82,6 +84,7 @@ export function AffiliateAuthDialog({ open, onOpenChange }: AffiliateAuthDialogP
       toast.success('Inscription réussie ! Bienvenue partenaire KALA\u2019S')
       resetForms()
       onOpenChange(false)
+      onSwitchToDashboard?.()
     } else {
       toast.error('Erreur lors de l\u2019inscription. Veuillez réessayer.')
     }
