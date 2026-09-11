@@ -557,6 +557,7 @@ model Affiliate {
   referredCustomers Customer[] @relation("referredCustomers")
   referrals       AffiliateReferral[]
   payouts         AffiliatePayout[]
+  fundTransferRequests FundTransferRequest[]
   sessions        AffiliateSession[]
   commissions     Commission[]
 
@@ -606,6 +607,27 @@ model AffiliatePayout {
 
   @@index([affiliateId])
   @@index([status])
+}
+
+model FundTransferRequest {
+  id                String    @id @default(cuid())
+  affiliateId       String
+  amount            Float
+  method            String    @default("mobile_money") // "mobile_money", "bank_transfer", "cash"
+  phoneNumber       String?   // Numéro pour mobile money
+  bankInfo          String?   // Infos bancaires
+  status            String    @default("pending") // pending, scheduled, processing, completed, failed, rejected
+  scheduledAt       DateTime  // Date d'exécution (createdAt + 2h)
+  processedAt       DateTime?
+  rejectionReason   String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  affiliate         Affiliate @relation(fields: [affiliateId], references: [id])
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([scheduledAt])
 }
 
 // ==================== ENTERPRISE / BUSINESS DATA ====================

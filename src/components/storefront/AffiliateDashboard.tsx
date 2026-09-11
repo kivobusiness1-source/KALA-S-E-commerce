@@ -43,6 +43,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  ArrowDownToLine,
+  Smartphone,
+  Building2,
+  Timer,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -97,6 +102,20 @@ interface Payout {
   method: string
   status: string
   date: string
+}
+
+interface FundTransferRequestRow {
+  id: string
+  amount: number
+  method: string
+  phoneNumber: string | null
+  bankInfo: string | null
+  status: string
+  scheduledAt: string
+  processedAt: string | null
+  rejectionReason: string | null
+  notes: string | null
+  createdAt: string
 }
 
 interface AffiliateStats {
@@ -205,6 +224,16 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
   // All commissions (fetched from stats) – client-side pagination & period filter
   const [allCommissions, setAllCommissions] = useState<CommissionRow[]>([])
 
+  // Fund transfer state
+  const [transferRequests, setTransferRequests] = useState<FundTransferRequestRow[]>([])
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [showTransferForm, setShowTransferForm] = useState(false)
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferMethod, setTransferMethod] = useState<'mobile_money' | 'bank_transfer' | 'cash'>('mobile_money')
+  const [transferPhone, setTransferPhone] = useState('')
+  const [transferBankInfo, setTransferBankInfo] = useState('')
+  const [transferSubmitting, setTransferSubmitting] = useState(false)
+
   const fetchStats = useCallback(async () => {
     try {
       setStatsLoading(true)
@@ -224,6 +253,37 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
   useEffect(() => {
     fetchStats()
   }, [fetchStats])
+
+  // Fetch transfer requests
+  const fetchTransferRequests = useCallback(async () => {
+    try {
+      setTransferLoading(true)
+      const res = await fetch('/api/affiliate-transfer')
+      if (res.ok) {
+        const data = await res.json()
+        setTransferRequests(data.transfers || [])
+      }
+    } catch {
+      // silent
+    } finally {
+      setTransferLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      fetchTransferRequests()
+    }
+  }, [open, fetchTransferRequests])
+
+  // Countdown timer for scheduled transfers (force re-render every second)
+  const [countdownTick, setCountdownTick] = useState(0)
+  useEffect(() => {
+    const hasScheduled = transferRequests.some((t) => t.status === 'scheduled' || t.status === 'pending')
+    if (!hasScheduled) return
+    const interval = setInterval(() => setCountdownTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [transferRequests, countdownTick])
 
   const affiliateLink = typeof window !== 'undefined'
     ? `${window.location.origin}?ref=${affiliate?.code || ''}`
@@ -527,6 +587,10 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
           <TabsTrigger value="commissions" className="gap-1.5">
             <CreditCard className="w-4 h-4" />
             Commissions
+          </TabsTrigger>
+          <TabsTrigger value="retraits" className="gap-1.5">
+            <ArrowDownToLine className="w-4 h-4" />
+            Retraits
           </TabsTrigger>
         </TabsList>
 
@@ -1021,6 +1085,358 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
                 <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                   <CreditCard className="w-8 h-8 mb-2" />
                   <p className="text-sm">Aucune commission pour cette période</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── TAB: Retraits (Fund Transfers) ───────────── */}
+        <TabsContent value="retraits" className="space-y-6">
+          {/* Available balance card */}
+          <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">
+                    Solde disponible pour retrait
+                  </p>
+                  <p className="text-3xl font-bold text-[#1a1a1a]">
+                    {formatFCFA(stats?.pendingEarnings ?? 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Les fonds seront transférés 2h après votre demande
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowTransferForm(true)}
+                  disabled={(stats?.pendingEarnings ?? 0) < 5000}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <ArrowDownToLine className="w-4 h-4" />
+                  Demander un retrait
+                </Button>
+              </div>
+              {(stats?.pendingEarnings ?? 0) < 5000 && (
+                <div className="flex items-center gap-2 mt-3 text-xs text-orange-600">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Minimum de retrait : 5 000 FCFA</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Transfer request form */}
+          {showTransferForm && (
+            <Card className="border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ArrowDownToLine className="w-4 h-4 text-sky-600" />
+                  Nouvelle demande de retrait
+                </CardTitle>
+                <CardDescription>Les fonds seront envoyés 2h après confirmation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Amount */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Montant (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    placeholder="Ex: 10000"
+                    min={5000}
+                    max={stats?.pendingEarnings ?? 0}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Min: 5 000 FCFA · Max: {formatFCFA(stats?.pendingEarnings ?? 0)}
+                  </p>
+                </div>
+
+                {/* Method */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Méthode de transfert
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'mobile_money', label: 'Mobile Money', icon: Smartphone },
+                      { value: 'bank_transfer', label: 'Virement', icon: Building2 },
+                      { value: 'cash', label: 'Espèces', icon: Wallet },
+                    ] as const).map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setTransferMethod(m.value)}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          transferMethod === m.value
+                            ? 'border-sky-500 bg-sky-50 text-sky-700'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        <m.icon className="w-5 h-5" />
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Phone number (for mobile money) */}
+                {transferMethod === 'mobile_money' && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                      Numéro de téléphone
+                    </label>
+                    <input
+                      type="tel"
+                      value={transferPhone}
+                      onChange={(e) => setTransferPhone(e.target.value)}
+                      placeholder="Ex: 06 123 4567"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Bank info (for bank transfer) */}
+                {transferMethod === 'bank_transfer' && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                      Informations bancaires
+                    </label>
+                    <textarea
+                      value={transferBankInfo}
+                      onChange={(e) => setTransferBankInfo(e.target.value)}
+                      placeholder="Nom de la banque, numéro de compte, RIB..."
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white resize-none"
+                    />
+                  </div>
+                )}
+
+                {/* Timer notice */}
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <Timer className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-700">
+                    <p className="font-semibold">Délai de 2 heures</p>
+                    <p>Vos fonds seront transférés automatiquement 2 heures après la confirmation de votre demande.</p>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    onClick={async () => {
+                      const amount = parseFloat(transferAmount)
+                      if (!amount || amount < 5000) {
+                        toast.error('Le montant minimum est 5 000 FCFA')
+                        return
+                      }
+                      if (amount > (stats?.pendingEarnings ?? 0)) {
+                        toast.error('Le montant dépasse votre solde disponible')
+                        return
+                      }
+                      if (transferMethod === 'mobile_money' && !transferPhone.trim()) {
+                        toast.error('Veuillez entrer votre numéro de téléphone')
+                        return
+                      }
+                      if (transferMethod === 'bank_transfer' && !transferBankInfo.trim()) {
+                        toast.error('Veuillez entrer vos informations bancaires')
+                        return
+                      }
+
+                      setTransferSubmitting(true)
+                      try {
+                        const res = await fetch('/api/affiliate-transfer', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            amount,
+                            method: transferMethod,
+                            phoneNumber: transferMethod === 'mobile_money' ? transferPhone : undefined,
+                            bankInfo: transferMethod === 'bank_transfer' ? transferBankInfo : undefined,
+                          }),
+                        })
+                        const data = await res.json()
+                        if (res.ok && data.success) {
+                          toast.success('Demande de retrait envoyée ! Transfert dans 2h.')
+                          setShowTransferForm(false)
+                          setTransferAmount('')
+                          setTransferPhone('')
+                          setTransferBankInfo('')
+                          setTransferMethod('mobile_money')
+                          fetchTransferRequests()
+                          fetchStats()
+                        } else {
+                          toast.error(data.error || 'Erreur lors de la demande')
+                        }
+                      } catch {
+                        toast.error('Erreur réseau. Veuillez réessayer.')
+                      } finally {
+                        setTransferSubmitting(false)
+                      }
+                    }}
+                    disabled={transferSubmitting}
+                    className="gap-2 bg-sky-600 hover:bg-sky-700 text-white"
+                  >
+                    {transferSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    {transferSubmitting ? 'Envoi en cours...' : 'Confirmer la demande'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTransferForm(false)}
+                    disabled={transferSubmitting}
+                    className="border-gray-200"
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Transfer requests history */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Clock className="w-4 h-4 text-sky-600" />
+                Historique des retraits
+              </CardTitle>
+              <CardDescription>
+                {transferRequests.length} demande{transferRequests.length > 1 ? 's' : ''} de retrait
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transferLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+                </div>
+              ) : transferRequests.length > 0 ? (
+                <div className="space-y-3">
+                  {transferRequests.map((tr) => {
+                    const scheduledDate = new Date(tr.scheduledAt)
+                    const isScheduled = tr.status === 'scheduled'
+                    const isPending = tr.status === 'pending'
+                    const isCompleted = tr.status === 'completed'
+                    const isFailed = tr.status === 'failed'
+                    const isRejected = tr.status === 'rejected'
+                    const isProcessing = tr.status === 'processing'
+
+                    // Countdown for scheduled transfers
+                    const remainingMs = isScheduled ? Math.max(0, scheduledDate.getTime() - Date.now()) : 0
+                    const remainingH = Math.floor(remainingMs / 3600000)
+                    const remainingM = Math.floor((remainingMs % 3600000) / 60000)
+                    const remainingS = Math.floor((remainingMs % 60000) / 1000)
+
+                    const transferStatusLabels: Record<string, string> = {
+                      pending: 'En attente',
+                      scheduled: 'Programmé',
+                      processing: 'En cours',
+                      completed: 'Transféré',
+                      failed: 'Échoué',
+                      rejected: 'Rejeté',
+                    }
+                    const transferStatusColors: Record<string, string> = {
+                      pending: 'bg-orange-100 text-orange-700 border-orange-200',
+                      scheduled: 'bg-sky-100 text-sky-700 border-sky-200',
+                      processing: 'bg-purple-100 text-purple-700 border-purple-200',
+                      completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                      failed: 'bg-red-100 text-red-700 border-red-200',
+                      rejected: 'bg-red-100 text-red-700 border-red-200',
+                    }
+                    const methodLabels: Record<string, string> = {
+                      mobile_money: 'Mobile Money',
+                      bank_transfer: 'Virement bancaire',
+                      cash: 'Espèces',
+                    }
+
+                    return (
+                      <div
+                        key={tr.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isCompleted
+                            ? 'bg-emerald-50/50 border-emerald-200'
+                            : isFailed || isRejected
+                              ? 'bg-red-50/50 border-red-200'
+                              : isScheduled || isProcessing
+                            ? 'bg-sky-50/50 border-sky-200'
+                            : 'bg-orange-50/50 border-orange-200'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          {/* Left: amount + method */}
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                              isCompleted ? 'bg-emerald-100' : isFailed || isRejected ? 'bg-red-100' : 'bg-sky-100'
+                            }`}>
+                              {isCompleted ? (
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                              ) : isFailed || isRejected ? (
+                                <XCircle className="w-5 h-5 text-red-600" />
+                              ) : (
+                                <Timer className="w-5 h-5 text-sky-600" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[#1a1a1a]">{formatFCFA(tr.amount)}</p>
+                              <p className="text-xs text-gray-500">
+                                {methodLabels[tr.method] || tr.method}
+                                {tr.phoneNumber && ` · ${tr.phoneNumber}`}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right: status + timing */}
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-2 py-0.5 ${transferStatusColors[tr.status] || ''}`}
+                            >
+                              {transferStatusLabels[tr.status] || tr.status}
+                            </Badge>
+
+                            {(isScheduled || isPending) && remainingMs > 0 && (
+                              <div className="flex items-center gap-1 text-xs font-mono text-sky-600 bg-sky-100 px-2 py-1 rounded-md">
+                                <Timer className="w-3 h-3" />
+                                {remainingH > 0 && `${remainingH}h `}{remainingM}m {remainingS}s
+                              </div>
+                            )}
+
+                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                              {formatDate(tr.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Rejection reason */}
+                        {isRejected && tr.rejectionReason && (
+                          <div className="mt-2 text-xs text-red-600 flex items-start gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                            <span>Raison : {tr.rejectionReason}</span>
+                          </div>
+                        )}
+
+                        {/* Failure notes */}
+                        {isFailed && tr.notes && (
+                          <div className="mt-2 text-xs text-red-600 flex items-start gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                            <span>{tr.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                  <ArrowDownToLine className="w-8 h-8 mb-2" />
+                  <p className="text-sm">Aucune demande de retrait pour le moment</p>
                 </div>
               )}
             </CardContent>

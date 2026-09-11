@@ -7,6 +7,7 @@ interface Affiliate {
   email: string
   phone: string
   company: string | null
+  bankInfo: string | null
   commissionRate: number
   totalEarnings: number
   pendingEarnings: number

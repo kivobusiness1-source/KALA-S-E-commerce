@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import {
   User,
@@ -15,6 +15,9 @@ import {
   Loader2,
   Receipt,
   MapPin,
+  MessageCircle,
+  Send,
+  ArrowLeft,
 } from 'lucide-react'
 import {
   Dialog,
@@ -79,6 +82,14 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+// --- Chat Message Type ---
+interface ChatMessage {
+  id: string
+  content: string
+  senderType: string
+  createdAt: string
+}
+
 // --- Main component ---
 interface CustomerDashboardProps {
   open: boolean
@@ -97,6 +108,14 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
   const [totalPages, setTotalPages] = useState(1)
   const [totalOrders, setTotalOrders] = useState(0)
   const ordersPerPage = 5
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatSending, setChatSending] = useState(false)
+  const [showChat, setShowChat] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Active orders count
   const activeOrdersCount = orders.filter(
@@ -133,6 +152,94 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
       fetchOrders(page)
     }
   }, [isAuthenticated, page, fetchOrders])
+
+  // --- Chat logic ---
+  const chatSessionId = customer ? `customer-${customer.id}` : ''
+
+  const fetchChatMessages = useCallback(async () => {
+    if (!chatSessionId) return
+    try {
+      const res = await fetch(`/api/chat?sessionId=${encodeURIComponent(chatSessionId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        const msgs: ChatMessage[] = data?.data?.messages || []
+        setChatMessages(msgs)
+      }
+    } catch {
+      // silently ignore polling errors
+    }
+  }, [chatSessionId])
+
+  const loadChat = useCallback(async () => {
+    if (!chatSessionId) return
+    setChatLoading(true)
+    try {
+      const res = await fetch(`/api/chat?sessionId=${encodeURIComponent(chatSessionId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        const msgs: ChatMessage[] = data?.data?.messages || []
+        setChatMessages(msgs)
+      } else {
+        setChatMessages([])
+      }
+    } catch {
+      setChatMessages([])
+    } finally {
+      setChatLoading(false)
+    }
+  }, [chatSessionId])
+
+  const sendChatMessage = async () => {
+    const trimmed = chatInput.trim()
+    if (!trimmed || chatSending || !chatSessionId) return
+    setChatSending(true)
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: chatSessionId, content: trimmed }),
+      })
+      if (res.ok) {
+        setChatInput('')
+        // Re-fetch to get the full list including the new message
+        await fetchChatMessages()
+      } else {
+        toast.error('Erreur lors de l\'envoi du message')
+      }
+    } catch {
+      toast.error('Erreur lors de l\'envoi du message')
+    } finally {
+      setChatSending(false)
+    }
+  }
+
+  // Load chat on open & poll for new messages
+  useEffect(() => {
+    if (showChat && chatSessionId) {
+      loadChat()
+      const interval = setInterval(() => {
+        fetchChatMessages()
+      }, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [showChat, chatSessionId, loadChat, fetchChatMessages])
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (showChat && chatMessages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [showChat, chatMessages])
+
+  const formatChatTime = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return ''
+    }
+  }
+
+  const lastAdminMessage = chatMessages.filter((m) => m.senderType === 'admin').slice(-1)[0]
 
   // Logout handler
   const handleLogout = async () => {
@@ -264,6 +371,136 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
           </div>
         </CardContent>
       </Card>
+
+      {/* Chat with store button */}
+      {!showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          className="w-full flex items-center gap-4 p-5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
+        >
+          <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-sm font-semibold text-[#1a1a1a]">Discuter avec la boutique</p>
+            <p className="text-xs text-[#888888] mt-0.5">Posez vos questions, suivez vos commandes en direct</p>
+          </div>
+          <MessageCircle className="w-4 h-4 text-[#888888] shrink-0" />
+        </button>
+      )}
+
+      {/* Chat view */}
+      {showChat && (
+        <Card className="border-gray-200 shadow-sm rounded-xl overflow-hidden">
+          {/* Chat header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[#1a1a1a]">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowChat(false)}
+                className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Retour au tableau de bord"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <p className="text-white text-sm font-medium leading-tight">KALA'S</p>
+                <p className="text-white/60 text-xs">Discuter avec la boutique</p>
+              </div>
+            </div>
+            {/* Admin online indicator */}
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-400" />
+              <span className="text-white/60 text-xs">
+                {lastAdminMessage
+                  ? `Rép. à ${formatChatTime(lastAdminMessage.createdAt)}`
+                  : 'En ligne'}
+              </span>
+            </div>
+          </div>
+
+          {/* Messages area */}
+          <div className="h-[320px] overflow-y-auto px-4 py-3 space-y-3">
+            {chatLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-5 h-5 text-[#888888] animate-spin" />
+                <span className="ml-2 text-sm text-[#888888]">Chargement...</span>
+              </div>
+            ) : chatMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10">
+                <MessageCircle className="w-10 h-10 text-[#888888] mb-3 opacity-30" />
+                <p className="text-sm text-[#888888] text-center">Aucun message pour le moment</p>
+                <p className="text-xs text-[#888888] mt-1 text-center">Envoyez un message pour commencer la conversation</p>
+              </div>
+            ) : (
+              chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={msg.senderType === 'customer' ? 'flex justify-end' : 'flex justify-start'}
+                >
+                  <div
+                    className={
+                      msg.senderType === 'customer'
+                        ? 'bg-[#1a1a1a] text-white px-3.5 py-2.5 rounded-2xl rounded-br-md max-w-[80%] text-sm leading-relaxed'
+                        : 'bg-gray-100 text-[#1a1a1a] px-3.5 py-2.5 rounded-2xl rounded-bl-md max-w-[80%] text-sm leading-relaxed'
+                    }
+                  >
+                    <p>{msg.content}</p>
+                    <p
+                      className={
+                        msg.senderType === 'customer'
+                          ? 'text-white/50 text-[10px] mt-1 text-right'
+                          : 'text-[#888888] text-[10px] mt-1'
+                      }
+                    >
+                      {formatChatTime(msg.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+            {chatSending && (
+              <div className="flex justify-end">
+                <div className="bg-[#1a1a1a] text-white px-3.5 py-3 rounded-2xl rounded-br-md">
+                  <span className="inline-flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Chat input */}
+          <div className="border-t border-gray-200 px-3 py-2.5">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendChatMessage()
+                  }
+                }}
+                placeholder="Écrivez votre message..."
+                rows={1}
+                className="flex-1 resize-none border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1a1a1a] placeholder:text-[#888888] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] bg-white min-h-[38px] max-h-[80px] leading-snug"
+                style={{ fieldSizing: 'content' } as React.CSSProperties}
+              />
+              <button
+                onClick={sendChatMessage}
+                disabled={!chatInput.trim() || chatSending}
+                className="w-[38px] h-[38px] flex items-center justify-center bg-[#1a1a1a] text-white rounded-lg disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
+                aria-label="Envoyer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Orders Section */}
       <div>

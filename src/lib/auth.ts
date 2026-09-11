@@ -77,6 +77,56 @@ export async function destroySession(token: string): Promise<void> {
   await db.adminSession.deleteMany({ where: { token } })
 }
 
+// ── Affiliate Session Validation ──────────────────────
+
+export interface AffiliatePayload {
+  id: string
+  code: string
+  name: string
+  email: string
+  phone: string | null
+  company: string | null
+  bankInfo: string | null
+  commissionRate: number
+  isActive: boolean
+  totalEarnings: number
+  pendingEarnings: number
+  paidEarnings: number
+  totalReferrals: number
+  totalOrders: number
+}
+
+export async function validateAffiliateSession(token: string): Promise<AffiliatePayload | null> {
+  const session = await db.affiliateSession.findUnique({
+    where: { token },
+    include: { affiliate: true },
+  })
+
+  if (!session) return null
+  if (session.expiresAt < new Date()) {
+    await db.affiliateSession.delete({ where: { id: session.id } })
+    return null
+  }
+  if (!session.affiliate.isActive) return null
+
+  return {
+    id: session.affiliate.id,
+    code: session.affiliate.code,
+    name: session.affiliate.name,
+    email: session.affiliate.email,
+    phone: session.affiliate.phone,
+    company: session.affiliate.company,
+    bankInfo: session.affiliate.bankInfo,
+    commissionRate: session.affiliate.commissionRate,
+    isActive: session.affiliate.isActive,
+    totalEarnings: session.affiliate.totalEarnings,
+    pendingEarnings: session.affiliate.pendingEarnings,
+    paidEarnings: session.affiliate.paidEarnings,
+    totalReferrals: session.affiliate.totalReferrals,
+    totalOrders: session.affiliate.totalOrders,
+  }
+}
+
 export async function logActivity(adminId: string | undefined, action: string, details?: string, ipAddress?: string) {
   await db.activityLog.create({
     data: { adminId, action, details, ipAddress },
