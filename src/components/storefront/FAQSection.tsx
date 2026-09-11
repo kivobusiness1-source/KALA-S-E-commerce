@@ -7,36 +7,36 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { FadeInSection } from './AnimatedComponents'
 
+const faqs = [
+  {
+    question: 'Quelle est votre zone de livraison ?',
+    answer: 'Nous livrons a Pointe-Noire et dans sa peripherie dans un rayon de 15 km. La livraison est gratuite pour les commandes de plus de 25 000 FCFA. Pour les zones eloignees, veuillez nous contacter pour verifier la disponibilite.'
+  },
+  {
+    question: 'Quels sont les modes de paiement acceptes ?',
+    answer: 'Nous acceptons le paiement a la livraison ( especes), les virements mobiles (M-Pesa, Orange Money), et les virements bancaires. Le paiement en ligne par carte sera bientot disponible.'
+  },
+  {
+    question: 'Quel est le delai de livraison ?',
+    answer: "Le delai de livraison standard est de 24 a 48 heures apres confirmation de votre commande. Pour les commandes en gros, le delai peut etre de 2 a 5 jours ouvrables selon la disponibilite des produits."
+  },
+  {
+    question: 'Quelle est votre politique de retours et echanges ?',
+    answer: "En cas de produit defectueux ou non conforme, vous disposez de 7 jours apres reception pour demander un echange ou un remboursement. Contactez-nous par email a contact@kalas.cg ou par telephone au +242 06 123 4567."
+  },
+  {
+    question: 'Proposez-vous des commandes en gros ?',
+    answer: "Oui, nous proposons des tarifs preferentiels pour les commandes en gros (hotels, restaurants, entreprises, etc.). Contactez-nous directement par telephone ou via le formulaire de contact pour obtenir un devis personnalise."
+  },
+  {
+    question: 'Quelle est la qualite de vos produits ?',
+    answer: "Nos produits sont fabriques selon des normes industrielles strictes avec des matieres premieres de qualite. Chaque lot est controle avant la mise sur le marche. Nos produits sont biodégradables et respectueux de l'environnement."
+  },
+]
+
 export function FAQSection() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
   const [faqSearch, setFaqSearch] = useState('')
-
-  const faqs = [
-    {
-      question: 'Quelle est votre zone de livraison ?',
-      answer: 'Nous livrons a Pointe-Noire et dans sa peripherie dans un rayon de 15 km. La livraison est gratuite pour les commandes de plus de 25 000 FCFA. Pour les zones eloignees, veuillez nous contacter pour verifier la disponibilite.'
-    },
-    {
-      question: 'Quels sont les modes de paiement acceptes ?',
-      answer: 'Nous acceptons le paiement a la livraison ( especes), les virements mobiles (M-Pesa, Orange Money), et les virements bancaires. Le paiement en ligne par carte sera bientot disponible.'
-    },
-    {
-      question: 'Quel est le delai de livraison ?',
-      answer: "Le delai de livraison standard est de 24 a 48 heures apres confirmation de votre commande. Pour les commandes en gros, le delai peut etre de 2 a 5 jours ouvrables selon la disponibilite des produits."
-    },
-    {
-      question: 'Quelle est votre politique de retours et echanges ?',
-      answer: "En cas de produit defectueux ou non conforme, vous disposez de 7 jours apres reception pour demander un echange ou un remboursement. Contactez-nous par email a contact@kalas.cg ou par telephone au +242 06 123 4567."
-    },
-    {
-      question: 'Proposez-vous des commandes en gros ?',
-      answer: "Oui, nous proposons des tarifs preferentiels pour les commandes en gros (hotels, restaurants, entreprises, etc.). Contactez-nous directement par telephone ou via le formulaire de contact pour obtenir un devis personnalise."
-    },
-    {
-      question: 'Quelle est la qualite de vos produits ?',
-      answer: "Nos produits sont fabriques selon des normes industrielles strictes avec des matieres premieres de qualite. Chaque lot est controle avant la mise sur le marche. Nos produits sont biodégradables et respectueux de l'environnement."
-    },
-  ]
 
   const filteredFaqs = useMemo(() => {
     if (!faqSearch.trim()) return faqs
