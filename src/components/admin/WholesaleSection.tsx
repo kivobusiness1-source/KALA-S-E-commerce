@@ -694,15 +694,16 @@ function WholesaleOrdersTab() {
   const [noteText, setNoteText] = useState('')
   const [addingNote, setAddingNote] = useState(false)
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: rawOrders, isLoading } = useQuery({
     queryKey: ['wholesale-orders', statusFilter, search],
     queryFn: () => {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (search) params.set('search', search)
-      return fetch(`/api/wholesale/orders?${params}`).then(r => r.json()).then(d => d.data as WholesaleOrder[])
+      return fetch(`/api/wholesale/orders?${params}`).then(r => r.json()).then(d => (d.data?.orders ?? []) as WholesaleOrder[])
     },
   })
+  const orders = Array.isArray(rawOrders) ? rawOrders : []
 
   // Fetch deliverers for assignment
   const { data: deliverers } = useQuery({
@@ -820,9 +821,9 @@ function WholesaleOrdersTab() {
   }
 
   // Summary stats
-  const totalOrders = orders?.length ?? 0
-  const pendingCount = orders?.filter(o => o.status === 'pending').length ?? 0
-  const totalRevenue = orders?.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.totalAmount, 0) ?? 0
+  const totalOrders = orders.length
+  const pendingCount = orders.filter(o => o.status === 'pending').length
+  const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.totalAmount, 0)
 
   return (
     <div className="space-y-6">
@@ -843,7 +844,7 @@ function WholesaleOrdersTab() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Livrées</p>
-            <p className="text-2xl font-bold text-emerald-600">{orders?.filter(o => o.status === 'delivered').length ?? 0}</p>
+            <p className="text-2xl font-bold text-emerald-600">{orders.filter(o => o.status === 'delivered').length}</p>
           </CardContent>
         </Card>
         <Card>
