@@ -7,10 +7,9 @@ import { toast } from 'sonner'
 import StorefrontLayout from '@/components/storefront/StorefrontLayout'
 import type { TrackedOrder } from '@/components/storefront/types'
 
-import dynamic from 'next/dynamic'
-const ContactSection = dynamic(() => import('@/components/storefront/ContactSection').then(m => ({ default: m.ContactSection })), { ssr: false })
-const DeliveryPricingSection = dynamic(() => import('@/components/storefront/DeliveryPricingSection').then(m => ({ default: m.DeliveryPricingSection })), { ssr: false })
-const OrderTrackingSection = dynamic(() => import('@/components/storefront/OrderTrackingSection').then(m => ({ default: m.OrderTrackingSection })), { ssr: false })
+import { ContactSection } from '@/components/storefront/ContactSection'
+import { DeliveryPricingSection } from '@/components/storefront/DeliveryPricingSection'
+import { OrderTrackingSection } from '@/components/storefront/OrderTrackingSection'
 
 export default function ContactPage() {
   // Contact form state

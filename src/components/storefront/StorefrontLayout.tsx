@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, ReactNode } from 'react'
-import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { X, Megaphone } from 'lucide-react'
@@ -14,16 +13,15 @@ import { Navbar } from '@/components/storefront/Navbar'
 import { MarqueeText } from '@/components/storefront/AnimatedComponents'
 import type { ProductType, CategoryType, ReviewType, TrackedOrder } from '@/components/storefront/types'
 
-// Lazy-loaded heavy components
-const CartSheet = dynamic(() => import('@/components/storefront/CartSheet').then(m => ({ default: m.CartSheet })), { ssr: false })
-const Footer = dynamic(() => import('@/components/storefront/Footer').then(m => ({ default: m.Footer })), { ssr: false })
-const ChatWidget = dynamic(() => import('@/components/storefront/ChatWidget'), { ssr: false })
-const SocialProofToast = dynamic(() => import('@/components/storefront/SocialProofToast').then(m => ({ default: m.SocialProofToast })), { ssr: false })
-const ProductComparison = dynamic(() => import('@/components/storefront/ProductComparison').then(m => ({ default: m.ProductComparison })), { ssr: false })
-const CustomerAuthDialog = dynamic(() => import('@/components/storefront/CustomerAuthDialog'), { ssr: false })
-const CustomerDashboard = dynamic(() => import('@/components/storefront/CustomerDashboard'), { ssr: false })
-const AffiliateAuthDialog = dynamic(() => import('@/components/storefront/AffiliateAuthDialog'), { ssr: false })
-const AffiliateDashboard = dynamic(() => import('@/components/storefront/AffiliateDashboard'), { ssr: false })
+import { CartSheet } from '@/components/storefront/CartSheet'
+import { Footer } from '@/components/storefront/Footer'
+import ChatWidget from '@/components/storefront/ChatWidget'
+import { SocialProofToast } from '@/components/storefront/SocialProofToast'
+import { ProductComparison } from '@/components/storefront/ProductComparison'
+import { CustomerAuthDialog } from '@/components/storefront/CustomerAuthDialog'
+import { CustomerDashboard } from '@/components/storefront/CustomerDashboard'
+import { AffiliateAuthDialog } from '@/components/storefront/AffiliateAuthDialog'
+import { AffiliateDashboard } from '@/components/storefront/AffiliateDashboard'
 
 import type { DeliveryZoneId } from '@/components/storefront/CartSheet'
 

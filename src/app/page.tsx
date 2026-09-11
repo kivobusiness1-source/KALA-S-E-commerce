@@ -14,10 +14,9 @@ import { FeaturesBar } from '@/components/storefront/FeaturesBar'
 import { formatPrice } from '@/components/storefront/helpers'
 import type { ProductType, CategoryType } from '@/components/storefront/types'
 
-import dynamic from 'next/dynamic'
-const HowToOrderSection = dynamic(() => import('@/components/storefront/HowToOrderSection').then(m => ({ default: m.HowToOrderSection })), { ssr: false })
-const TestimonialsSection = dynamic(() => import('@/components/storefront/TestimonialsSection').then(m => ({ default: m.TestimonialsSection })), { ssr: false })
-const NewsletterSection = dynamic(() => import('@/components/storefront/NewsletterSection').then(m => ({ default: m.NewsletterSection })), { ssr: false })
+import { HowToOrderSection } from '@/components/storefront/HowToOrderSection'
+import { TestimonialsSection } from '@/components/storefront/TestimonialsSection'
+import { NewsletterSection } from '@/components/storefront/NewsletterSection'
 
 export default function Home() {
   const cart = useCartStore()

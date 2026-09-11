@@ -31,8 +31,7 @@ import { toast } from 'sonner'
 import StorefrontLayout from '@/components/storefront/StorefrontLayout'
 import { FadeInSection } from '@/components/storefront/AnimatedComponents'
 
-import dynamic from 'next/dynamic'
-const WholesaleSection = dynamic(() => import('@/components/storefront/WholesaleSection'), { ssr: false })
+import WholesaleSection from '@/components/storefront/WholesaleSection'
 
 const benefits = [
   {

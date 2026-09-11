@@ -11,9 +11,8 @@ import StorefrontLayout from '@/components/storefront/StorefrontLayout'
 import { AmazonProductsSection } from '@/components/storefront/AmazonProductsSection'
 import type { ProductType, CategoryType } from '@/components/storefront/types'
 
-import dynamic from 'next/dynamic'
-const DeliveryPricingSection = dynamic(() => import('@/components/storefront/DeliveryPricingSection').then(m => ({ default: m.DeliveryPricingSection })), { ssr: false })
-const FAQSection = dynamic(() => import('@/components/storefront/FAQSection').then(m => ({ default: m.FAQSection })), { ssr: false })
+import { DeliveryPricingSection } from '@/components/storefront/DeliveryPricingSection'
+import { FAQSection } from '@/components/storefront/FAQSection'
 
 export default function ProduitsPage() {
   const cart = useCartStore()

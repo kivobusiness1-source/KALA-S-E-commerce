@@ -6,10 +6,9 @@ import { ChevronRight, Home } from 'lucide-react'
 import StorefrontLayout from '@/components/storefront/StorefrontLayout'
 import { AboutSection } from '@/components/storefront/AboutSection'
 
-import dynamic from 'next/dynamic'
-const TestimonialsSection = dynamic(() => import('@/components/storefront/TestimonialsSection').then(m => ({ default: m.TestimonialsSection })), { ssr: false })
-const FAQSection = dynamic(() => import('@/components/storefront/FAQSection').then(m => ({ default: m.FAQSection })), { ssr: false })
-const NewsletterSection = dynamic(() => import('@/components/storefront/NewsletterSection').then(m => ({ default: m.NewsletterSection })), { ssr: false })
+import { TestimonialsSection } from '@/components/storefront/TestimonialsSection'
+import { FAQSection } from '@/components/storefront/FAQSection'
+import { NewsletterSection } from '@/components/storefront/NewsletterSection'
 
 export default function AProposPage() {
   // Testimonial state
