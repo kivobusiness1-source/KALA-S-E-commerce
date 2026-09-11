@@ -957,3 +957,15 @@ Work Log:
 
 Stage Summary:
 - 06:15 run OK, auth passed, 0 due transfers; no state changes
+---
+Task ID: cron-376446-0630
+Agent: main
+Task: Cron Job 376446 (06:30) - processScheduled affiliate transfers
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 06:30 run OK, auth passed, 0 due transfers; no state changes
+- Note: GitHub remote added (kivobusiness1-source/KALA-S-E-commerce), push pending credentials (PAT or SSH key needed from user)
