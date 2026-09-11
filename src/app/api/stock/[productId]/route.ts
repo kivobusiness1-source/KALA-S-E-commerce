@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return ok({ previousQty, newQty, change: data.change })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return err(error.errors.map(e => e.message).join(', '), 400)
+      return err(error.issues.map(e => e.message).join(', '), 400)
     }
     console.error('Stock adjust error:', error)
     return err('Erreur serveur', 500)

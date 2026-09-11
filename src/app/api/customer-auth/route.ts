@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { randomBytes } from 'crypto'
 
 // ── Helpers ────────────────────────────────────────────────────────
-function ok(data: unknown, status = 200) {
+function ok(data: Record<string, unknown>, status = 200) {
   return NextResponse.json({ success: true, ...data }, { status })
 }
 function err(message: string, status = 400) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0]
+      const firstError = error.issues[0]
       return err(firstError?.message || 'Données invalides', 400)
     }
     console.error('Customer auth error:', error)

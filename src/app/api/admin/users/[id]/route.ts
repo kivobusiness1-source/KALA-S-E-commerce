@@ -84,7 +84,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return ok(updated)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(e => e.message).join(', ')
+      const messages = error.issues.map(e => e.message).join(', ')
       return err(messages, 400)
     }
     console.error('Admin users PUT error:', error)

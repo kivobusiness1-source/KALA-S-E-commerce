@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const validated = updateSchema.safeParse(body)
     if (!validated.success) {
-      return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ success: false, error: validated.error.issues[0].message }, { status: 400 })
     }
     const livreur = await db.deliverer.update({ where: { id }, data: validated.data })
     await logActivity(session.id, 'update_deliverer', `Livreur modifié: ${livreur.name}`)

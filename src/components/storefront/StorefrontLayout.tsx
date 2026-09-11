@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cart-store'
 import { useWishlistStore } from '@/stores/wishlist-store'
 import { useCustomerAuthStore } from '@/stores/customer-auth-store'
 import { useAffiliateAuthStore } from '@/stores/affiliate-auth-store'
+import { useImageErrorFallback } from '@/hooks/useImageErrorFallback'
 
 import { Navbar } from '@/components/storefront/Navbar'
 import { MarqueeText } from '@/components/storefront/AnimatedComponents'
@@ -15,7 +16,7 @@ import type { ProductType, CategoryType, ReviewType, TrackedOrder } from '@/comp
 
 import { CartSheet } from '@/components/storefront/CartSheet'
 import { Footer } from '@/components/storefront/Footer'
-import ChatWidget from '@/components/storefront/ChatWidget'
+import WhatsAppWidget from '@/components/storefront/WhatsAppWidget'
 import { SocialProofToast } from '@/components/storefront/SocialProofToast'
 import { ProductComparison } from '@/components/storefront/ProductComparison'
 import { CustomerAuthDialog } from '@/components/storefront/CustomerAuthDialog'
@@ -30,6 +31,9 @@ interface StorefrontLayoutProps {
 }
 
 export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
+  // Gestion d'erreur globale : remplace toute image cassée par un placeholder de marque
+  useImageErrorFallback()
+
   // Promo bar state
   const [promoText, setPromoText] = useState('Livraison gratuite à Pointe-Noire ! Commandez maintenant et recevez vos produits en 24-48h. Appelez le +242 06 123 4567')
   const [promoBarVisible, setPromoBarVisible] = useState(true)
@@ -569,7 +573,7 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
         clearAffiliateCode={cart.clearAffiliateCode}
       />
 
-      <ChatWidget />
+      <WhatsAppWidget />
       <SocialProofToast products={products} />
 
       {/* Customer Auth Dialog */}

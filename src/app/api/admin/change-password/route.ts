@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = changePasswordSchema.safeParse(body)
     if (!parsed.success) {
-      const msg = parsed.error.errors[0]?.message || 'Données invalides'
+      const msg = parsed.error.issues[0]?.message || 'Données invalides'
       return err(msg)
     }
 

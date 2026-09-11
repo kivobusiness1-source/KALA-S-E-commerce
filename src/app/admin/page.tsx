@@ -28,6 +28,7 @@ import LivreursSection from '@/components/admin/LivreursSection'
 import CatchphraseSection from '@/components/admin/CatchphraseSection'
 import WholesaleSection from '@/components/admin/WholesaleSection'
 import PartnersSection from '@/components/admin/PartnersSection'
+import { useImageErrorFallback } from '@/hooks/useImageErrorFallback'
 
 const ALL_NAV_ITEMS: { key: Section; label: string; icon: React.ReactNode; roles: string[] }[] = [
   { key: 'dashboard', label: 'Tableau de Bord', icon: <LayoutDashboard className="h-5 w-5" />, roles: ['super_admin', 'admin', 'staff', 'livreur'] },
@@ -47,6 +48,9 @@ const ALL_NAV_ITEMS: { key: Section; label: string; icon: React.ReactNode; roles
 ]
 
 export default function AdminPage() {
+  // Gestion d'erreur globale : remplace toute image cassée par un placeholder de marque
+  useImageErrorFallback()
+
   const { admin, isAuthenticated, isLoading, setAdmin, logout } = useAdminStore()
   const queryClient = useQueryClient()
   const [section, setSection] = useState<Section>('dashboard')

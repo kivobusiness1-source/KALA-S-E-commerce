@@ -67,7 +67,7 @@ export async function POST(
     const body = await request.json()
     const parsed = reviewSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 })
     }
 
     const review = await db.review.create({

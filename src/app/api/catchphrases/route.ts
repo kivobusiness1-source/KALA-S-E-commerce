@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = catchphraseSchema.safeParse(body)
     if (!validated.success) {
-      return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ success: false, error: validated.error.issues[0].message }, { status: 400 })
     }
     const cp = await db.catchphrase.create({ data: validated.data })
     await logActivity(session.id, 'create_catchphrase', `Phrase créée: ${cp.text.slice(0, 50)}`)

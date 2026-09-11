@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const validated = updateSchema.safeParse(body)
     if (!validated.success) {
-      return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ success: false, error: validated.error.issues[0].message }, { status: 400 })
     }
     const cp = await db.catchphrase.update({ where: { id }, data: validated.data })
     await logActivity(session.id, 'update_catchphrase', `Phrase modifiée: ${cp.text.slice(0, 50)}`)

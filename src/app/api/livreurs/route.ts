@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = delivererSchema.safeParse(body)
     if (!validated.success) {
-      return NextResponse.json({ success: false, error: validated.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ success: false, error: validated.error.issues[0].message }, { status: 400 })
     }
 
     const existing = await db.deliverer.findUnique({ where: { phone: validated.data.phone } })

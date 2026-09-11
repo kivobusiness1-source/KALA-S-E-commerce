@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 // ── Helpers ──────────────────────────────────────────────
 
-function ok(data: unknown, status = 200) {
+function ok(data: Record<string, unknown>, status = 200) {
   return NextResponse.json({ success: true, ...data }, { status })
 }
 function err(message: string, status = 400) {
