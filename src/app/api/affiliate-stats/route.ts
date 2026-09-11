@@ -193,6 +193,7 @@ export async function GET(request: NextRequest) {
         totalSaleAmount: c.totalSaleAmount,
         commissionPerUnit: c.commissionPerUnit,
         commissionTotal: c.commissionTotal,
+        commissionMonth: c.commissionMonth,
         status: c.status,
         createdAt: c.createdAt,
         validatedAt: c.validatedAt,

@@ -10,10 +10,17 @@ export interface Product {
   longDescription: string | null
   price: number
   comparePrice: number | null
+  wholesalePrice: number | null
+  packSize: number | null
+  packPrice: number | null
+  commissionPerUnit: number | null
+  commissionMonth1PerUnit: number | null
+  commissionMonth2PlusPerUnit: number | null
   categoryId: string
   image: string | null
   images: string
   volume: string | null
+  unit: string
   isActive: boolean
   isFeatured: boolean
   inStock: boolean
@@ -21,6 +28,7 @@ export interface Product {
   minStockAlert: number
   createdAt: string
   category: { id: string; name: string; slug: string }
+  variants?: ProductVariantType[]
 }
 
 export interface Category {
@@ -229,6 +237,22 @@ export interface Affiliate {
   _count?: { commissions: number }
 }
 
+export interface ProductVariantType {
+  id: string
+  name: string
+  slug: string
+  price: number
+  wholesalePrice: number | null
+  packPrice: number | null
+  commissionPerUnit: number | null
+  commissionMonth1PerUnit: number | null
+  commissionMonth2PlusPerUnit: number | null
+  image: string | null
+  inStock: boolean
+  stockQty: number
+  isActive: boolean
+}
+
 export interface Commission {
   id: string
   affiliateId: string
@@ -241,6 +265,7 @@ export interface Commission {
   totalSaleAmount: number
   commissionPerUnit: number
   commissionTotal: number
+  commissionMonth: number | null
   status: string
   validatedAt: string | null
   paidAt: string | null
@@ -261,6 +286,29 @@ export interface AffiliatePayout {
   status: string
   notes: string | null
   createdAt: string
+}
+
+export interface AffiliateProductTrack {
+  id: string
+  affiliateId: string
+  productId: string
+  firstCommissionAt: string
+  currentMonth?: number
+  product?: {
+    id: string
+    name: string
+    image: string | null
+    commissionMonth1PerUnit: number | null
+    commissionMonth2PlusPerUnit: number | null
+    commissionPerUnit: number | null
+    variants?: {
+      id: string
+      name: string
+      commissionMonth1PerUnit: number | null
+      commissionMonth2PlusPerUnit: number | null
+      commissionPerUnit: number | null
+    }[]
+  }
 }
 
 export type CommissionStatus = 'pending' | 'validated' | 'paid' | 'cancelled'

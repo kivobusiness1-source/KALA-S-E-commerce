@@ -1,0 +1,838 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from 'react'
+     4→     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+     5→     5→import { Button } from '@/components/ui/button'
+     6→     6→import { Badge } from '@/components/ui/badge'
+     7→     7→import { Input } from '@/components/ui/input'
+     8→     8→import { Label } from '@/components/ui/label'
+     9→     9→import { Textarea } from '@/components/ui/textarea'
+    10→    10→import { Switch } from '@/components/ui/switch'
+    11→    11→import { Separator } from '@/components/ui/separator'
+    12→    12→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+    13→    13→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    14→    14→import {
+    15→    15→  Table,
+    16→    16→  TableBody,
+    17→    17→  TableCell,
+    18→    18→  TableHead,
+    19→    19→  TableHeader,
+    20→    20→  TableRow,
+    21→    21→} from '@/components/ui/table'
+    22→    22→import {
+    23→    23→  Handshake,
+    24→    24→  Search,
+    25→    25→  Plus,
+    26→    26→  Loader2,
+    27→    27→  ChevronLeft,
+    28→    28→  ChevronRight,
+    29→    29→  Eye,
+    30→    30→  Power,
+    31→    31→  CreditCard,
+    32→    32→  DollarSign,
+    33→    33→  Clock,
+    34→    34→  CheckCircle2,
+    35→    35→  XCircle,
+    36→    36→  Wallet,
+    37→    37→  ArrowLeft,
+    38→    38→  Edit3,
+    39→    39→  Save,
+    40→    40→  Trash2,
+    41→    41→} from 'lucide-react'
+    42→    42→import { toast } from 'sonner'
+    43→    43→import type { Affiliate, Commission, AffiliatePayout, CommissionStatus } from './types'
+    44→    44→
+    45→    45→// ── Helpers ──────────────────────────────────────────────
+    46→    46→
+    47→    47→function formatFCFA(amount: number): string {
+    48→    48→  return new Intl.NumberFormat('fr-FR').format(Math.round(amount)) + ' FCFA'
+    49→    49→}
+    50→    50→
+    51→    51→function formatDate(dateStr: string): string {
+    52→    52→  return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    53→    53→}
+    54→    54→
+    55→    55→const COMMISSION_STATUS_LABELS: Record<string, string> = {
+    56→    56→  pending: 'En attente',
+    57→    57→  validated: 'Validée',
+    58→    58→  paid: 'Payée',
+    59→    59→  cancelled: 'Annulée',
+    60→    60→}
+    61→    61→
+    62→    62→const COMMISSION_STATUS_COLORS: Record<string, string> = {
+    63→    63→  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    64→    64→  validated: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    65→    65→  paid: 'bg-sky-100 text-sky-700 border-sky-200',
+    66→    66→  cancelled: 'bg-red-100 text-red-700 border-red-200',
+    67→    67→}
+    68→    68→
+    69→    69→const PAYOUT_STATUS_LABELS: Record<string, string> = {
+    70→    70→  pending: 'En attente',
+    71→    71→  completed: 'Complété',
+    72→    72→  failed: 'Échoué',
+    73→    73→}
+    74→    74→
+    75→    75→const PAYOUT_STATUS_COLORS: Record<string, string> = {
+    76→    76→  pending: 'bg-orange-100 text-orange-700 border-orange-200',
+    77→    77→  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    78→    78→  failed: 'bg-red-100 text-red-700 border-red-200',
+    79→    79→}
+    80→    80→
+    81→    81→// ── Partners List Component ──────────────────────────────
+    82→    82→
+    83→    83→function PartnersList({ onSelectPartner }: { onSelectPartner: (id: string) => void }) {
+    84→    84→  const [partners, setPartners] = useState<Affiliate[]>([])
+    85→    85→  const [loading, setLoading] = useState(true)
+    86→    86→  const [search, setSearch] = useState('')
+    87→    87→  const [page, setPage] = useState(1)
+    88→    88→  const [total, setTotal] = useState(0)
+    89→    89→  const [totalPages, setTotalPages] = useState(1)
+    90→    90→  const PER_PAGE = 20
+    91→    91→
+    92→    92→  // Create dialog state
+    93→    93→  const [createOpen, setCreateOpen] = useState(false)
+    94→    94→  const [createForm, setCreateForm] = useState({
+    95→    95→    name: '', email: '', phone: '', code: '', company: '', commissionRate: '5', password: '',
+    96→    96→  })
+    97→    97→  const [createLoading, setCreateLoading] = useState(false)
+    98→    98→
+    99→    99→  const fetchPartners = useCallback(async () => {
+   100→   100→    try {
+   101→   101→      setLoading(true)
+   102→   102→      const params = new URLSearchParams({ page: String(page), limit: String(PER_PAGE) })
+   103→   103→      if (search) params.set('search', search)
+   104→   104→      const res = await fetch(`/api/admin/partners?${params}`)
+   105→   105→      if (res.ok) {
+   106→   106→        const data = await res.json()
+   107→   107→        setPartners(data.partners || [])
+   108→   108→        setTotal(data.total || 0)
+   109→   109→        setTotalPages(data.totalPages || 1)
+   110→   110→      }
+   111→   111→    } catch {
+   112→   112→      toast.error('Erreur de chargement')
+   113→   113→    } finally {
+   114→   114→      setLoading(false)
+   115→   115→    }
+   116→   116→  }, [page, search])
+   117→   117→
+   118→   118→  useEffect(() => { fetchPartners() }, [fetchPartners])
+   119→   119→
+   120→   120→  const handleCreate = async () => {
+   121→   121→    if (!createForm.name || !createForm.email || !createForm.code || !createForm.password) {
+   122→   122→      toast.error('Nom, email, code et mot de passe sont requis')
+   123→   123→      return
+   124→   124→    }
+   125→   125→    try {
+   126→   126→      setCreateLoading(true)
+   127→   127→      const res = await fetch('/api/admin/partners', {
+   128→   128→        method: 'POST',
+   129→   129→        headers: { 'Content-Type': 'application/json' },
+   130→   130→        body: JSON.stringify({
+   131→   131→          ...createForm,
+   132→   132→          commissionRate: parseFloat(createForm.commissionRate) || 5,
+   133→   133→        }),
+   134→   134→      })
+   135→   135→      const data = await res.json()
+   136→   136→      if (res.ok && data.success) {
+   137→   137→        toast.success('Partenaire créé avec succès')
+   138→   138→        setCreateOpen(false)
+   139→   139→        setCreateForm({ name: '', email: '', phone: '', code: '', company: '', commissionRate: '5', password: '' })
+   140→   140→        fetchPartners()
+   141→   141→      } else {
+   142→   142→        toast.error(data.error || 'Erreur lors de la création')
+   143→   143→      }
+   144→   144→    } catch {
+   145→   145→      toast.error('Erreur serveur')
+   146→   146→    } finally {
+   147→   147→      setCreateLoading(false)
+   148→   148→    }
+   149→   149→  }
+   150→   150→
+   151→   151→  const handleToggleActive = async (partner: Affiliate) => {
+   152→   152→    try {
+   153→   153→      const res = await fetch('/api/admin/partners', {
+   154→   154→        method: 'PUT',
+   155→   155→        headers: { 'Content-Type': 'application/json' },
+   156→   156→        body: JSON.stringify({ id: partner.id, isActive: !partner.isActive }),
+   157→   157→      })
+   158→   158→      const data = await res.json()
+   159→   159→      if (res.ok && data.success) {
+   160→   160→        toast.success(partner.isActive ? 'Partenaire désactivé' : 'Partenaire activé')
+   161→   161→        fetchPartners()
+   162→   162→      } else {
+   163→   163→        toast.error(data.error || 'Erreur')
+   164→   164→      }
+   165→   165→    } catch {
+   166→   166→      toast.error('Erreur serveur')
+   167→   167→    }
+   168→   168→  }
+   169→   169→
+   170→   170→  return (
+   171→   171→    <div className="space-y-4">
+   172→   172→      {/* Header */}
+   173→   173→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   174→   174→        <div>
+   175→   175→          <h3 className="text-lg font-semibold text-gray-900">Liste des partenaires</h3>
+   176→   176→          <p className="text-sm text-gray-500">{total} partenaire{total > 1 ? 's' : ''} au total</p>
+   177→   177→        </div>
+   178→   178→        <div className="flex items-center gap-2">
+   179→   179→          <div className="relative">
+   180→   180→            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
+   181→   181→            <Input
+   182→   182→              placeholder="Rechercher par nom ou code..."
+   183→   183→              value={search}
+   184→   184→              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+   185→   185→              className="pl-9 w-[220px] h-9 text-sm"
+   186→   186→            />
+   187→   187→          </div>
+   188→   188→          <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-1.5 bg-[#1a1a1a] hover:bg-[#333] text-white">
+   189→   189→            <Plus className="w-4 h-4" />
+   190→   190→            Créer
+   191→   191→          </Button>
+   192→   192→        </div>
+   193→   193→      </div>
+   194→   194→
+   195→   195→      {/* Table */}
+   196→   196→      <Card>
+   197→   197→        <CardContent className="p-0">
+   198→   198→          {loading ? (
+   199→   199→            <div className="flex items-center justify-center h-48">
+   200→   200→              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+   201→   201→            </div>
+   202→   202→          ) : partners.length > 0 ? (
+   203→   203→            <div className="overflow-x-auto">
+   204→   204→              <Table>
+   205→   205→                <TableHeader>
+   206→   206→                  <TableRow>
+   207→   207→                    <TableHead>Nom</TableHead>
+   208→   208→                    <TableHead>Email</TableHead>
+   209→   209→                    <TableHead>Code</TableHead>
+   210→   210→                    <TableHead>Entreprise</TableHead>
+   211→   211→                    <TableHead className="text-right">Taux</TableHead>
+   212→   212→                    <TableHead className="text-right">Gains totaux</TableHead>
+   213→   213→                    <TableHead className="text-right">En attente</TableHead>
+   214→   214→                    <TableHead>Statut</TableHead>
+   215→   215→                    <TableHead className="text-right">Actions</TableHead>
+   216→   216→                  </TableRow>
+   217→   217→                </TableHeader>
+   218→   218→                <TableBody>
+   219→   219→                  {partners.map((p) => (
+   220→   220→                    <TableRow key={p.id}>
+   221→   221→                      <TableCell className="font-medium text-sm">{p.name}</TableCell>
+   222→   222→                      <TableCell className="text-xs text-gray-500">{p.email}</TableCell>
+   223→   223→                      <TableCell>
+   224→   224→                        <code className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">{p.code}</code>
+   225→   225→                      </TableCell>
+   226→   226→                      <TableCell className="text-sm text-gray-500">{p.company || '—'}</TableCell>
+   227→   227→                      <TableCell className="text-right text-sm">{p.commissionRate}%</TableCell>
+   228→   228→                      <TableCell className="text-right text-sm font-semibold text-emerald-600">{formatFCFA(p.totalEarnings)}</TableCell>
+   229→   229→                      <TableCell className="text-right text-sm text-orange-600">{formatFCFA(p.pendingEarnings)}</TableCell>
+   230→   230→                      <TableCell>
+   231→   231→                        <Badge variant="outline" className={p.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}>
+   232→   232→                          {p.isActive ? 'Actif' : 'Inactif'}
+   233→   233→                        </Badge>
+   234→   234→                      </TableCell>
+   235→   235→                      <TableCell className="text-right">
+   236→   236→                        <div className="flex items-center justify-end gap-1">
+   237→   237→                          <Button variant="ghost" size="sm" onClick={() => onSelectPartner(p.id)} title="Voir détails">
+   238→   238→                            <Eye className="w-4 h-4 text-gray-500" />
+   239→   239→                          </Button>
+   240→   240→                          <Button variant="ghost" size="sm" onClick={() => handleToggleActive(p)} title={p.isActive ? 'Désactiver' : 'Activer'}>
+   241→   241→                            <Power className={`w-4 h-4 ${p.isActive ? 'text-orange-500' : 'text-emerald-500'}`} />
+   242→   242→                          </Button>
+   243→   243→                        </div>
+   244→   244→                      </TableCell>
+   245→   245→                    </TableRow>
+   246→   246→                  ))}
+   247→   247→                </TableBody>
+   248→   248→              </Table>
+   249→   249→            </div>
+   250→   250→          ) : (
+   251→   251→            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+   252→   252→              <Handshake className="w-10 h-10 mb-2" />
+   253→   253→              <p className="text-sm">Aucun partenaire trouvé</p>
+   254→   254→            </div>
+   255→   255→          )}
+   256→   256→        </CardContent>
+   257→   257→      </Card>
+   258→   258→
+   259→   259→      {/* Pagination */}
+   260→   260→      {totalPages > 1 && (
+   261→   261→        <div className="flex items-center justify-between">
+   262→   262→          <p className="text-xs text-gray-500">Page {page} / {totalPages}</p>
+   263→   263→          <div className="flex gap-1">
+   264→   264→            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+   265→   265→              <ChevronLeft className="w-4 h-4" />
+   266→   266→            </Button>
+   267→   267→            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+   268→   268→              <ChevronRight className="w-4 h-4" />
+   269→   269→            </Button>
+   270→   270→          </div>
+   271→   271→        </div>
+   272→   272→      )}
+   273→   273→
+   274→   274→      {/* Create Partner Dialog */}
+   275→   275→      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+   276→   276→        <DialogContent className="sm:max-w-md">
+   277→   277→          <DialogHeader>
+   278→   278→            <DialogTitle>Créer un partenaire</DialogTitle>
+   279→   279→            <DialogDescription>Ajoutez un nouveau partenaire au programme d&apos;affiliation</DialogDescription>
+   280→   280→          </DialogHeader>
+   281→   281→          <div className="space-y-3 py-2">
+   282→   282→            <div className="grid grid-cols-2 gap-3">
+   283→   283→              <div className="space-y-1">
+   284→   284→                <Label className="text-xs">Nom *</Label>
+   285→   285→                <Input value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nom complet" />
+   286→   286→              </div>
+   287→   287→              <div className="space-y-1">
+   288→   288→                <Label className="text-xs">Email *</Label>
+   289→   289→                <Input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" />
+   290→   290→              </div>
+   291→   291→            </div>
+   292→   292→            <div className="grid grid-cols-2 gap-3">
+   293→   293→              <div className="space-y-1">
+   294→   294→                <Label className="text-xs">Code partenaire *</Label>
+   295→   295→                <Input value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="KALA-XXX" />
+   296→   296→              </div>
+   297→   297→              <div className="space-y-1">
+   298→   298→                <Label className="text-xs">Taux (%)</Label>
+   299→   299→                <Input type="number" value={createForm.commissionRate} onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))} />
+   300→   300→              </div>
+   301→   301→            </div>
+   302→   302→            <div className="grid grid-cols-2 gap-3">
+   303→   303→              <div className="space-y-1">
+   304→   304→                <Label className="text-xs">Téléphone</Label>
+   305→   305→                <Input value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+242..." />
+   306→   306→              </div>
+   307→   307→              <div className="space-y-1">
+   308→   308→                <Label className="text-xs">Entreprise</Label>
+   309→   309→                <Input value={createForm.company} onChange={(e) => setCreateForm((f) => ({ ...f, company: e.target.value }))} placeholder="Société" />
+   310→   310→              </div>
+   311→   311→            </div>
+   312→   312→            <div className="space-y-1">
+   313→   313→              <Label className="text-xs">Mot de passe *</Label>
+   314→   314→              <Input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="Minimum 6 caractères" />
+   315→   315→            </div>
+   316→   316→          </div>
+   317→   317→          <DialogFooter>
+   318→   318→            <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
+   319→   319→            <Button onClick={handleCreate} disabled={createLoading} className="bg-[#1a1a1a] hover:bg-[#333] text-white">
+   320→   320→              {createLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+   321→   321→              Créer
+   322→   322→            </Button>
+   323→   323→          </DialogFooter>
+   324→   324→        </DialogContent>
+   325→   325→      </Dialog>
+   326→   326→    </div>
+   327→   327→  )
+   328→   328→}
+   329→   329→
+   330→   330→// ── Partner Detail Component ─────────────────────────────
+   331→   331→
+   332→   332→function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () => void }) {
+   333→   333→  const [partner, setPartner] = useState<Affiliate | null>(null)
+   334→   334→  const [commissions, setCommissions] = useState<Commission[]>([])
+   335→   335→  const [payouts, setPayouts] = useState<AffiliatePayout[]>([])
+   336→   336→  const [loading, setLoading] = useState(true)
+   337→   337→  const [commissionPage, setCommissionPage] = useState(1)
+   338→   338→  const [commissionTotal, setCommissionTotal] = useState(0)
+   339→   339→  const [commissionTotalPages, setCommissionTotalPages] = useState(1)
+   340→   340→  const COMMISSIONS_PER_PAGE = 20
+   341→   341→
+   342→   342→  // Edit mode
+   343→   343→  const [editing, setEditing] = useState(false)
+   344→   344→  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', commissionRate: '5', bankInfo: '', isActive: true })
+   345→   345→  const [editLoading, setEditLoading] = useState(false)
+   346→   346→
+   347→   347→  // Payout dialog
+   348→   348→  const [payoutOpen, setPayoutOpen] = useState(false)
+   349→   349→  const [payoutForm, setPayoutForm] = useState({ amount: '', method: 'mobile_money', reference: '' })
+   350→   350→  const [payoutLoading, setPayoutLoading] = useState(false)
+   351→   351→
+   352→   352→  // Commission breakdown
+   353→   353→  const [breakdown, setBreakdown] = useState({ pending: 0, validated: 0, paid: 0, cancelled: 0 })
+   354→   354→
+   355→   355→  const fetchData = useCallback(async () => {
+   356→   356→    try {
+   357→   357→      setLoading(true)
+   358→   358→      const [partnerRes, commRes, payoutRes] = await Promise.all([
+   359→   359→        fetch(`/api/admin/partners?id=${partnerId}`),
+   360→   360→        fetch(`/api/commissions?affiliateId=${partnerId}&page=${commissionPage}&limit=${COMMISSIONS_PER_PAGE}`),
+   361→   361→        fetch(`/api/admin/partners?payouts=1&affiliateId=${partnerId}`),
+   362→   362→      ])
+   363→   363→
+   364→   364→      if (partnerRes.ok) {
+   365→   365→        const pData = await partnerRes.json()
+   366→   366→        setPartner(pData.partner || null)
+   367→   367→        if (pData.partner) {
+   368→   368→          setEditForm({
+   369→   369→            name: pData.partner.name,
+   370→   370→            email: pData.partner.email,
+   371→   371→            phone: pData.partner.phone || '',
+   372→   372→            company: pData.partner.company || '',
+   373→   373→            commissionRate: String(pData.partner.commissionRate),
+   374→   374→            bankInfo: pData.partner.bankInfo || '',
+   375→   375→            isActive: pData.partner.isActive,
+   376→   376→          })
+   377→   377→        }
+   378→   378→      }
+   379→   379→
+   380→   380→      if (commRes.ok) {
+   381→   381→        const cData = await commRes.json()
+   382→   382→        setCommissions(cData.data?.commissions || [])
+   383→   383→        setCommissionTotal(cData.data?.total || 0)
+   384→   384→        setCommissionTotalPages(cData.data?.totalPages || 1)
+   385→   385→        // Compute breakdown from summary
+   386→   386→        const summary = cData.data?.summary || []
+   387→   387→        const bd = { pending: 0, validated: 0, paid: 0, cancelled: 0 }
+   388→   388→        for (const s of summary) {
+   389→   389→          if (s.status in bd) bd[s.status as keyof typeof bd] = s.total
+   390→   390→        }
+   391→   391→        setBreakdown(bd)
+   392→   392→      }
+   393→   393→
+   394→   394→      if (payoutRes.ok) {
+   395→   395→        const payData = await payoutRes.json()
+   396→   396→        setPayouts(payData.payouts || [])
+   397→   397→      }
+   398→   398→    } catch {
+   399→   399→      toast.error('Erreur de chargement')
+   400→   400→    } finally {
+   401→   401→      setLoading(false)
+   402→   402→    }
+   403→   403→  }, [partnerId, commissionPage])
+   404→   404→
+   405→   405→  useEffect(() => { fetchData() }, [fetchData])
+   406→   406→
+   407→   407→  const handleSaveEdit = async () => {
+   408→   408→    try {
+   409→   409→      setEditLoading(true)
+   410→   410→      const res = await fetch('/api/admin/partners', {
+   411→   411→        method: 'PUT',
+   412→   412→        headers: { 'Content-Type': 'application/json' },
+   413→   413→        body: JSON.stringify({
+   414→   414→          id: partnerId,
+   415→   415→          name: editForm.name,
+   416→   416→          email: editForm.email,
+   417→   417→          phone: editForm.phone,
+   418→   418→          company: editForm.company,
+   419→   419→          commissionRate: parseFloat(editForm.commissionRate) || 5,
+   420→   420→          bankInfo: editForm.bankInfo,
+   421→   421→          isActive: editForm.isActive,
+   422→   422→        }),
+   423→   423→      })
+   424→   424→      const data = await res.json()
+   425→   425→      if (res.ok && data.success) {
+   426→   426→        toast.success('Partenaire mis à jour')
+   427→   427→        setEditing(false)
+   428→   428→        fetchData()
+   429→   429→      } else {
+   430→   430→        toast.error(data.error || 'Erreur')
+   431→   431→      }
+   432→   432→    } catch {
+   433→   433→      toast.error('Erreur serveur')
+   434→   434→    } finally {
+   435→   435→      setEditLoading(false)
+   436→   436→    }
+   437→   437→  }
+   438→   438→
+   439→   439→  const handleCommissionAction = async (commissionId: string, status: CommissionStatus) => {
+   440→   440→    try {
+   441→   441→      const res = await fetch('/api/commissions', {
+   442→   442→        method: 'PUT',
+   443→   443→        headers: { 'Content-Type': 'application/json' },
+   444→   444→        body: JSON.stringify({ id: commissionId, status }),
+   445→   445→      })
+   446→   446→      const data = await res.json()
+   447→   447→      if (res.ok && data.success) {
+   448→   448→        toast.success(`Commission ${COMMISSION_STATUS_LABELS[status]}`)
+   449→   449→        fetchData()
+   450→   450→      } else {
+   451→   451→        toast.error(data.error || 'Erreur')
+   452→   452→      }
+   453→   453→    } catch {
+   454→   454→      toast.error('Erreur serveur')
+   455→   455→    }
+   456→   456→  }
+   457→   457→
+   458→   458→  const handleCreatePayout = async () => {
+   459→   459→    const amount = parseFloat(payoutForm.amount)
+   460→   460→    if (!amount || amount <= 0) {
+   461→   461→      toast.error('Montant invalide')
+   462→   462→      return
+   463→   463→    }
+   464→   464→    try {
+   465→   465→      setPayoutLoading(true)
+   466→   466→      const res = await fetch('/api/admin/partners', {
+   467→   467→        method: 'PUT',
+   468→   468→        headers: { 'Content-Type': 'application/json' },
+   469→   469→        body: JSON.stringify({
+   470→   470→          id: partnerId,
+   471→   471→          action: 'createPayout',
+   472→   472→          payoutAmount: amount,
+   473→   473→          payoutMethod: payoutForm.method,
+   474→   474→          payoutReference: payoutForm.reference,
+   475→   475→        }),
+   476→   476→      })
+   477→   477→      const data = await res.json()
+   478→   478→      if (res.ok && data.success) {
+   479→   479→        toast.success('Paiement créé avec succès')
+   480→   480→        setPayoutOpen(false)
+   481→   481→        setPayoutForm({ amount: '', method: 'mobile_money', reference: '' })
+   482→   482→        fetchData()
+   483→   483→      } else {
+   484→   484→        toast.error(data.error || 'Erreur')
+   485→   485→      }
+   486→   486→    } catch {
+   487→   487→      toast.error('Erreur serveur')
+   488→   488→    } finally {
+   489→   489→      setPayoutLoading(false)
+   490→   490→    }
+   491→   491→  }
+   492→   492→
+   493→   493→  if (loading) {
+   494→   494→    return (
+   495→   495→      <div className="flex items-center justify-center h-64">
+   496→   496→        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+   497→   497→      </div>
+   498→   498→    )
+   499→   499→  }
+   500→   500→
+   501→   501→  if (!partner) {
+   502→   502→    return (
+   503→   503→      <div className="text-center py-12 text-gray-400">
+   504→   504→        <p>Partenaire introuvable</p>
+   505→   505→        <Button variant="outline" onClick={onBack} className="mt-4">Retour</Button>
+   506→   506→      </div>
+   507→   507→    )
+   508→   508→  }
+   509→   509→
+   510→   510→  return (
+   511→   511→    <div className="space-y-6">
+   512→   512→      {/* Back button */}
+   513→   513→      <Button variant="ghost" onClick={onBack} className="gap-1.5 text-gray-600">
+   514→   514→        <ArrowLeft className="w-4 h-4" />
+   515→   515→        Retour à la liste
+   516→   516→      </Button>
+   517→   517→
+   518→   518→      {/* Partner Info Card */}
+   519→   519→      <Card>
+   520→   520→        <CardHeader>
+   521→   521→          <div className="flex items-center justify-between">
+   522→   522→            <CardTitle className="flex items-center gap-2 text-base">
+   523→   523→              <Handshake className="w-5 h-5 text-emerald-600" />
+   524→   524→              {partner.name}
+   525→   525→            </CardTitle>
+   526→   526→            <div className="flex items-center gap-2">
+   527→   527→              <Badge variant="outline" className={partner.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}>
+   528→   528→                {partner.isActive ? 'Actif' : 'Inactif'}
+   529→   529→              </Badge>
+   530→   530→              {!editing ? (
+   531→   531→                <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
+   532→   532→                  <Edit3 className="w-3.5 h-3.5" />
+   533→   533→                  Modifier
+   534→   534→                </Button>
+   535→   535→              ) : (
+   536→   536→                <div className="flex gap-1">
+   537→   537→                  <Button size="sm" onClick={handleSaveEdit} disabled={editLoading} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+   538→   538→                    {editLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+   539→   539→                    <Save className="w-3.5 h-3.5" />
+   540→   540→                    Sauvegarder
+   541→   541→                  </Button>
+   542→   542→                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Annuler</Button>
+   543→   543→                </div>
+   544→   544→              )}
+   545→   545→            </div>
+   546→   546→          </div>
+   547→   547→        </CardHeader>
+   548→   548→        <CardContent>
+   549→   549→          {editing ? (
+   550→   550→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   551→   551→              <div className="space-y-1">
+   552→   552→                <Label className="text-xs">Nom</Label>
+   553→   553→                <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+   554→   554→              </div>
+   555→   555→              <div className="space-y-1">
+   556→   556→                <Label className="text-xs">Email</Label>
+   557→   557→                <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+   558→   558→              </div>
+   559→   559→              <div className="space-y-1">
+   560→   560→                <Label className="text-xs">Téléphone</Label>
+   561→   561→                <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+   562→   562→              </div>
+   563→   563→              <div className="space-y-1">
+   564→   564→                <Label className="text-xs">Entreprise</Label>
+   565→   565→                <Input value={editForm.company} onChange={(e) => setEditForm((f) => ({ ...f, company: e.target.value }))} />
+   566→   566→              </div>
+   567→   567→              <div className="space-y-1">
+   568→   568→                <Label className="text-xs">Taux de commission (%)</Label>
+   569→   569→                <Input type="number" step="0.5" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
+   570→   570→              </div>
+   571→   571→              <div className="space-y-1">
+   572→   572→                <Label className="text-xs">Infos bancaires</Label>
+   573→   573→                <Input value={editForm.bankInfo} onChange={(e) => setEditForm((f) => ({ ...f, bankInfo: e.target.value }))} />
+   574→   574→              </div>
+   575→   575→              <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
+   576→   576→                <Switch checked={editForm.isActive} onCheckedChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))} />
+   577→   577→                <Label className="text-sm">{editForm.isActive ? 'Partenaire actif' : 'Partenaire inactif'}</Label>
+   578→   578→              </div>
+   579→   579→            </div>
+   580→   580→          ) : (
+   581→   581→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+   582→   582→              <div><span className="text-gray-500">Code :</span> <code className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{partner.code}</code></div>
+   583→   583→              <div><span className="text-gray-500">Email :</span> {partner.email}</div>
+   584→   584→              <div><span className="text-gray-500">Téléphone :</span> {partner.phone || '—'}</div>
+   585→   585→              <div><span className="text-gray-500">Entreprise :</span> {partner.company || '—'}</div>
+   586→   586→              <div><span className="text-gray-500">Taux :</span> <strong>{partner.commissionRate}%</strong></div>
+   587→   587→              <div><span className="text-gray-500">Infos bancaires :</span> {partner.bankInfo || '—'}</div>
+   588→   588→              <div><span className="text-gray-500">Inscrit le :</span> {formatDate(partner.createdAt)}</div>
+   589→   589→              <div><span className="text-gray-500">Filleuls :</span> {partner.totalReferrals}</div>
+   590→   590→              <div><span className="text-gray-500">Commandes :</span> {partner.totalOrders}</div>
+   591→   591→            </div>
+   592→   592→          )}
+   593→   593→        </CardContent>
+   594→   594→      </Card>
+   595→   595→
+   596→   596→      {/* Commission Summary */}
+   597→   597→      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+   598→   598→        <Card>
+   599→   599→          <CardContent className="p-4">
+   600→   600→            <p className="text-xs text-gray-500 font-medium mb-1">Commission totale</p>
+   601→   601→            <p className="text-lg font-bold text-gray-900">{formatFCFA(partner.totalEarnings)}</p>
+   602→   602→          </CardContent>
+   603→   603→        </Card>
+   604→   604→        <Card>
+   605→   605→          <CardContent className="p-4">
+   606→   606→            <p className="text-xs text-yellow-600 font-medium flex items-center gap-1 mb-1"><Clock className="w-3 h-3" /> En attente</p>
+   607→   607→            <p className="text-lg font-bold text-yellow-600">{formatFCFA(breakdown.pending)}</p>
+   608→   608→          </CardContent>
+   609→   609→        </Card>
+   610→   610→        <Card>
+   611→   611→          <CardContent className="p-4">
+   612→   612→            <p className="text-xs text-emerald-600 font-medium flex items-center gap-1 mb-1"><CheckCircle2 className="w-3 h-3" /> Validée</p>
+   613→   613→            <p className="text-lg font-bold text-emerald-600">{formatFCFA(breakdown.validated)}</p>
+   614→   614→          </CardContent>
+   615→   615→        </Card>
+   616→   616→        <Card>
+   617→   617→          <CardContent className="p-4">
+   618→   618→            <p className="text-xs text-sky-600 font-medium flex items-center gap-1 mb-1"><Wallet className="w-3 h-3" /> Payée</p>
+   619→   619→            <p className="text-lg font-bold text-sky-600">{formatFCFA(breakdown.paid)}</p>
+   620→   620→          </CardContent>
+   621→   621→        </Card>
+   622→   622→        <Card>
+   623→   623→          <CardContent className="p-4">
+   624→   624→            <p className="text-xs text-red-600 font-medium flex items-center gap-1 mb-1"><XCircle className="w-3 h-3" /> Annulée</p>
+   625→   625→            <p className="text-lg font-bold text-red-600">{formatFCFA(breakdown.cancelled)}</p>
+   626→   626→          </CardContent>
+   627→   627→        </Card>
+   628→   628→      </div>
+   629→   629→
+   630→   630→      {/* Commissions Table */}
+   631→   631→      <Card>
+   632→   632→        <CardHeader>
+   633→   633→          <div className="flex items-center justify-between">
+   634→   634→            <div>
+   635→   635→              <CardTitle className="flex items-center gap-2 text-base">
+   636→   636→                <CreditCard className="w-4 h-4 text-emerald-600" />
+   637→   637→                Commissions
+   638→   638→              </CardTitle>
+   639→   639→              <CardDescription>{commissionTotal} commission{commissionTotal > 1 ? 's' : ''}</CardDescription>
+   640→   640→            </div>
+   641→   641→          </div>
+   642→   642→        </CardHeader>
+   643→   643→        <CardContent>
+   644→   644→          {commissions.length > 0 ? (
+   645→   645→            <div className="overflow-x-auto">
+   646→   646→              <Table>
+   647→   647→                <TableHeader>
+   648→   648→                  <TableRow>
+   649→   649→                    <TableHead>Date</TableHead>
+   650→   650→                    <TableHead>Commande</TableHead>
+   651→   651→                    <TableHead>Produit</TableHead>
+   652→   652→                    <TableHead className="text-right">Qté</TableHead>
+   653→   653→                    <TableHead className="text-right">Vente</TableHead>
+   654→   654→                    <TableHead className="text-right">Commission</TableHead>
+   655→   655→                    <TableHead>Statut</TableHead>
+   656→   656→                    <TableHead className="text-right">Actions</TableHead>
+   657→   657→                  </TableRow>
+   658→   658→                </TableHeader>
+   659→   659→                <TableBody>
+   660→   660→                  {commissions.map((c) => (
+   661→   661→                    <TableRow key={c.id}>
+   662→   662→                      <TableCell className="text-xs text-gray-500 whitespace-nowrap">{formatDate(c.createdAt)}</TableCell>
+   663→   663→                      <TableCell className="font-mono text-xs">{c.order?.orderNumber || '—'}</TableCell>
+   664→   664→                      <TableCell className="text-sm max-w-[120px] truncate">
+   665→   665→                        {c.productName}
+   666→   666→                        {c.variantName && <span className="text-gray-400 ml-1">({c.variantName})</span>}
+   667→   667→                      </TableCell>
+   668→   668→                      <TableCell className="text-right text-sm">{c.quantity}</TableCell>
+   669→   669→                      <TableCell className="text-right text-sm">{formatFCFA(c.totalSaleAmount)}</TableCell>
+   670→   670→                      <TableCell className="text-right text-sm font-semibold text-emerald-600">{formatFCFA(c.commissionTotal)}</TableCell>
+   671→   671→                      <TableCell>
+   672→   672→                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${COMMISSION_STATUS_COLORS[c.status] || ''}`}>
+   673→   673→                          {COMMISSION_STATUS_LABELS[c.status] || c.status}
+   674→   674→                        </Badge>
+   675→   675→                      </TableCell>
+   676→   676→                      <TableCell className="text-right">
+   677→   677→                        <div className="flex items-center justify-end gap-1">
+   678→   678→                          {c.status === 'pending' && (
+   679→   679→                            <>
+   680→   680→                              <Button variant="ghost" size="sm" onClick={() => handleCommissionAction(c.id, 'validated')} title="Valider" className="h-7 w-7 p-0">
+   681→   681→                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+   682→   682→                              </Button>
+   683→   683→                              <Button variant="ghost" size="sm" onClick={() => handleCommissionAction(c.id, 'cancelled')} title="Annuler" className="h-7 w-7 p-0">
+   684→   684→                                <XCircle className="w-3.5 h-3.5 text-red-500" />
+   685→   685→                              </Button>
+   686→   686→                            </>
+   687→   687→                          )}
+   688→   688→                          {c.status === 'validated' && (
+   689→   689→                            <>
+   690→   690→                              <Button variant="ghost" size="sm" onClick={() => handleCommissionAction(c.id, 'paid')} title="Marquer payée" className="h-7 w-7 p-0">
+   691→   691→                                <Wallet className="w-3.5 h-3.5 text-sky-600" />
+   692→   692→                              </Button>
+   693→   693→                              <Button variant="ghost" size="sm" onClick={() => handleCommissionAction(c.id, 'cancelled')} title="Annuler" className="h-7 w-7 p-0">
+   694→   694→                                <XCircle className="w-3.5 h-3.5 text-red-500" />
+   695→   695→                              </Button>
+   696→   696→                            </>
+   697→   697→                          )}
+   698→   698→                        </div>
+   699→   699→                      </TableCell>
+   700→   700→                    </TableRow>
+   701→   701→                  ))}
+   702→   702→                </TableBody>
+   703→   703→              </Table>
+   704→   704→              {/* Pagination */}
+   705→   705→              {commissionTotalPages > 1 && (
+   706→   706→                <div className="flex items-center justify-between mt-4">
+   707→   707→                  <p className="text-xs text-gray-500">Page {commissionPage} / {commissionTotalPages}</p>
+   708→   708→                  <div className="flex gap-1">
+   709→   709→                    <Button variant="outline" size="sm" disabled={commissionPage <= 1} onClick={() => setCommissionPage((p) => p - 1)}>
+   710→   710→                      <ChevronLeft className="w-4 h-4" />
+   711→   711→                    </Button>
+   712→   712→                    <Button variant="outline" size="sm" disabled={commissionPage >= commissionTotalPages} onClick={() => setCommissionPage((p) => p + 1)}>
+   713→   713→                      <ChevronRight className="w-4 h-4" />
+   714→   714→                    </Button>
+   715→   715→                  </div>
+   716→   716→                </div>
+   717→   717→              )}
+   718→   718→            </div>
+   719→   719→          ) : (
+   720→   720→            <div className="flex flex-col items-center justify-center h-24 text-gray-400">
+   721→   721→              <CreditCard className="w-6 h-6 mb-1.5" />
+   722→   722→              <p className="text-sm">Aucune commission</p>
+   723→   723→            </div>
+   724→   724→          )}
+   725→   725→        </CardContent>
+   726→   726→      </Card>
+   727→   727→
+   728→   728→      {/* Payout History */}
+   729→   729→      <Card>
+   730→   730→        <CardHeader>
+   731→   731→          <div className="flex items-center justify-between">
+   732→   732→            <div>
+   733→   733→              <CardTitle className="flex items-center gap-2 text-base">
+   734→   734→                <Wallet className="w-4 h-4 text-sky-600" />
+   735→   735→                Historique des paiements
+   736→   736→              </CardTitle>
+   737→   737→              <CardDescription>{payouts.length} paiement{payouts.length > 1 ? 's' : ''}</CardDescription>
+   738→   738→            </div>
+   739→   739→            <Button onClick={() => setPayoutOpen(true)} size="sm" className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
+   740→   740→              <DollarSign className="w-4 h-4" />
+   741→   741→              Créer un paiement
+   742→   742→            </Button>
+   743→   743→          </div>
+   744→   744→        </CardHeader>
+   745→   745→        <CardContent>
+   746→   746→          {payouts.length > 0 ? (
+   747→   747→            <div className="overflow-x-auto">
+   748→   748→              <Table>
+   749→   749→                <TableHeader>
+   750→   750→                  <TableRow>
+   751→   751→                    <TableHead>Date</TableHead>
+   752→   752→                    <TableHead className="text-right">Montant</TableHead>
+   753→   753→                    <TableHead>Méthode</TableHead>
+   754→   754→                    <TableHead>Référence</TableHead>
+   755→   755→                    <TableHead>Statut</TableHead>
+   756→   756→                  </TableRow>
+   757→   757→                </TableHeader>
+   758→   758→                <TableBody>
+   759→   759→                  {payouts.map((p) => (
+   760→   760→                    <TableRow key={p.id}>
+   761→   761→                      <TableCell className="text-xs text-gray-500 whitespace-nowrap">{formatDate(p.createdAt)}</TableCell>
+   762→   762→                      <TableCell className="text-right text-sm font-semibold text-sky-600">{formatFCFA(p.amount)}</TableCell>
+   763→   763→                      <TableCell className="text-sm">{p.method}</TableCell>
+   764→   764→                      <TableCell className="text-xs text-gray-500 font-mono">{p.reference || '—'}</TableCell>
+   765→   765→                      <TableCell>
+   766→   766→                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${PAYOUT_STATUS_COLORS[p.status] || ''}`}>
+   767→   767→                          {PAYOUT_STATUS_LABELS[p.status] || p.status}
+   768→   768→                        </Badge>
+   769→   769→                      </TableCell>
+   770→   770→                    </TableRow>
+   771→   771→                  ))}
+   772→   772→                </TableBody>
+   773→   773→              </Table>
+   774→   774→            </div>
+   775→   775→          ) : (
+   776→   776→            <div className="flex flex-col items-center justify-center h-24 text-gray-400">
+   777→   777→              <Wallet className="w-6 h-6 mb-1.5" />
+   778→   778→              <p className="text-sm">Aucun paiement effectué</p>
+   779→   779→            </div>
+   780→   780→          )}
+   781→   781→        </CardContent>
+   782→   782→      </Card>
+   783→   783→
+   784→   784→      {/* Create Payout Dialog */}
+   785→   785→      <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
+   786→   786→        <DialogContent className="sm:max-w-md">
+   787→   787→          <DialogHeader>
+   788→   788→            <DialogTitle>Créer un paiement</DialogTitle>
+   789→   789→            <DialogDescription>Versement de commission pour {partner.name}</DialogDescription>
+   790→   790→          </DialogHeader>
+   791→   791→          <div className="space-y-3 py-2">
+   792→   792→            <div className="space-y-1">
+   793→   793→              <Label className="text-xs">Montant (FCFA) *</Label>
+   794→   794→              <Input type="number" value={payoutForm.amount} onChange={(e) => setPayoutForm((f) => ({ ...f, amount: e.target.value }))} placeholder="Ex: 25000" />
+   795→   795→            </div>
+   796→   796→            <div className="space-y-1">
+   797→   797→              <Label className="text-xs">Méthode</Label>
+   798→   798→              <Select value={payoutForm.method} onValueChange={(v) => setPayoutForm((f) => ({ ...f, method: v }))}>
+   799→   799→                <SelectTrigger>
+   800→   800→                  <SelectValue />
+   801→   801→                </SelectTrigger>
+   802→   802→                <SelectContent>
+   803→   803→                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
+   804→   804→                  <SelectItem value="bank_transfer">Virement bancaire</SelectItem>
+   805→   805→                  <SelectItem value="cash">Espèces</SelectItem>
+   806→   806→                </SelectContent>
+   807→   807→              </Select>
+   808→   808→            </div>
+   809→   809→            <div className="space-y-1">
+   810→   810→              <Label className="text-xs">Référence</Label>
+   811→   811→              <Input value={payoutForm.reference} onChange={(e) => setPayoutForm((f) => ({ ...f, reference: e.target.value }))} placeholder="N° de transaction" />
+   812→   812→            </div>
+   813→   813→          </div>
+   814→   814→          <DialogFooter>
+   815→   815→            <Button variant="outline" onClick={() => setPayoutOpen(false)}>Annuler</Button>
+   816→   816→            <Button onClick={handleCreatePayout} disabled={payoutLoading} className="bg-sky-600 hover:bg-sky-700 text-white">
+   817→   817→              {payoutLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+   818→   818→              Créer le paiement
+   819→   819→            </Button>
+   820→   820→          </DialogFooter>
+   821→   821→        </DialogContent>
+   822→   822→      </Dialog>
+   823→   823→    </div>
+   824→   824→  )
+   825→   825→}
+   826→   826→
+   827→   827→// ── Main Section Component ───────────────────────────────
+   828→   828→
+   829→   829→export default function PartnersSection() {
+   830→   830→  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null)
+   831→   831→
+   832→   832→  if (selectedPartnerId) {
+   833→   833→    return <PartnerDetail partnerId={selectedPartnerId} onBack={() => setSelectedPartnerId(null)} />
+   834→   834→  }
+   835→   835→
+   836→   836→  return <PartnersList onSelectPartner={setSelectedPartnerId} />
+   837→   837→}
+   838→   838→

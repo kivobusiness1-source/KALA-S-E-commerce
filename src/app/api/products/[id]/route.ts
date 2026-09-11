@@ -27,6 +27,8 @@ const updateProductSchema = z.object({
   inStock: z.boolean().optional(),
   stockQty: z.number().int().min(0).optional(),
   minStockAlert: z.number().int().min(0).optional(),
+  commissionMonth1PerUnit: z.number().min(0).optional().nullable(),
+  commissionMonth2PlusPerUnit: z.number().min(0).optional().nullable(),
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

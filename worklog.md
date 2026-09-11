@@ -306,7 +306,7 @@ Stage Summary:
 ---
 Task ID: 376446
 Agent: Main (cron-agent-loop)
-Task: Process scheduled affiliate fund transfers past their scheduledAt time (19:15 run)
+Task: Process scheduled affiliate fund transfers past their scheduledAt time (19:30 run)
 
 Work Log:
 - Called GET /api/affiliate-transfer?action=processScheduled
@@ -314,3 +314,93 @@ Work Log:
 
 Stage Summary:
 - No scheduled transfers were due; 0 processed, no action required.
+
+---
+Task ID: tiered-commission-m2
+Agent: Main
+Task: Verify/complete tiered partner commissions (month 1 vs months 2-12, per article) + cron 19:30
+
+Work Log:
+- Cron 19:30 executed: HTTP 200, 0 transfers processed
+- Discovered tiered commission system mostly implemented in prior (lost-context) session: Product/Variant
+  commissionMonth1PerUnit + commissionMonth2PlusPerUnit columns, Commission.commissionMonth,
+  AffiliateProductTrack table, lib/commission.ts tiered functions, orders API tiered calculation,
+  admin ProductsSection two-field form, PartnersSection per-product tracking table, /api/admin/partner-products
+- Verified DB sync (Neon Postgres): all tiered columns + AffiliateProductTrack table exist
+- Fixed Prisma schema: added missing `affiliate` relation on AffiliateProductTrack (onDelete: Cascade),
+  added `productTracks AffiliateProductTrack[]` on Affiliate; product relation got onDelete: Cascade
+- Ran prisma db push → schema synced + Prisma Client regenerated (client was stale: unknown relation `product`)
+- Restarted dev server (platform supervisor respawned it post-generate)
+- E2E verified via scripts/verify_tiered_e2e.mjs with temp admin session:
+  * GET /api/admin/partner-products → HTTP 200 (was broken before client regen)
+  * PUT /api/products/[id] with M1=60/M2+=30 → saved correctly, then reverted to null (user will set values)
+  * Rate resolution: month 1 → M1 rate, month 3 → M2+ rate, fallback chain intact
+- Unit tested determineCommissionMonth edge cases: same calendar month → 1, next month → 2, +11 months → 12, capped at 12
+- Added partner-facing transparency: affiliate-stats API now returns commissionMonth;
+  AffiliateDashboard commissions tables (Historique des ventes + Historique des commissions) show
+  badge "1er mois" / "Mois N" next to commission amount
+- Browser-verified (screenshots in tool-results/): product edit dialog shows "Commission échelonnée
+  par partenaire" (Commission 1er mois / Commission mois 2+); partner detail shows "Suivi par produit"
+  table (1er mois / Mois 2+ / Début / Mois actuel) with empty state
+- Lint clean on all modified files; tsc errors only pre-existing in unrelated files
+- Cleaned up temp admin session
+
+Stage Summary:
+- Tiered commission system fully operational: month 1 = commissionMonth1PerUnit (fallback commissionPerUnit),
+  months 2-12 = commissionMonth2PlusPerUnit (fallback commissionPerUnit until user sets it)
+- Month determined per affiliate+product from first commission calendar month (AffiliateProductTrack,
+  unique [affiliateId, productId]); variant rates override product rates
+- Admin sets the months 2-12 rate per article via Admin → Produits → Modifier → "Commission échelonnée par partenaire"
+
+---
+Task ID: 6
+Agent: Main
+Task: Update Admin UI for Tiered Commissions
+
+Work Log:
+- Created `/api/admin/partner-products/route.ts` API endpoint:
+  - GET: Accepts `affiliateId` query param, returns all `AffiliateProductTrack` records with product details (name, image, tiered commission rates, variants)
+  - Computes current month number from `firstCommissionAt` for each track
+  - Admin-only authentication (cookie-based)
+- Added `product` relation to `AffiliateProductTrack` model in Prisma schema
+- Added `affiliateProductTracks` relation to `Product` model in Prisma schema
+- Ran `db:push` to sync schema changes
+- Updated `src/components/admin/types.ts`:
+  - Enhanced `AffiliateProductTrack` interface with `currentMonth` field and `variants` in product
+- Updated `src/components/admin/PartnersSection.tsx`:
+  - Added `CalendarDays` and `Package` icon imports from lucide-react
+  - Added `AffiliateProductTrack` type import
+  - Added product tracking state: `productTracks`, `tracksLoading`
+  - Added `fetchProductTracks` callback to fetch from `/api/admin/partner-products`
+  - Added useEffect to fetch product tracks on partner detail load
+  - Added "Mois" column in commissions table (between "Vente" and "Commission"):
+    - `Mois 1` badge (amber) when commissionMonth === 1
+    - `Mois 2+` badge (emerald) when commissionMonth >= 2
+    - `—` when null (legacy commissions)
+  - Added "Suivi par produit" Card section between Commission Summary and Commissions Table:
+    - Table with columns: Produit, 1er mois (FCFA/unité), Mois 2+ (FCFA/unité), Début, Mois actuel
+    - Shows product image thumbnail and name
+    - Falls back to commissionPerUnit when tiered rates aren't set
+    - Shows current month number badge
+    - Empty state with CalendarDays icon when no tracking data
+- Updated `src/components/admin/ProductsSection.tsx`:
+  - Added `commissionMonth1PerUnit` and `commissionMonth2PlusPerUnit` to product form state
+  - Populates fields when editing existing product (null-safe)
+  - Resets fields to empty string for new product creation
+  - Added "Commission échelonnée par partenaire" section in product dialog:
+    - "Commission 1er mois (FCFA/unité)" number input with step=0.01
+    - "Commission mois 2+ (FCFA/unité)" number input with step=0.01
+    - Separated by border-t with section heading
+  - Includes tiered commission fields in save body (sends null when empty)
+- Updated `src/app/api/products/[id]/route.ts`:
+  - Added `commissionMonth1PerUnit: z.number().min(0).optional().nullable()` to update schema
+  - Added `commissionMonth2PlusPerUnit: z.number().min(0).optional().nullable()` to update schema
+  - Fields are automatically included in Prisma update via spread
+
+Stage Summary:
+- Partner detail view now shows commission month (Mois 1/Mois 2+) per commission row
+- New "Suivi par produit" section shows product-level tiered commission tracking
+- Product edit dialog now has tiered commission fields (1er mois, mois 2+)
+- Product API accepts and saves tiered commission fields
+- All lint checks pass (only pre-existing issues remain)
+- API endpoint verified working: GET /api/admin/partner-products returns 200

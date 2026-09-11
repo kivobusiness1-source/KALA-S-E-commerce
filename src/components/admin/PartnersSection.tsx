@@ -38,9 +38,11 @@ import {
   Edit3,
   Save,
   Trash2,
+  CalendarDays,
+  Package,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Affiliate, Commission, AffiliatePayout, CommissionStatus } from './types'
+import type { Affiliate, Commission, AffiliatePayout, CommissionStatus, AffiliateProductTrack } from './types'
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -352,6 +354,25 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
   // Commission breakdown
   const [breakdown, setBreakdown] = useState({ pending: 0, validated: 0, paid: 0, cancelled: 0 })
 
+  // Product tracking
+  const [productTracks, setProductTracks] = useState<AffiliateProductTrack[]>([])
+  const [tracksLoading, setTracksLoading] = useState(false)
+
+  const fetchProductTracks = useCallback(async () => {
+    try {
+      setTracksLoading(true)
+      const res = await fetch(`/api/admin/partner-products?affiliateId=${partnerId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setProductTracks(data.data || [])
+      }
+    } catch {
+      // silent
+    } finally {
+      setTracksLoading(false)
+    }
+  }, [partnerId])
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
@@ -403,6 +424,7 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
   }, [partnerId, commissionPage])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchProductTracks() }, [fetchProductTracks])
 
   const handleSaveEdit = async () => {
     try {
@@ -627,6 +649,80 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
         </Card>
       </div>
 
+      {/* Suivi par produit */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="w-4 h-4 text-amber-600" />
+            Suivi par produit
+          </CardTitle>
+          <CardDescription>Tracking des commissions échelonnées (1er mois / mois 2+)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tracksLoading ? (
+            <div className="flex items-center justify-center h-24">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : productTracks.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produit</TableHead>
+                    <TableHead className="text-right">1er mois (FCFA/unité)</TableHead>
+                    <TableHead className="text-right">Mois 2+ (FCFA/unité)</TableHead>
+                    <TableHead>Début</TableHead>
+                    <TableHead className="text-right">Mois actuel</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productTracks.map((t) => {
+                    const p = t.product
+                    const m1 = p?.commissionMonth1PerUnit ?? p?.commissionPerUnit ?? null
+                    const m2Plus = p?.commissionMonth2PlusPerUnit ?? p?.commissionPerUnit ?? null
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {p?.image ? (
+                              <img src={p.image} alt={p.name} className="w-8 h-8 rounded object-cover" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
+                                <Package className="w-4 h-4 text-gray-300" />
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">{p?.name || '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {m1 !== null ? formatFCFA(m1) : <span className="text-gray-400">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {m2Plus !== null ? formatFCFA(m2Plus) : <span className="text-gray-400">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(t.firstCommissionAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-sky-50 text-sky-700 border-sky-200">
+                            Mois {t.currentMonth ?? 1}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-24 text-gray-400">
+              <CalendarDays className="w-6 h-6 mb-1.5" />
+              <p className="text-sm">Aucun suivi par produit</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Commissions Table */}
       <Card>
         <CardHeader>
@@ -651,6 +747,7 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
                     <TableHead>Produit</TableHead>
                     <TableHead className="text-right">Qté</TableHead>
                     <TableHead className="text-right">Vente</TableHead>
+                    <TableHead>Mois</TableHead>
                     <TableHead className="text-right">Commission</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -667,6 +764,15 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
                       </TableCell>
                       <TableCell className="text-right text-sm">{c.quantity}</TableCell>
                       <TableCell className="text-right text-sm">{formatFCFA(c.totalSaleAmount)}</TableCell>
+                      <TableCell>
+                        {c.commissionMonth === 1 ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Mois 1</Badge>
+                        ) : c.commissionMonth && c.commissionMonth >= 2 ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">Mois 2+</Badge>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right text-sm font-semibold text-emerald-600">{formatFCFA(c.commissionTotal)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${COMMISSION_STATUS_COLORS[c.status] || ''}`}>

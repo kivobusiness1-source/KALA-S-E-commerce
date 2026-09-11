@@ -63,7 +63,9 @@ model Product {
   wholesalePrice  Float?                         // Prix gros (FCFA)
   packSize        Int?                           // Taille pack (ex: 12 bouteilles, 10 bidons)
   packPrice       Float?                         // Prix du pack (FCFA)
-  commissionPerUnit Float?                       // Commission partenaire par unité (FCFA)
+  commissionPerUnit Float?                       // Commission partenaire par unité (FCFA) — fallback
+  commissionMonth1PerUnit Float?                 // Commission 1er mois par unité (FCFA)
+  commissionMonth2PlusPerUnit Float?              // Commission mois 2+ par unité (FCFA)
   categoryId      String
   image           String?
   images          String    @default("[]")       // JSON array of image URLs
@@ -82,6 +84,7 @@ model Product {
   reviews         Review[]
   stockHistories  StockHistory[]
   commissions     Commission[]
+  affiliateProductTracks AffiliateProductTrack[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -95,7 +98,9 @@ model ProductVariant {
   price             Float                         // Prix détail (override parent si défini)
   wholesalePrice    Float?                        // Prix gros (override parent si défini)
   packPrice         Float?                        // Prix pack (override parent si défini)
-  commissionPerUnit Float?                        // Commission par unité (override parent si défini)
+  commissionPerUnit Float?                        // Commission par unité (override parent si défini) — fallback
+  commissionMonth1PerUnit Float?                  // Commission 1er mois par unité (override parent)
+  commissionMonth2PlusPerUnit Float?               // Commission mois 2+ par unité (override parent)
   image             String?
   inStock           Boolean  @default(true)
   stockQty          Int      @default(0)
@@ -201,6 +206,8 @@ model Commission {
   orderItem       OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   product         Product   @relation(fields: [productId], references: [id])
   variant         ProductVariant? @relation(fields: [variantId], references: [id])
+
+  commissionMonth  Int?                          // Mois de commission (1 = premier mois, 2+ = mois suivants)
 
   @@index([affiliateId])
   @@index([orderId])
@@ -560,6 +567,7 @@ model Affiliate {
   fundTransferRequests FundTransferRequest[]
   sessions        AffiliateSession[]
   commissions     Commission[]
+  productTracks   AffiliateProductTrack[]
 
   @@index([code])
   @@index([isActive])
@@ -628,6 +636,27 @@ model FundTransferRequest {
   @@index([affiliateId])
   @@index([status])
   @@index([scheduledAt])
+}
+
+// ==================== AFFILIATE PRODUCT TRACKING ====================
+
+// Tracks when an affiliate first earned commission on a specific product.
+// Used to determine if we're in month 1 or month 2+ for tiered commissions.
+
+model AffiliateProductTrack {
+  id                String   @id @default(cuid())
+  affiliateId       String
+  productId         String
+  firstCommissionAt DateTime // Date of first commission for this affiliate+product pair
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  affiliate         Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([affiliateId, productId])
+  @@index([affiliateId])
+  @@index([productId])
 }
 
 // ==================== ENTERPRISE / BUSINESS DATA ====================

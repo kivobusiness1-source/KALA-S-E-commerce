@@ -69,6 +69,7 @@ export default function ProductsSection() {
   const [pForm, setPForm] = useState({
     name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '',
     volume: '', stockQty: '', minStockAlert: '', isFeatured: false, isActive: true,
+    commissionMonth1PerUnit: '', commissionMonth2PlusPerUnit: '',
   })
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -121,11 +122,13 @@ export default function ProductsSection() {
         minStockAlert: String(product.minStockAlert),
         isFeatured: product.isFeatured,
         isActive: product.isActive,
+        commissionMonth1PerUnit: product.commissionMonth1PerUnit != null ? String(product.commissionMonth1PerUnit) : '',
+        commissionMonth2PlusPerUnit: product.commissionMonth2PlusPerUnit != null ? String(product.commissionMonth2PlusPerUnit) : '',
       })
       setGalleryImages(parseImages(product.images))
     } else {
       setEditingProduct(null)
-      setPForm({ name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '', volume: '', stockQty: '0', minStockAlert: '10', isFeatured: false, isActive: true })
+      setPForm({ name: '', description: '', longDescription: '', price: '', comparePrice: '', categoryId: '', volume: '', stockQty: '0', minStockAlert: '10', isFeatured: false, isActive: true, commissionMonth1PerUnit: '', commissionMonth2PlusPerUnit: '' })
       setGalleryImages([])
     }
     setProductDialogOpen(true)
@@ -240,6 +243,8 @@ export default function ProductsSection() {
         isFeatured: pForm.isFeatured,
         isActive: pForm.isActive,
         image: editingProduct?.image || null,
+        commissionMonth1PerUnit: pForm.commissionMonth1PerUnit ? parseFloat(pForm.commissionMonth1PerUnit) : null,
+        commissionMonth2PlusPerUnit: pForm.commissionMonth2PlusPerUnit ? parseFloat(pForm.commissionMonth2PlusPerUnit) : null,
       }
 
       let res: Response
@@ -917,6 +922,19 @@ export default function ProductsSection() {
             <div className="space-y-2">
               <Label>Alerte Stock Min</Label>
               <Input type="number" value={pForm.minStockAlert} onChange={e => setPForm({ ...pForm, minStockAlert: e.target.value })} placeholder="10" min="0" />
+            </div>
+            <div className="sm:col-span-2 border-t pt-4 mt-2">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Commission échelonnée par partenaire</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Commission 1er mois (FCFA/unité)</Label>
+                  <Input type="number" step="0.01" value={pForm.commissionMonth1PerUnit} onChange={e => setPForm({ ...pForm, commissionMonth1PerUnit: e.target.value })} placeholder="Ex: 50" min="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Commission mois 2+ (FCFA/unité)</Label>
+                  <Input type="number" step="0.01" value={pForm.commissionMonth2PlusPerUnit} onChange={e => setPForm({ ...pForm, commissionMonth2PlusPerUnit: e.target.value })} placeholder="Ex: 25" min="0" />
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-8 pt-6">
               <div className="flex items-center gap-2">

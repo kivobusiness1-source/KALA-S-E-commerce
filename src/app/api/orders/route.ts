@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { validateSession, logActivity, checkRateLimit } from '@/lib/auth'
-import { calculateTotalUnits, calculateItemCommission, sumCommissions, type CommissionInput } from '@/lib/commission'
+import {
+  calculateTotalUnits,
+  calculateTieredItemCommission,
+  determineCommissionMonth,
+  sumCommissions,
+  type CommissionInput,
+  type TieredCommissionRates,
+} from '@/lib/commission'
 import { z } from 'zod'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
@@ -237,24 +244,47 @@ export async function POST(request: NextRequest) {
         orderItemId: string
         commissionPerUnit: number
         commissionTotal: number
+        commissionMonth: number
       }> = []
+
+      const now = new Date()
+
+      // Pre-fetch AffiliateProductTrack records for all products in this order
+      const uniqueProductIds = [...new Set(commissionInputs.map(c => c.productId))]
+      const existingTracks = await db.affiliateProductTrack.findMany({
+        where: {
+          affiliateId: affiliate.id,
+          productId: { in: uniqueProductIds },
+        },
+      })
+      const trackMap = new Map(existingTracks.map(t => [t.productId, t]))
 
       for (let i = 0; i < commissionInputs.length; i++) {
         const cInput = commissionInputs[i]
         const orderItem = order.items[i]
 
-        // Get commissionPerUnit: variant overrides product
+        // Get commission rates: variant overrides product
         const product = productMap.get(cInput.productId)!
         const variant = cInput.variantId ? variantMap.get(cInput.variantId) : undefined
 
-        const commissionPerUnit = variant?.commissionPerUnit ?? product.commissionPerUnit ?? null
+        // Build tiered rates (variant overrides product)
+        const rates: TieredCommissionRates = {
+          commissionPerUnit: variant?.commissionPerUnit ?? product.commissionPerUnit ?? null,
+          commissionMonth1PerUnit: variant?.commissionMonth1PerUnit ?? product.commissionMonth1PerUnit ?? null,
+          commissionMonth2PlusPerUnit: variant?.commissionMonth2PlusPerUnit ?? product.commissionMonth2PlusPerUnit ?? null,
+        }
 
-        const result = calculateItemCommission(cInput, commissionPerUnit)
+        // Determine commission month from AffiliateProductTrack
+        const track = trackMap.get(cInput.productId)
+        const commissionMonth = determineCommissionMonth(track?.firstCommissionAt, now)
+
+        const result = calculateTieredItemCommission(cInput, rates, commissionMonth)
         if (result) {
           commissionResults.push({
             orderItemId: orderItem.id,
             commissionPerUnit: result.commissionPerUnit,
             commissionTotal: result.commissionTotal,
+            commissionMonth: result.commissionMonth,
           })
         }
       }
@@ -282,6 +312,7 @@ export async function POST(request: NextRequest) {
                 totalSaleAmount: cInput.quantity * cInput.unitPrice,
                 commissionPerUnit: cr.commissionPerUnit,
                 commissionTotal: cr.commissionTotal,
+                commissionMonth: cr.commissionMonth,
                 status: 'pending',
               },
             })
@@ -294,6 +325,22 @@ export async function POST(request: NextRequest) {
                 commissionTotal: cr.commissionTotal,
                 affiliateCode: affiliate!.code,
               },
+            })
+
+            // Upsert AffiliateProductTrack to record first commission date
+            await tx.affiliateProductTrack.upsert({
+              where: {
+                affiliateId_productId: {
+                  affiliateId: affiliate!.id,
+                  productId: cInput.productId,
+                },
+              },
+              create: {
+                affiliateId: affiliate!.id,
+                productId: cInput.productId,
+                firstCommissionAt: now,
+              },
+              update: {}, // Don't update if already exists — keep original firstCommissionAt
             })
           }
 

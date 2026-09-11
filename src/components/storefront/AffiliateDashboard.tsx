@@ -68,6 +68,7 @@ interface CommissionRow {
   totalSaleAmount: number
   commissionPerUnit: number
   commissionTotal: number
+  commissionMonth: number | null
   status: string
   createdAt: string
   validatedAt: string | null
@@ -906,6 +907,11 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
                           <TableCell className="text-right text-sm">{formatFCFA(c.totalSaleAmount)}</TableCell>
                           <TableCell className="text-right text-sm font-semibold text-emerald-600">
                             {formatFCFA(c.commissionTotal)}
+                            {c.commissionMonth != null && (
+                              <span className="ml-1.5 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0 text-[10px] font-normal text-sky-700">
+                                {c.commissionMonth === 1 ? '1er mois' : `Mois ${c.commissionMonth}`}
+                              </span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1041,6 +1047,11 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
                           <TableCell className="text-right text-sm">{formatFCFA(c.totalSaleAmount)}</TableCell>
                           <TableCell className="text-right text-sm font-semibold text-emerald-600">
                             {formatFCFA(c.commissionTotal)}
+                            {c.commissionMonth != null && (
+                              <span className="ml-1.5 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0 text-[10px] font-normal text-sky-700">
+                                {c.commissionMonth === 1 ? '1er mois' : `Mois ${c.commissionMonth}`}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge
