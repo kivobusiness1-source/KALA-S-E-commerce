@@ -17,6 +17,7 @@ import type { ProductType, CategoryType } from '@/components/storefront/types'
 import { HowToOrderSection } from '@/components/storefront/HowToOrderSection'
 import { TestimonialsSection } from '@/components/storefront/TestimonialsSection'
 import { NewsletterSection } from '@/components/storefront/NewsletterSection'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 export default function Home() {
   const cart = useCartStore()
@@ -104,11 +105,14 @@ export default function Home() {
 
   return (
     <StorefrontLayout>
-      <HeroSection />
+      <ErrorBoundary title="Bannière indisponible" compact>
+        <HeroSection />
+      </ErrorBoundary>
       <FeaturesBar />
 
       {/* Featured Products Section */}
-      <section className="py-16 sm:py-20 bg-gray-50">
+      <ErrorBoundary title="Produits indisponibles" description="Impossible de charger les produits pour le moment.">
+        <section className="py-16 sm:py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-10">
             <div>
@@ -192,20 +196,27 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </ErrorBoundary>
 
-      <HowToOrderSection />
-      <TestimonialsSection
-        activeTestimonial={activeTestimonial}
-        setActiveTestimonial={setActiveTestimonial}
-        isMobile={isMobile}
-      />
-      <NewsletterSection
-        newsletterEmail={newsletterEmail}
-        setNewsletterEmail={setNewsletterEmail}
-        newsletterLoading={newsletterLoading}
-        newsletterSuccess={newsletterSuccess}
-        onSubmit={handleNewsletterSubmit}
-      />
+      <ErrorBoundary compact>
+        <HowToOrderSection />
+      </ErrorBoundary>
+      <ErrorBoundary compact>
+        <TestimonialsSection
+          activeTestimonial={activeTestimonial}
+          setActiveTestimonial={setActiveTestimonial}
+          isMobile={isMobile}
+        />
+      </ErrorBoundary>
+      <ErrorBoundary compact>
+        <NewsletterSection
+          newsletterEmail={newsletterEmail}
+          setNewsletterEmail={setNewsletterEmail}
+          newsletterLoading={newsletterLoading}
+          newsletterSuccess={newsletterSuccess}
+          onSubmit={handleNewsletterSubmit}
+        />
+      </ErrorBoundary>
     </StorefrontLayout>
   )
 }

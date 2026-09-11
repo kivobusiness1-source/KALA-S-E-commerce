@@ -59,7 +59,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity duration-150">
-            <img src="/logo.jpeg" alt="KALA'S" className="w-9 h-9 rounded-lg object-cover" />
+            <img src="/logo.svg" alt="KALA'S" className="w-9 h-9 rounded-lg object-cover" />
             <span className="text-xl font-bold text-[#1a1a1a] tracking-tight">KALA&apos;S</span>
           </Link>
 
@@ -153,7 +153,7 @@ export function Navbar({ scrolled, mobileMenuOpen, setMobileMenuOpen, cartTotalI
           <div className="flex items-center justify-between px-5 pt-6 pb-4">
             <SheetHeader className="p-0">
               <SheetTitle className="flex items-center gap-2.5 text-[#1a1a1a]">
-                <img src="/logo.jpeg" alt="KALA'S" className="w-8 h-8 rounded-lg object-cover" />
+                <img src="/logo.svg" alt="KALA'S" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="text-lg font-bold tracking-tight">KALA&apos;S</span>
               </SheetTitle>
               <SheetDescription className="sr-only">Navigation</SheetDescription>
