@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
 const sendMessageSchema = z.object({
   sessionId: z.string().min(1),
   content: z.string().min(1, 'Message content is required'),
+  customerName: z.string().optional(),
+  customerEmail: z.string().email().optional().or(z.literal('')),
 })
 
 export async function POST(request: NextRequest) {
@@ -57,8 +59,23 @@ export async function POST(request: NextRequest) {
 
     if (!conversation) {
       conversation = await db.conversation.create({
-        data: { sessionId: data.sessionId },
+        data: {
+          sessionId: data.sessionId,
+          customerName: data.customerName || null,
+          customerEmail: data.customerEmail || null,
+        },
       })
+    } else {
+      // Update customer info if provided and currently missing
+      if (data.customerName || data.customerEmail) {
+        await db.conversation.update({
+          where: { id: conversation.id },
+          data: {
+            ...(data.customerName && !conversation.customerName ? { customerName: data.customerName } : {}),
+            ...(data.customerEmail && !conversation.customerEmail ? { customerEmail: data.customerEmail } : {}),
+          },
+        })
+      }
     }
 
     const message = await db.message.create({

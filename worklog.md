@@ -257,3 +257,26 @@ Work Log:
 
 Stage Summary:
 - No scheduled transfers were due; 0 processed, no action required.
+
+---
+Task ID: fix-anonyme-display
+Agent: Main
+Task: Replace 'Anonyme' in admin conversations with customer name or email
+
+Work Log:
+- Identified 2 occurrences of 'Anonyme' fallback in MessagesSection.tsx (lines 126, 154)
+- Updated /api/chat/route.ts POST to accept and store customerName/customerEmail when creating conversations
+- Updated CustomerDashboard.tsx to send customer.name and customer.email with chat messages
+- Updated /api/messages/route.ts GET to backfill missing customer info from Customer table using sessionId pattern `customer-{id}`
+- Updated /api/messages/[id]/route.ts GET with same backfill logic for conversation detail view
+- Backfill persists the resolved info to the Conversation record (fire-and-forget)
+- Updated MessagesSection.tsx: replaced 'Anonyme' fallback with 'Client', added getDisplayName() helper
+- In conversation detail header, email is now shown below name only when both name and email exist
+- Tested: chat POST with customer info correctly stores name/email, API returns them in GET
+- No compilation errors, all lint passes (only pre-existing issues remain)
+
+Stage Summary:
+- 'Anonyme' completely removed from admin chat display
+- New conversation messages from CustomerDashboard now include customer name and email
+- Existing conversations with missing info are auto-backfilled from Customer table
+- Fallback changed from 'Anonyme' to 'Client' for truly unidentified conversations

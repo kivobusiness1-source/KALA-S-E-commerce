@@ -33,6 +33,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!conversation) return err('Conversation not found', 404)
 
+    // Backfill missing customer info from Customer table
+    let customerName = conversation.customerName
+    let customerEmail = conversation.customerEmail
+    if (!customerName && !customerEmail && conversation.sessionId.startsWith('customer-')) {
+      const custId = conversation.sessionId.replace('customer-', '')
+      if (custId) {
+        const cust = await db.customer.findUnique({
+          where: { id: custId },
+          select: { name: true, email: true },
+        })
+        if (cust) {
+          customerName = cust.name
+          customerEmail = cust.email
+          db.conversation.update({
+            where: { id: conversation.id },
+            data: { customerName: cust.name, customerEmail: cust.email },
+          }).catch(() => {})
+        }
+      }
+    }
+
+    const conversationWithInfo = { ...conversation, customerName, customerEmail }
+
     // Mark all messages as read by admin
     await db.message.updateMany({
       where: { conversationId: id, isAdminRead: false },
@@ -45,7 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: { isRead: true },
     })
 
-    return ok(conversation)
+    return ok(conversationWithInfo)
   } catch (error) {
     console.error('Message GET error:', error)
     return err('Failed to fetch conversation', 500)

@@ -220,7 +220,7 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: chatSessionId, content: trimmed }),
+        body: JSON.stringify({ sessionId: chatSessionId, content: trimmed, customerName: customer?.name, customerEmail: customer?.email }),
       })
       if (res.ok) {
         setChatInput('')

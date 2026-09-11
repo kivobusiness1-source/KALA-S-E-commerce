@@ -41,13 +41,53 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: 'desc' },
     })
 
-    // Format: attach latest message directly
-    const formatted = conversations.map(c => ({
-      ...c,
-      latestMessage: c.messages[0] ?? null,
-      messages: undefined,
-      unreadCount: c._count.messages,
-    }))
+    // Backfill missing customer info from Customer table
+    const customerIdsToLookup: string[] = []
+    for (const c of conversations) {
+      if (!c.customerName && !c.customerEmail && c.sessionId.startsWith('customer-')) {
+        const custId = c.sessionId.replace('customer-', '')
+        if (custId) customerIdsToLookup.push(custId)
+      }
+    }
+
+    let customerMap: Record<string, { name: string; email: string }> = {}
+    if (customerIdsToLookup.length > 0) {
+      const customers = await db.customer.findMany({
+        where: { id: { in: customerIdsToLookup } },
+        select: { id: true, name: true, email: true },
+      })
+      customerMap = Object.fromEntries(customers.map(c => [c.id, { name: c.name, email: c.email }]))
+    }
+
+    // Format: attach latest message directly, backfill customer info
+    const formatted = conversations.map(c => {
+      let customerName = c.customerName
+      let customerEmail = c.customerEmail
+
+      // Backfill from Customer table if missing
+      if (!customerName && !customerEmail && c.sessionId.startsWith('customer-')) {
+        const custId = c.sessionId.replace('customer-', '')
+        const custInfo = customerMap[custId]
+        if (custInfo) {
+          customerName = custInfo.name
+          customerEmail = custInfo.email
+          // Persist backfill async (fire-and-forget)
+          db.conversation.update({
+            where: { id: c.id },
+            data: { customerName: custInfo.name, customerEmail: custInfo.email },
+          }).catch(() => {})
+        }
+      }
+
+      return {
+        ...c,
+        customerName,
+        customerEmail,
+        latestMessage: c.messages[0] ?? null,
+        messages: undefined,
+        unreadCount: c._count.messages,
+      }
+    })
 
     return ok(formatted)
   } catch (error) {
