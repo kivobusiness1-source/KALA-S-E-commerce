@@ -14,10 +14,15 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatRelative } from './helpers'
 import type { Conversation, ConversationDetail } from './types'
 
-const getDisplayName = (name: string | null | undefined, email: string | null | undefined) => {
-  if (name) return name
-  if (email) return email
-  return 'Client'
+const getDisplayName = (
+  name: string | null | undefined,
+  email: string | null | undefined,
+  sessionId?: string | null
+) => {
+  if (name && name.trim()) return name.trim()
+  if (email && email.trim()) return email.trim()
+  if (sessionId) return `Visiteur #${sessionId.slice(-4).toUpperCase()}`
+  return 'Visiteur'
 }
 
 export default function MessagesSection() {
@@ -129,7 +134,7 @@ export default function MessagesSection() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-sm font-medium truncate ${!conv.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
-                    {getDisplayName(conv.customerName, conv.customerEmail)}
+                    {getDisplayName(conv.customerName, conv.customerEmail, conv.sessionId)}
                   </span>
                   <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatRelative(conv.updatedAt)}</span>
                 </div>
@@ -156,10 +161,16 @@ export default function MessagesSection() {
           <>
             {/* Header */}
             <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-sm">{getDisplayName(convDetail.customerName, convDetail.customerEmail)}</p>
-                {convDetail.customerEmail && convDetail.customerName && (
-                  <p className="text-xs text-muted-foreground">{convDetail.customerEmail}</p>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm truncate">
+                  {convDetail.customerName?.trim()
+                    ? convDetail.customerName.trim()
+                    : convDetail.customerEmail?.trim()
+                      ? convDetail.customerEmail.trim()
+                      : getDisplayName(null, null, convDetail.sessionId)}
+                </p>
+                {convDetail.customerName?.trim() && convDetail.customerEmail?.trim() && (
+                  <p className="text-xs text-muted-foreground truncate">{convDetail.customerEmail.trim()}</p>
                 )}
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => deleteConversation(selectedConvId)}>

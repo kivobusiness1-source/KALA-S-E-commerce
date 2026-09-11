@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Backfill missing customer info from Customer table
     let customerName = conversation.customerName
     let customerEmail = conversation.customerEmail
-    if (!customerName && !customerEmail && conversation.sessionId.startsWith('customer-')) {
+    if ((!customerName || !customerEmail) && conversation.sessionId.startsWith('customer-')) {
       const custId = conversation.sessionId.replace('customer-', '')
       if (custId) {
         const cust = await db.customer.findUnique({
@@ -44,11 +44,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           select: { name: true, email: true },
         })
         if (cust) {
-          customerName = cust.name
-          customerEmail = cust.email
+          customerName = customerName || cust.name
+          customerEmail = customerEmail || cust.email
           db.conversation.update({
             where: { id: conversation.id },
-            data: { customerName: cust.name, customerEmail: cust.email },
+            data: { customerName, customerEmail },
           }).catch(() => {})
         }
       }

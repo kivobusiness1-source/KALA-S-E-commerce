@@ -66,13 +66,14 @@ export async function POST(request: NextRequest) {
         },
       })
     } else {
-      // Update customer info if provided and currently missing
+      // Always sync customer info from latest message payload so the admin
+      // conversation header reflects the customer's current name/email
       if (data.customerName || data.customerEmail) {
         await db.conversation.update({
           where: { id: conversation.id },
           data: {
-            ...(data.customerName && !conversation.customerName ? { customerName: data.customerName } : {}),
-            ...(data.customerEmail && !conversation.customerEmail ? { customerEmail: data.customerEmail } : {}),
+            ...(data.customerName ? { customerName: data.customerName } : {}),
+            ...(data.customerEmail ? { customerEmail: data.customerEmail } : {}),
           },
         })
       }

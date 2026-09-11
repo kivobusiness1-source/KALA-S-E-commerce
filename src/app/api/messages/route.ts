@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     // Backfill missing customer info from Customer table
     const customerIdsToLookup: string[] = []
     for (const c of conversations) {
-      if (!c.customerName && !c.customerEmail && c.sessionId.startsWith('customer-')) {
+      if ((!c.customerName || !c.customerEmail) && c.sessionId.startsWith('customer-')) {
         const custId = c.sessionId.replace('customer-', '')
         if (custId) customerIdsToLookup.push(custId)
       }
@@ -65,16 +65,16 @@ export async function GET(request: NextRequest) {
       let customerEmail = c.customerEmail
 
       // Backfill from Customer table if missing
-      if (!customerName && !customerEmail && c.sessionId.startsWith('customer-')) {
+      if ((!customerName || !customerEmail) && c.sessionId.startsWith('customer-')) {
         const custId = c.sessionId.replace('customer-', '')
         const custInfo = customerMap[custId]
         if (custInfo) {
-          customerName = custInfo.name
-          customerEmail = custInfo.email
+          customerName = customerName || custInfo.name
+          customerEmail = customerEmail || custInfo.email
           // Persist backfill async (fire-and-forget)
           db.conversation.update({
             where: { id: c.id },
-            data: { customerName: custInfo.name, customerEmail: custInfo.email },
+            data: { customerName, customerEmail },
           }).catch(() => {})
         }
       }
@@ -115,7 +115,8 @@ export async function POST(request: NextRequest) {
         },
       })
     } else {
-      // Update customer info if provided
+      // Always sync customer info from latest payload so the admin
+      // conversation header reflects the customer's current name/email
       if (data.customerName || data.customerEmail) {
         await db.conversation.update({
           where: { id: conversation.id },

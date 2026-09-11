@@ -280,3 +280,25 @@ Stage Summary:
 - New conversation messages from CustomerDashboard now include customer name and email
 - Existing conversations with missing info are auto-backfilled from Customer table
 - Fallback changed from 'Anonyme' to 'Client' for truly unidentified conversations
+
+---
+Task ID: fix-anonyme-header
+Agent: Main
+Task: Admin conversations - show customer name or email in discussion header instead of generic/anonymous label
+
+Work Log:
+- Investigated: real DB is PostgreSQL (Neon) via DATABASE_URL, NOT db/custom.db SQLite (stale)
+- MessagesSection.tsx: getDisplayName() now prefers trimmed name, then email, then "Visiteur #XXXX" (last 4 chars of sessionId uppercased) - no more generic 'Client' label
+- Discussion header: shows customer name as title + email as subtitle; email as title if no name; "Visiteur #XXXX" fallback
+- POST /api/chat + POST /api/messages: now ALWAYS sync customerName/customerEmail from message payload (was only filling empty fields), so header reflects current customer identity
+- GET /api/messages (list) + GET /api/messages/[id] (detail): backfill now triggers when EITHER name or email missing (was only when both missing)
+- Created scripts/backfill_conversation_identity.py (idempotent, for customer-{id} conversations; 0 rows needed backfill)
+- Created debug scripts: check_conversations.mjs, check_dupes.mjs, verify_state.mjs, create_test_session.mjs, cleanup_test_artifacts.mjs
+- False alarm investigated: apparent duplicate sessionId was truncation artifact (real sessionId had 'nubo' suffix); no actual duplicates, unique constraint intact
+- Cleaned up all test artifacts (test conversation, admin test sessions)
+- Verified in browser (agent-browser): list shows Jean Dupont / Kivobusiness / Visiteur #SION / Confirm Neon; header shows "Kivobusiness" + kivobusiness1@gmail.com
+- Lint passes on all 4 modified files
+
+Stage Summary:
+- Admin conversation headers now always display customer name or email; unknown legacy sessions display distinguishable "Visiteur #XXXX" label
+- Customer identity stays in sync with profile on every message
