@@ -121,3 +121,47 @@ Styling:
 - Matches existing dashboard theme: dark #1a1a1a, gray #888888, border-gray-200
 - Message bubbles match ChatWidget rounded styling
 - Responsive and accessible (aria-labels, keyboard Enter-to-send)
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Add fund transfer request UI to AffiliateDashboard + cron job + final verification
+
+Work Log:
+- Read full AffiliateDashboard.tsx (1056 lines) to understand structure
+- Added new lucide-react imports: ArrowDownToLine, Smartphone, Building2, Timer, AlertCircle
+- Added FundTransferRequestRow interface
+- Added fund transfer state: transferRequests, transferLoading, showTransferForm, transferAmount, transferMethod, transferPhone, transferBankInfo, transferSubmitting
+- Added fetchTransferRequests callback + useEffect to load on dialog open
+- Added countdown timer (useEffect with setInterval) for scheduled transfer countdowns
+- Added "Retraits" tab to TabsList with ArrowDownToLine icon
+- Built full Retraits tab content:
+  - Available balance card with "Demander un retrait" button (disabled if balance < 5000 FCFA)
+  - Minimum withdrawal warning (5 000 FCFA)
+  - Transfer request form with:
+    - Amount input (min 5000, max pendingEarnings)
+    - Method selector (Mobile Money / Virement / Espèces) with visual button cards
+    - Phone number field for mobile money
+    - Bank info textarea for bank transfer
+    - 2-hour delay notice (amber warning)
+    - Confirm/Cancel buttons with loading state
+  - Transfer history list with:
+    - Color-coded cards (emerald=completed, red=failed/rejected, sky=scheduled, orange=pending)
+    - Status badges (En attente/Programmé/En cours/Transféré/Échoué/Rejeté)
+    - Live countdown timer for scheduled transfers (H:M:S)
+    - Rejection reason and failure notes display
+- Added TabsContent for retraits inside Tabs component
+- Created cron job (ID: 376446) that runs every 15 minutes to call /api/affiliate-transfer?action=processScheduled
+- Verified all features via agent-browser:
+  - Customer auth dialog opens correctly
+  - Affiliate dashboard opens with "Retraits" tab visible
+  - Retraits tab shows balance, form button, and empty history
+  - Chat feature added to CustomerDashboard (verified code structure)
+
+Stage Summary:
+- Customer Dashboard: Chat with store feature fully implemented with real-time polling
+- Affiliate Dashboard: Fund transfer request with 2h delay fully implemented
+- Prisma schema updated with FundTransferRequest model
+- API route /api/affiliate-transfer created (GET list + POST create + GET processScheduled)
+- Cron job set up for automatic processing of scheduled transfers
+- All lint checks pass (only pre-existing issues)
