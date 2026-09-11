@@ -681,3 +681,14 @@ Work Log:
 Stage Summary:
 - Aucune régression détectée; toutes les protections du commit "security: full audit remediation" opérationnelles
 - Reste opérateur: rotation Neon, CRON_SECRET en prod, upgrades sharp/rsh en branche test
+---
+Task ID: cron-376446-batch-2230-0015
+Agent: main
+Task: Cron Job 376446 - 8 runs batched (22:30/22:45/23:00/23:15/23:30/23:45/00:00/00:15)
+
+Work Log:
+- Single processScheduled call executed (idempotent, covers all due scheduledAt) with x-cron-secret header
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- No due transfers in the 22:30-00:15 window; 0 processed, no state changes
