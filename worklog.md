@@ -664,3 +664,20 @@ Work Log:
 
 Stage Summary:
 - 22:00 cron run OK, auth passed, 0 due transfers; no state changes
+---
+Task ID: audit-recheck-2
+Agent: main
+Task: Second audit de vérification post-corrections (mission audit sécurité) + cron 22:15
+
+Work Log:
+- Cron 22:15 exécuté avec x-cron-secret: processed:0
+- Re-vérifié: garde CRON_SECRET (401/200), 20 fichiers RBAC avec hasAdminRole, 16 fichiers rate-limited
+- Re-testé à chaud: 7 endpoints privés 401, upload POST 401, track GET 405/POST zod, rate-limit 429 à la 11e, site-settings public sans secret
+- Scans: 0 NEXT_PUBLIC_, 0 secret en dur, 0 SQL unsafe (1 SELECT 1 constant), 2 dangerouslySetInnerHTML sûrs (statique/shadcn)
+- next.config.ts: HSTS conditionnel prod vérifié conforme
+- prisma validate PASS; lint 0 err/4 warn; tsc 0 err; npm run build exit 0; dev server 200
+- Rapport final sauvegardé: download/rapport-audit-securite.md
+
+Stage Summary:
+- Aucune régression détectée; toutes les protections du commit "security: full audit remediation" opérationnelles
+- Reste opérateur: rotation Neon, CRON_SECRET en prod, upgrades sharp/rsh en branche test
