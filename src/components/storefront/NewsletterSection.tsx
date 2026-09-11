@@ -30,14 +30,14 @@ export function NewsletterSection({
 
   if (newsletterSuccess) {
     return (
-      <section className="py-14 bg-white border-y border-[#e5e5e5]">
+      <section className="py-14 bg-gradient-to-br from-gray-50 to-white border-y border-[#e5e5e5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-lg mx-auto text-center">
             <div className="w-14 h-14 rounded-full bg-gray-50 border border-[#e5e5e5] flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-[#16a34a]" />
             </div>
-            <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">Merci pour votre inscription !</h2>
-            <p className="text-[#555555] text-sm mb-6">Utilisez le code pour 10% de reduction sur votre premiere commande.</p>
+            <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2"><Gift className="w-5 h-5 text-amber-500 inline mr-2" />Merci pour votre inscription !</h2>
+            <p className="text-[#555555] text-sm mb-6">Utilisez le code pour 10% de réduction sur votre première commande.</p>
             <div className="inline-flex items-center gap-2 bg-gray-50 border border-[#e5e5e5] rounded-lg px-4 py-3">
               <Gift className="w-4 h-4 text-[#888888]" />
               <code className="text-sm font-mono font-bold text-[#1a1a1a] tracking-wider">KALAS10</code>
@@ -56,15 +56,15 @@ export function NewsletterSection({
   }
 
   return (
-    <section className="py-14 bg-white border-y border-[#e5e5e5]">
+    <section className="py-14 bg-gradient-to-br from-gray-50 to-white border-y border-[#e5e5e5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-lg mx-auto text-center">
           <div className="w-12 h-12 rounded-full bg-gray-50 border border-[#e5e5e5] flex items-center justify-center mx-auto mb-4">
             <Mail className="w-5 h-5 text-[#888888]" />
           </div>
-          <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">Restez Informe</h2>
+          <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2"><Gift className="w-5 h-5 text-amber-500 inline mr-2" />Restez Informé</h2>
           <p className="text-[#555555] text-sm mb-6">
-            Inscrivez-vous pour recevoir nos offres speciales et nouveautes
+            Inscrivez-vous pour recevoir nos offres spéciales et nouveautés
           </p>
           <form
             onSubmit={onSubmit}
@@ -90,6 +90,10 @@ export function NewsletterSection({
               <Send className="w-4 h-4 ml-2" />
             </Button>
           </form>
+          <p className="text-xs text-[#888888] mt-4 flex items-center justify-center gap-1.5">
+            <Gift className="w-3.5 h-3.5 text-amber-500" />
+            <span>Recevez le code <strong className="text-[#1a1a1a] font-mono">KALAS10</strong> pour 10% de réduction</span>
+          </p>
         </div>
       </div>
     </section>

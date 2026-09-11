@@ -5,9 +5,9 @@ import { FadeInSection } from './AnimatedComponents'
 
 export function HowToOrderSection() {
   const steps = [
-    { step: '01', icon: ShoppingCart, title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaites a votre panier.' },
+    { step: '01', icon: ShoppingCart, title: 'Choisissez vos produits', desc: 'Parcourez notre catalogue et ajoutez les produits souhaités à votre panier.' },
     { step: '02', icon: ClipboardList, title: 'Passez votre commande', desc: 'Remplissez vos informations de livraison et confirmez votre commande.' },
-    { step: '03', icon: Truck, title: 'Recevez votre livraison', desc: 'Notre equipe vous livre rapidement a Pointe-Noire et environs.' },
+    { step: '03', icon: Truck, title: 'Recevez votre livraison', desc: 'Notre équipe vous livre rapidement à Pointe-Noire et environs.' },
   ]
 
   return (
@@ -20,7 +20,7 @@ export function HowToOrderSection() {
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] mb-4">Comment Commander</h2>
             <p className="text-[#555555] max-w-2xl mx-auto">
-              En 3 etapes simples, recevez vos produits chez vous
+              En 3 étapes simples, recevez vos produits chez vous
             </p>
             <div className="w-16 h-1 bg-[#1a1a1a] rounded-full mx-auto mt-4" />
           </div>
@@ -45,7 +45,7 @@ export function HowToOrderSection() {
                     </div>
                   </div>
                   <p className="text-xs text-[#888888] font-semibold tracking-wider uppercase mb-2 relative z-10">
-                    Etape {s.step}
+                    Étape {s.step}
                   </p>
                   <h3 className="text-lg font-bold text-[#1a1a1a] mb-2 relative z-10">{s.title}</h3>
                   <p className="text-[#555555] text-sm leading-relaxed max-w-xs mx-auto relative z-10">{s.desc}</p>
@@ -75,7 +75,7 @@ export function HowToOrderSection() {
                       {s.step}
                     </span>
                     <div className="relative z-10">
-                      <p className="text-xs text-[#888888] font-semibold tracking-wider uppercase mb-1">Etape {s.step}</p>
+                      <p className="text-xs text-[#888888] font-semibold tracking-wider uppercase mb-1">Étape {s.step}</p>
                       <h3 className="text-base font-bold text-[#1a1a1a] mb-1">{s.title}</h3>
                       <p className="text-[#555555] text-sm leading-relaxed">{s.desc}</p>
                     </div>

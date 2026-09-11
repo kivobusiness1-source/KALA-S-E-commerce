@@ -18,6 +18,7 @@ import {
   MessageCircle,
   Send,
   ArrowLeft,
+  Gift,
 } from 'lucide-react'
 import {
   Dialog,
@@ -109,6 +110,9 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
   const [totalOrders, setTotalOrders] = useState(0)
   const ordersPerPage = 5
 
+  // Loyalty points state
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null)
+
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -152,6 +156,25 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
       fetchOrders(page)
     }
   }, [isAuthenticated, page, fetchOrders])
+
+  // Fetch loyalty points
+  useEffect(() => {
+    if (!isAuthenticated || !customer?.email) return
+    const fetchLoyaltyPoints = async () => {
+      try {
+        const res = await fetch(`/api/loyalty?email=${encodeURIComponent(customer.email)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && typeof data.points === 'number') {
+            setLoyaltyPoints(data.points)
+          }
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchLoyaltyPoints()
+  }, [isAuthenticated, customer?.email])
 
   // --- Chat logic ---
   const chatSessionId = customer ? `customer-${customer.id}` : ''
@@ -343,6 +366,26 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
           </CardContent>
         </Card>
       </div>
+
+      {/* Loyalty Points Card */}
+      <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm rounded-xl">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Points de fidélité</p>
+              <p className="text-2xl font-bold text-amber-700 mt-1">
+                {loyaltyPoints !== null ? loyaltyPoints.toLocaleString('fr-FR') : '—'}
+              </p>
+              <p className="text-xs text-amber-600/70 mt-1">
+                100 points = 1 000 FCFA de réduction
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+              <Gift className="w-6 h-6 text-amber-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Customer Info Card */}
       <Card className="border-gray-200 shadow-sm rounded-xl">

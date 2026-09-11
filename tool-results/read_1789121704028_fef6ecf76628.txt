@@ -1,0 +1,692 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react'
+     4→import { toast } from 'sonner'
+     5→import {
+     6→  User,
+     7→  LogOut,
+     8→  Package,
+     9→  ShoppingBag,
+    10→  ChevronDown,
+    11→  ChevronUp,
+    12→  Clock,
+    13→  DollarSign,
+    14→  Truck,
+    15→  Loader2,
+    16→  Receipt,
+    17→  MapPin,
+    18→  MessageCircle,
+    19→  Send,
+    20→  ArrowLeft,
+    21→} from 'lucide-react'
+    22→import {
+    23→  Dialog,
+    24→  DialogContent,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→} from '@/components/ui/dialog'
+    28→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    29→import { Button } from '@/components/ui/button'
+    30→import { Badge } from '@/components/ui/badge'
+    31→import { useCustomerAuthStore } from '@/stores/customer-auth-store'
+    32→import { formatPrice, getStatusLabel } from './helpers'
+    33→
+    34→// --- Types ---
+    35→interface OrderItem {
+    36→  id: string
+    37→  productName: string
+    38→  quantity: number
+    39→  unitPrice: number
+    40→  image?: string | null
+    41→}
+    42→
+    43→interface Order {
+    44→  id: string
+    45→  orderNumber: string
+    46→  createdAt: string
+    47→  status: string
+    48→  totalAmount: number
+    49→  items: OrderItem[]
+    50→  deliveryAddress?: string
+    51→  deliveryCity?: string
+    52→  deliveryQuartier?: string
+    53→}
+    54→
+    55→// --- Status badge colors ---
+    56→const STATUS_STYLES: Record<string, string> = {
+    57→  pending: 'bg-orange-50 text-orange-700 border-orange-200',
+    58→  confirmed: 'bg-blue-50 text-blue-700 border-blue-200',
+    59→  processing: 'bg-purple-50 text-purple-700 border-purple-200',
+    60→  shipped: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    61→  delivered: 'bg-green-50 text-green-700 border-green-200',
+    62→  cancelled: 'bg-red-50 text-red-700 border-red-200',
+    63→}
+    64→
+    65→const STATUS_ICONS: Record<string, typeof Clock> = {
+    66→  pending: Clock,
+    67→  confirmed: Package,
+    68→  processing: Package,
+    69→  shipped: Truck,
+    70→  delivered: ShoppingBag,
+    71→  cancelled: Receipt,
+    72→}
+    73→
+    74→function StatusBadge({ status }: { status: string }) {
+    75→  const style = STATUS_STYLES[status] || 'bg-gray-100 text-gray-700 border-gray-200'
+    76→  const Icon = STATUS_ICONS[status] || Clock
+    77→  return (
+    78→    <Badge variant="outline" className={`${style} gap-1 text-xs font-medium`}>
+    79→      <Icon className="w-3 h-3" />
+    80→      {getStatusLabel(status)}
+    81→    </Badge>
+    82→  )
+    83→}
+    84→
+    85→// --- Chat Message Type ---
+    86→interface ChatMessage {
+    87→  id: string
+    88→  content: string
+    89→  senderType: string
+    90→  createdAt: string
+    91→}
+    92→
+    93→// --- Main component ---
+    94→interface CustomerDashboardProps {
+    95→  open: boolean
+    96→  onOpenChange: (open: boolean) => void
+    97→  onLogout?: () => void
+    98→}
+    99→
+   100→export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDashboardProps) {
+   101→  const { customer, logout, isAuthenticated } = useCustomerAuthStore()
+   102→
+   103→  // Orders state
+   104→  const [orders, setOrders] = useState<Order[]>([])
+   105→  const [ordersLoading, setOrdersLoading] = useState(true)
+   106→  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+   107→  const [page, setPage] = useState(1)
+   108→  const [totalPages, setTotalPages] = useState(1)
+   109→  const [totalOrders, setTotalOrders] = useState(0)
+   110→  const ordersPerPage = 5
+   111→
+   112→  // Chat state
+   113→  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+   114→  const [chatInput, setChatInput] = useState('')
+   115→  const [chatLoading, setChatLoading] = useState(false)
+   116→  const [chatSending, setChatSending] = useState(false)
+   117→  const [showChat, setShowChat] = useState(false)
+   118→  const chatEndRef = useRef<HTMLDivElement>(null)
+   119→
+   120→  // Active orders count
+   121→  const activeOrdersCount = orders.filter(
+   122→    (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'processing' || o.status === 'shipped'
+   123→  ).length
+   124→
+   125→  // Fetch orders
+   126→  const fetchOrders = useCallback(async (p: number) => {
+   127→    setOrdersLoading(true)
+   128→    try {
+   129→      const res = await fetch('/api/customer-auth', {
+   130→        method: 'POST',
+   131→        headers: { 'Content-Type': 'application/json' },
+   132→        body: JSON.stringify({ action: 'orders', page: p, limit: ordersPerPage }),
+   133→      })
+   134→      if (res.ok) {
+   135→        const data = await res.json()
+   136→        const ordersData: Order[] = data.orders || data.data || []
+   137→        setOrders(ordersData)
+   138→        setTotalPages(data.totalPages || Math.ceil((data.total || ordersData.length) / ordersPerPage) || 1)
+   139→        setTotalOrders(data.total || ordersData.length)
+   140→      } else {
+   141→        setOrders([])
+   142→      }
+   143→    } catch {
+   144→      setOrders([])
+   145→    } finally {
+   146→      setOrdersLoading(false)
+   147→    }
+   148→  }, [])
+   149→
+   150→  useEffect(() => {
+   151→    if (isAuthenticated) {
+   152→      fetchOrders(page)
+   153→    }
+   154→  }, [isAuthenticated, page, fetchOrders])
+   155→
+   156→  // --- Chat logic ---
+   157→  const chatSessionId = customer ? `customer-${customer.id}` : ''
+   158→
+   159→  const fetchChatMessages = useCallback(async () => {
+   160→    if (!chatSessionId) return
+   161→    try {
+   162→      const res = await fetch(`/api/chat?sessionId=${encodeURIComponent(chatSessionId)}`)
+   163→      if (res.ok) {
+   164→        const data = await res.json()
+   165→        const msgs: ChatMessage[] = data?.data?.messages || []
+   166→        setChatMessages(msgs)
+   167→      }
+   168→    } catch {
+   169→      // silently ignore polling errors
+   170→    }
+   171→  }, [chatSessionId])
+   172→
+   173→  const loadChat = useCallback(async () => {
+   174→    if (!chatSessionId) return
+   175→    setChatLoading(true)
+   176→    try {
+   177→      const res = await fetch(`/api/chat?sessionId=${encodeURIComponent(chatSessionId)}`)
+   178→      if (res.ok) {
+   179→        const data = await res.json()
+   180→        const msgs: ChatMessage[] = data?.data?.messages || []
+   181→        setChatMessages(msgs)
+   182→      } else {
+   183→        setChatMessages([])
+   184→      }
+   185→    } catch {
+   186→      setChatMessages([])
+   187→    } finally {
+   188→      setChatLoading(false)
+   189→    }
+   190→  }, [chatSessionId])
+   191→
+   192→  const sendChatMessage = async () => {
+   193→    const trimmed = chatInput.trim()
+   194→    if (!trimmed || chatSending || !chatSessionId) return
+   195→    setChatSending(true)
+   196→    try {
+   197→      const res = await fetch('/api/chat', {
+   198→        method: 'POST',
+   199→        headers: { 'Content-Type': 'application/json' },
+   200→        body: JSON.stringify({ sessionId: chatSessionId, content: trimmed }),
+   201→      })
+   202→      if (res.ok) {
+   203→        setChatInput('')
+   204→        // Re-fetch to get the full list including the new message
+   205→        await fetchChatMessages()
+   206→      } else {
+   207→        toast.error('Erreur lors de l\'envoi du message')
+   208→      }
+   209→    } catch {
+   210→      toast.error('Erreur lors de l\'envoi du message')
+   211→    } finally {
+   212→      setChatSending(false)
+   213→    }
+   214→  }
+   215→
+   216→  // Load chat on open & poll for new messages
+   217→  useEffect(() => {
+   218→    if (showChat && chatSessionId) {
+   219→      loadChat()
+   220→      const interval = setInterval(() => {
+   221→        fetchChatMessages()
+   222→      }, 5000)
+   223→      return () => clearInterval(interval)
+   224→    }
+   225→  }, [showChat, chatSessionId, loadChat, fetchChatMessages])
+   226→
+   227→  // Auto-scroll chat to bottom
+   228→  useEffect(() => {
+   229→    if (showChat && chatMessages.length > 0) {
+   230→      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+   231→    }
+   232→  }, [showChat, chatMessages])
+   233→
+   234→  const formatChatTime = (dateStr: string) => {
+   235→    try {
+   236→      return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+   237→    } catch {
+   238→      return ''
+   239→    }
+   240→  }
+   241→
+   242→  const lastAdminMessage = chatMessages.filter((m) => m.senderType === 'admin').slice(-1)[0]
+   243→
+   244→  // Logout handler
+   245→  const handleLogout = async () => {
+   246→    await logout()
+   247→    toast.success('Déconnexion réussie')
+   248→    onLogout?.()
+   249→  }
+   250→
+   251→  // Toggle order details
+   252→  const toggleExpand = (orderId: string) => {
+   253→    setExpandedOrder((prev) => (prev === orderId ? null : orderId))
+   254→  }
+   255→
+   256→  // Format date
+   257→  const formatDate = (dateStr: string) => {
+   258→    try {
+   259→      return new Date(dateStr).toLocaleDateString('fr-FR', {
+   260→        day: 'numeric',
+   261→        month: 'long',
+   262→        year: 'numeric',
+   263→      })
+   264→    } catch {
+   265→      return dateStr
+   266→    }
+   267→  }
+   268→
+   269→  if (!customer) return null
+   270→
+   271→  return (
+   272→    <Dialog open={open} onOpenChange={onOpenChange}>
+   273→      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+   274→        <DialogHeader className="px-6 pt-6 pb-0 sr-only">
+   275→          <DialogTitle>Mon Compte</DialogTitle>
+   276→        </DialogHeader>
+   277→    <div className="w-full max-w-4xl mx-auto space-y-6 px-6 py-6">
+   278→      {/* Header */}
+   279→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   280→        <div className="flex items-center gap-3">
+   281→          <div className="w-12 h-12 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+   282→            <User className="w-6 h-6 text-white" />
+   283→          </div>
+   284→          <div>
+   285→            <h2 className="text-xl font-bold text-[#1a1a1a] tracking-tight">Mon Compte</h2>
+   286→            <p className="text-sm text-[#888888]">{customer.name}</p>
+   287→          </div>
+   288→        </div>
+   289→        <Button
+   290→          variant="outline"
+   291→          onClick={handleLogout}
+   292→          className="w-fit border-gray-200 text-[#1a1a1a] hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-lg transition-colors duration-200"
+   293→        >
+   294→          <LogOut className="w-4 h-4 mr-2" />
+   295→          Déconnexion
+   296→        </Button>
+   297→      </div>
+   298→
+   299→      {/* Stats Cards */}
+   300→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   301→        {/* Total commandes */}
+   302→        <Card className="border-gray-200 shadow-sm rounded-xl">
+   303→          <CardContent className="p-5">
+   304→            <div className="flex items-center justify-between">
+   305→              <div>
+   306→                <p className="text-xs font-medium text-[#888888] uppercase tracking-wider">Total commandes</p>
+   307→                <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{customer.ordersCount || totalOrders}</p>
+   308→              </div>
+   309→              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+   310→                <Package className="w-5 h-5 text-[#1a1a1a]" />
+   311→              </div>
+   312→            </div>
+   313→          </CardContent>
+   314→        </Card>
+   315→
+   316→        {/* Total dépensé */}
+   317→        <Card className="border-gray-200 shadow-sm rounded-xl">
+   318→          <CardContent className="p-5">
+   319→            <div className="flex items-center justify-between">
+   320→              <div>
+   321→                <p className="text-xs font-medium text-[#888888] uppercase tracking-wider">Total dépensé</p>
+   322→                <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{formatPrice(customer.totalSpent || 0)}</p>
+   323→              </div>
+   324→              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+   325→                <DollarSign className="w-5 h-5 text-[#1a1a1a]" />
+   326→              </div>
+   327→            </div>
+   328→          </CardContent>
+   329→        </Card>
+   330→
+   331→        {/* Commandes en cours */}
+   332→        <Card className="border-gray-200 shadow-sm rounded-xl">
+   333→          <CardContent className="p-5">
+   334→            <div className="flex items-center justify-between">
+   335→              <div>
+   336→                <p className="text-xs font-medium text-[#888888] uppercase tracking-wider">En cours</p>
+   337→                <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{activeOrdersCount}</p>
+   338→              </div>
+   339→              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+   340→                <Clock className="w-5 h-5 text-[#1a1a1a]" />
+   341→              </div>
+   342→            </div>
+   343→          </CardContent>
+   344→        </Card>
+   345→      </div>
+   346→
+   347→      {/* Customer Info Card */}
+   348→      <Card className="border-gray-200 shadow-sm rounded-xl">
+   349→        <CardHeader className="pb-2">
+   350→          <CardTitle className="text-base font-semibold text-[#1a1a1a] flex items-center gap-2">
+   351→            <User className="w-4 h-4 text-[#888888]" />
+   352→            Mes informations
+   353→          </CardTitle>
+   354→        </CardHeader>
+   355→        <CardContent className="pb-5">
+   356→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+   357→            <div className="flex items-center gap-2">
+   358→              <span className="text-[#888888]">Email :</span>
+   359→              <span className="text-[#1a1a1a] font-medium">{customer.email}</span>
+   360→            </div>
+   361→            <div className="flex items-center gap-2">
+   362→              <span className="text-[#888888]">Tél :</span>
+   363→              <span className="text-[#1a1a1a] font-medium">{customer.phone}</span>
+   364→            </div>
+   365→            <div className="flex items-center gap-2">
+   366→              <MapPin className="w-3.5 h-3.5 text-[#888888] shrink-0" />
+   367→              <span className="text-[#1a1a1a] font-medium">
+   368→                {customer.address}, {customer.quartier}, {customer.city}
+   369→              </span>
+   370→            </div>
+   371→          </div>
+   372→        </CardContent>
+   373→      </Card>
+   374→
+   375→      {/* Chat with store button */}
+   376→      {!showChat && (
+   377→        <button
+   378→          onClick={() => setShowChat(true)}
+   379→          className="w-full flex items-center gap-4 p-5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
+   380→        >
+   381→          <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+   382→            <MessageCircle className="w-5 h-5 text-white" />
+   383→          </div>
+   384→          <div className="text-left flex-1">
+   385→            <p className="text-sm font-semibold text-[#1a1a1a]">Discuter avec la boutique</p>
+   386→            <p className="text-xs text-[#888888] mt-0.5">Posez vos questions, suivez vos commandes en direct</p>
+   387→          </div>
+   388→          <MessageCircle className="w-4 h-4 text-[#888888] shrink-0" />
+   389→        </button>
+   390→      )}
+   391→
+   392→      {/* Chat view */}
+   393→      {showChat && (
+   394→        <Card className="border-gray-200 shadow-sm rounded-xl overflow-hidden">
+   395→          {/* Chat header */}
+   396→          <div className="flex items-center justify-between px-4 py-3 bg-[#1a1a1a]">
+   397→            <div className="flex items-center gap-3">
+   398→              <button
+   399→                onClick={() => setShowChat(false)}
+   400→                className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+   401→                aria-label="Retour au tableau de bord"
+   402→              >
+   403→                <ArrowLeft className="w-4 h-4" />
+   404→              </button>
+   405→              <div>
+   406→                <p className="text-white text-sm font-medium leading-tight">KALA'S</p>
+   407→                <p className="text-white/60 text-xs">Discuter avec la boutique</p>
+   408→              </div>
+   409→            </div>
+   410→            {/* Admin online indicator */}
+   411→            <div className="flex items-center gap-1.5">
+   412→              <span className="w-2 h-2 rounded-full bg-green-400" />
+   413→              <span className="text-white/60 text-xs">
+   414→                {lastAdminMessage
+   415→                  ? `Rép. à ${formatChatTime(lastAdminMessage.createdAt)}`
+   416→                  : 'En ligne'}
+   417→              </span>
+   418→            </div>
+   419→          </div>
+   420→
+   421→          {/* Messages area */}
+   422→          <div className="h-[320px] overflow-y-auto px-4 py-3 space-y-3">
+   423→            {chatLoading ? (
+   424→              <div className="flex items-center justify-center py-12">
+   425→                <Loader2 className="w-5 h-5 text-[#888888] animate-spin" />
+   426→                <span className="ml-2 text-sm text-[#888888]">Chargement...</span>
+   427→              </div>
+   428→            ) : chatMessages.length === 0 ? (
+   429→              <div className="flex flex-col items-center justify-center py-10">
+   430→                <MessageCircle className="w-10 h-10 text-[#888888] mb-3 opacity-30" />
+   431→                <p className="text-sm text-[#888888] text-center">Aucun message pour le moment</p>
+   432→                <p className="text-xs text-[#888888] mt-1 text-center">Envoyez un message pour commencer la conversation</p>
+   433→              </div>
+   434→            ) : (
+   435→              chatMessages.map((msg) => (
+   436→                <div
+   437→                  key={msg.id}
+   438→                  className={msg.senderType === 'customer' ? 'flex justify-end' : 'flex justify-start'}
+   439→                >
+   440→                  <div
+   441→                    className={
+   442→                      msg.senderType === 'customer'
+   443→                        ? 'bg-[#1a1a1a] text-white px-3.5 py-2.5 rounded-2xl rounded-br-md max-w-[80%] text-sm leading-relaxed'
+   444→                        : 'bg-gray-100 text-[#1a1a1a] px-3.5 py-2.5 rounded-2xl rounded-bl-md max-w-[80%] text-sm leading-relaxed'
+   445→                    }
+   446→                  >
+   447→                    <p>{msg.content}</p>
+   448→                    <p
+   449→                      className={
+   450→                        msg.senderType === 'customer'
+   451→                          ? 'text-white/50 text-[10px] mt-1 text-right'
+   452→                          : 'text-[#888888] text-[10px] mt-1'
+   453→                      }
+   454→                    >
+   455→                      {formatChatTime(msg.createdAt)}
+   456→                    </p>
+   457→                  </div>
+   458→                </div>
+   459→              ))
+   460→            )}
+   461→            {chatSending && (
+   462→              <div className="flex justify-end">
+   463→                <div className="bg-[#1a1a1a] text-white px-3.5 py-3 rounded-2xl rounded-br-md">
+   464→                  <span className="inline-flex gap-1">
+   465→                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+   466→                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+   467→                    <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+   468→                  </span>
+   469→                </div>
+   470→              </div>
+   471→            )}
+   472→            <div ref={chatEndRef} />
+   473→          </div>
+   474→
+   475→          {/* Chat input */}
+   476→          <div className="border-t border-gray-200 px-3 py-2.5">
+   477→            <div className="flex items-end gap-2">
+   478→              <textarea
+   479→                value={chatInput}
+   480→                onChange={(e) => setChatInput(e.target.value)}
+   481→                onKeyDown={(e) => {
+   482→                  if (e.key === 'Enter' && !e.shiftKey) {
+   483→                    e.preventDefault()
+   484→                    sendChatMessage()
+   485→                  }
+   486→                }}
+   487→                placeholder="Écrivez votre message..."
+   488→                rows={1}
+   489→                className="flex-1 resize-none border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1a1a1a] placeholder:text-[#888888] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] bg-white min-h-[38px] max-h-[80px] leading-snug"
+   490→                style={{ fieldSizing: 'content' } as React.CSSProperties}
+   491→              />
+   492→              <button
+   493→                onClick={sendChatMessage}
+   494→                disabled={!chatInput.trim() || chatSending}
+   495→                className="w-[38px] h-[38px] flex items-center justify-center bg-[#1a1a1a] text-white rounded-lg disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
+   496→                aria-label="Envoyer"
+   497→              >
+   498→                <Send className="w-4 h-4" />
+   499→              </button>
+   500→            </div>
+   501→          </div>
+   502→        </Card>
+   503→      )}
+   504→
+   505→      {/* Orders Section */}
+   506→      <div>
+   507→        <h3 className="text-lg font-bold text-[#1a1a1a] mb-4 flex items-center gap-2">
+   508→          <Receipt className="w-5 h-5 text-[#888888]" />
+   509→          Mes commandes
+   510→        </h3>
+   511→
+   512→        {ordersLoading ? (
+   513→          <div className="flex items-center justify-center py-12">
+   514→            <Loader2 className="w-6 h-6 text-[#888888] animate-spin" />
+   515→            <span className="ml-3 text-sm text-[#888888]">Chargement de vos commandes...</span>
+   516→          </div>
+   517→        ) : orders.length === 0 ? (
+   518→          <Card className="border-gray-200 shadow-sm rounded-xl">
+   519→            <CardContent className="p-8 text-center">
+   520→              <Package className="w-12 h-12 text-[#888888] mx-auto mb-3 opacity-40" />
+   521→              <p className="text-[#1a1a1a] font-medium">Aucune commande pour le moment</p>
+   522→              <p className="text-[#888888] text-sm mt-1">Vos commandes apparaîtront ici une fois passées.</p>
+   523→            </CardContent>
+   524→          </Card>
+   525→        ) : (
+   526→          <div className="space-y-3">
+   527→            {orders.map((order) => {
+   528→              const isExpanded = expandedOrder === order.id
+   529→              return (
+   530→                <Card
+   531→                  key={order.id}
+   532→                  className="border-gray-200 shadow-sm rounded-xl overflow-hidden transition-shadow duration-200 hover:shadow-md"
+   533→                >
+   534→                  {/* Order Header Row */}
+   535→                  <button
+   536→                    onClick={() => toggleExpand(order.id)}
+   537→                    className="w-full text-left"
+   538→                    aria-expanded={isExpanded}
+   539→                    aria-label={`Commande ${order.orderNumber}`}
+   540→                  >
+   541→                    <CardContent className="p-4 sm:p-5">
+   542→                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   543→                        {/* Left: order info */}
+   544→                        <div className="flex items-start gap-3">
+   545→                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+   546→                            <Package className="w-5 h-5 text-[#1a1a1a]" />
+   547→                          </div>
+   548→                          <div className="min-w-0">
+   549→                            <p className="text-sm font-semibold text-[#1a1a1a] truncate">
+   550→                              #{order.orderNumber}
+   551→                            </p>
+   552→                            <p className="text-xs text-[#888888] mt-0.5">
+   553→                              {formatDate(order.createdAt)} &middot; {order.items.length} article{order.items.length > 1 ? 's' : ''}
+   554→                            </p>
+   555→                          </div>
+   556→                        </div>
+   557→
+   558→                        {/* Right: status, amount, chevron */}
+   559→                        <div className="flex items-center gap-3 sm:gap-4">
+   560→                          <StatusBadge status={order.status} />
+   561→                          <span className="text-sm font-bold text-[#1a1a1a] whitespace-nowrap">
+   562→                            {formatPrice(order.totalAmount)}
+   563→                          </span>
+   564→                          <div className="text-[#888888]">
+   565→                            {isExpanded ? (
+   566→                              <ChevronUp className="w-4 h-4" />
+   567→                            ) : (
+   568→                              <ChevronDown className="w-4 h-4" />
+   569→                            )}
+   570→                          </div>
+   571→                        </div>
+   572→                      </div>
+   573→                    </CardContent>
+   574→                  </button>
+   575→
+   576→                  {/* Expanded Order Details */}
+   577→                  {isExpanded && (
+   578→                    <div className="border-t border-gray-100 bg-gray-50/50">
+   579→                      <div className="px-4 sm:px-5 py-4 space-y-3">
+   580→                        {/* Delivery info */}
+   581→                        {(order.deliveryAddress || order.deliveryCity) && (
+   582→                          <div className="flex items-start gap-2 text-xs text-[#888888]">
+   583→                            <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+   584→                            <span>
+   585→                              Livraison : {order.deliveryAddress || customer.address}
+   586→                              {order.deliveryQuartier && `, ${order.deliveryQuartier}`}
+   587→                              {order.deliveryCity && `, ${order.deliveryCity}`}
+   588→                            </span>
+   589→                          </div>
+   590→                        )}
+   591→
+   592→                        {/* Items list */}
+   593→                        <div className="space-y-2">
+   594→                          <p className="text-xs font-semibold text-[#1a1a1a] uppercase tracking-wider">
+   595→                            Articles commandés
+   596→                          </p>
+   597→                          {order.items.map((item) => (
+   598→                            <div
+   599→                              key={item.id}
+   600→                              className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-gray-100"
+   601→                            >
+   602→                              <div className="flex items-center gap-3 min-w-0">
+   603→                                {item.image ? (
+   604→                                  <img
+   605→                                    src={item.image}
+   606→                                    alt={item.productName}
+   607→                                    className="w-8 h-8 rounded object-cover shrink-0"
+   608→                                  />
+   609→                                ) : (
+   610→                                  <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
+   611→                                    <Package className="w-4 h-4 text-[#888888]" />
+   612→                                  </div>
+   613→                                )}
+   614→                                <span className="text-sm text-[#1a1a1a] font-medium truncate">
+   615→                                  {item.productName}
+   616→                                </span>
+   617→                              </div>
+   618→                              <div className="flex items-center gap-4 shrink-0">
+   619→                                <span className="text-xs text-[#888888]">×{item.quantity}</span>
+   620→                                <span className="text-sm font-semibold text-[#1a1a1a]">
+   621→                                  {formatPrice(item.unitPrice * item.quantity)}
+   622→                                </span>
+   623→                              </div>
+   624→                            </div>
+   625→                          ))}
+   626→                        </div>
+   627→
+   628→                        {/* Order total */}
+   629→                        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+   630→                          <span className="text-sm font-medium text-[#888888]">Total</span>
+   631→                          <span className="text-base font-bold text-[#1a1a1a]">
+   632→                            {formatPrice(order.totalAmount)}
+   633→                          </span>
+   634→                        </div>
+   635→                      </div>
+   636→                    </div>
+   637→                  )}
+   638→                </Card>
+   639→              )
+   640→            })}
+   641→          </div>
+   642→        )}
+   643→
+   644→        {/* Pagination */}
+   645→        {totalPages > 1 && (
+   646→          <div className="flex items-center justify-center gap-2 mt-6">
+   647→            <Button
+   648→              variant="outline"
+   649→              size="sm"
+   650→              disabled={page === 1}
+   651→              onClick={() => setPage((p) => Math.max(1, p - 1))}
+   652→              className="border-gray-200 text-[#1a1a1a] hover:bg-gray-50 rounded-lg"
+   653→            >
+   654→              <ChevronUp className="w-4 h-4 mr-1 rotate-[-90deg]" />
+   655→              Précédent
+   656→            </Button>
+   657→            <div className="flex items-center gap-1">
+   658→              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+   659→                <Button
+   660→                  key={p}
+   661→                  variant={p === page ? 'default' : 'outline'}
+   662→                  size="sm"
+   663→                  onClick={() => setPage(p)}
+   664→                  className={
+   665→                    p === page
+   666→                      ? 'bg-[#1a1a1a] text-white hover:bg-[#333] rounded-lg min-w-[32px]'
+   667→                      : 'border-gray-200 text-[#1a1a1a] hover:bg-gray-50 rounded-lg min-w-[32px]'
+   668→                  }
+   669→                >
+   670→                  {p}
+   671→                </Button>
+   672→              ))}
+   673→            </div>
+   674→            <Button
+   675→              variant="outline"
+   676→              size="sm"
+   677→              disabled={page === totalPages}
+   678→              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   679→              className="border-gray-200 text-[#1a1a1a] hover:bg-gray-50 rounded-lg"
+   680→            >
+   681→              Suivant
+   682→              <ChevronDown className="w-4 h-4 ml-1 rotate-[-90deg]" />
+   683→            </Button>
+   684→          </div>
+   685→        )}
+   686→      </div>
+   687→    </div>
+   688→      </DialogContent>
+   689→    </Dialog>
+   690→  )
+   691→}
+   692→

@@ -14,9 +14,9 @@ interface TestimonialsSectionProps {
 
 export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, isMobile }: TestimonialsSectionProps) {
   const testimonials = [
-    { name: 'Marie Nzaba', role: 'Menagere, Pointe-Noire', text: 'Le CongoClean 5L est devenu indispensable chez nous. Parfait pour toute la famille, il nettoie bien et ne seche pas les mains.', rating: 5 },
-    { name: 'Jean-Pierre Massamba', role: 'Gerant Hotel Le Phare', text: 'Nous utilisons les produits KALA\'S depuis 2 ans. Qualite constante et prix competitifs. Je recommande vivement.', rating: 5 },
-    { name: 'Aline Mouanda', role: 'Proprietaire Restaurant', text: 'Le detergent ProWash est excellent pour la vaisselle de mon restaurant. Format 5L tres economique. Livraison rapide.', rating: 4 },
+    { name: 'Marie Nzaba', role: 'Ménagère, Pointe-Noire', text: 'Le CongoClean 5L est devenu indispensable chez nous. Parfait pour toute la famille, il nettoie bien et ne sèche pas les mains.', rating: 5 },
+    { name: 'Jean-Pierre Massamba', role: 'Gérant Hôtel Le Phare', text: 'Nous utilisons les produits KALA\'S depuis 2 ans. Qualité constante et prix compétitifs. Je recommande vivement.', rating: 5 },
+    { name: 'Aline Mouanda', role: 'Propriétaire Restaurant', text: 'Le détergent ProWash est excellent pour la vaisselle de mon restaurant. Format 5L très économique. Livraison rapide.', rating: 4 },
   ]
 
   return (
@@ -26,7 +26,7 @@ export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, i
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] mb-4">Ce que disent nos clients</h2>
             <p className="text-[#555555] max-w-2xl mx-auto">
-              La satisfaction de nos clients est notre plus grande fierte
+              La satisfaction de nos clients est notre plus grande fierté
             </p>
             <div className="w-16 h-1 bg-[#1a1a1a] rounded-full mx-auto mt-4" />
           </div>
@@ -34,7 +34,7 @@ export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, i
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
             <FadeInSection key={i}>
-              <Card className={`relative p-6 h-full flex flex-col hover:shadow-md transition-all duration-200 border border-[#e5e5e5] shadow-sm ${isMobile && activeTestimonial !== i ? 'hidden' : ''} overflow-hidden`}
+              <Card className={`relative p-6 h-full flex flex-col hover:shadow-lg transition-all duration-300 border border-[#e5e5e5] shadow-sm ${isMobile && activeTestimonial !== i ? 'hidden' : ''} overflow-hidden hover:-translate-y-1`}
               >
                 <CardContent className="p-0 flex flex-col flex-1 relative z-10">
                   {/* Large decorative quote icon */}
@@ -49,11 +49,11 @@ export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, i
                     <div className="flex items-center gap-2">
                       <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, si) => (
-                          <Star key={si} className={`w-4 h-4 ${si < t.rating ? 'text-[#f59e0b] fill-[#f59e0b]' : 'text-gray-200'}`} />
+                          <Star key={si} className={`w-4 h-4 ${si < t.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
                         ))}
                       </div>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-100 text-[#555555] border-[#e5e5e5] font-medium">
-                        Etoiles
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 font-medium">
+                        {t.rating}/5
                       </Badge>
                     </div>
                   </div>
@@ -78,7 +78,7 @@ export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, i
                       {/* Verified purchase badge */}
                       <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-[#555555] border-[#e5e5e5] bg-gray-50 shrink-0">
                         <ShieldCheck className="w-3 h-3 mr-0.5" />
-                        Achat verifie
+                        Achat vérifié
                       </Badge>
                     </div>
                   </div>
@@ -100,7 +100,7 @@ export function TestimonialsSection({ activeTestimonial, setActiveTestimonial, i
                 key={i}
                 onClick={() => setActiveTestimonial(i)}
                 className={`relative z-10 w-5 h-5 rounded-full transition-all duration-300 flex items-center justify-center ${activeTestimonial === i ? 'text-white' : 'text-gray-400 hover:text-gray-500'}`}
-                aria-label={`Temoignage ${i + 1}`}
+                aria-label={`Témoignage ${i + 1}`}
               >
                 <span className="text-[10px] font-bold">{i + 1}</span>
               </button>

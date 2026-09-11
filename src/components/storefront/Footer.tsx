@@ -47,7 +47,7 @@ export function Footer({
   const recentlyViewedSection = recentlyViewed.length > 0 ? (
     <section className="py-8 bg-white border-t border-[#e5e5e5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h3 className="text-sm font-semibold text-[#1a1a1a] mb-4">Recemment consultes</h3>
+        <h3 className="text-sm font-semibold text-[#1a1a1a] mb-4">Récemment consultés</h3>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {recentlyViewed.map((product) => (
             <button
@@ -87,15 +87,15 @@ export function Footer({
                 <span className="text-lg font-bold text-white">KALA&apos;S</span>
               </div>
               <p className="text-sm leading-relaxed">
-                Fabricant de produits d&rsquo;hygiene de qualite industrielle base a Pointe-Noire, Congo-Brazzaville.
+                Fabricant de produits d&rsquo;hygiène de qualité industrielle basé à Pointe-Noire, Congo-Brazzaville.
               </p>
             </div>
 
             {/* A propos */}
             <div>
-              <h4 className="font-semibold text-white mb-4 text-sm">A propos</h4>
+              <h4 className="font-semibold text-white mb-4 text-sm">À propos</h4>
               <p className="text-sm leading-relaxed">
-                KALA&apos;S est une entreprise congolaise specialisee dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiene accessibles et efficaces.
+                KALA&apos;S est une entreprise congolaise spécialisée dans la fabrication de produits de nettoyage. Notre mission est de fournir des solutions d&rsquo;hygiène accessibles et efficaces.
               </p>
             </div>
 
@@ -152,17 +152,17 @@ export function Footer({
                 onClick={() => setTermsOpen(true)}
                 className="hover:text-white transition-colors duration-150"
               >
-                Conditions Generales
+                Conditions Générales
               </button>
               <Separator orientation="vertical" className="h-3 bg-white/10 hidden sm:block" />
               <button
                 onClick={() => setPrivacyOpen(true)}
                 className="hover:text-white transition-colors duration-150"
               >
-                Politique de Confidentialite
+                Politique de Confidentialité
               </button>
             </div>
-            <p className="text-xs">2025 KALA&apos;S. Tous droits reserves.</p>
+            <p className="text-xs">2025 KALA&apos;S. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
@@ -200,7 +200,7 @@ export function Footer({
                   <Lock className="w-4 h-4 text-[#888888]" />
                 </div>
                 <div>
-                  <p className="text-sm text-[#1a1a1a] font-medium">Nous utilisons des cookies pour ameliorer votre experience.</p>
+                  <p className="text-sm text-[#1a1a1a] font-medium">Nous utilisons des cookies pour améliorer votre expérience.</p>
                   <button
                     onClick={() => setPrivacyOpen(true)}
                     className="text-xs text-[#888888] hover:text-[#1a1a1a] hover:underline inline-flex items-center gap-1 mt-0.5"

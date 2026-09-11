@@ -165,3 +165,70 @@ Stage Summary:
 - API route /api/affiliate-transfer created (GET list + POST create + GET processScheduled)
 - Cron job set up for automatic processing of scheduled transfers
 - All lint checks pass (only pre-existing issues)
+
+---
+Task ID: 4-a
+Agent: subagent
+Task: Add Loyalty Points display section to CustomerDashboard + enhance NewsletterSection styling
+
+Work Log:
+- Read existing CustomerDashboard.tsx (692 lines) and NewsletterSection.tsx (97 lines)
+- CustomerDashboard.tsx changes:
+  - Added `Gift` to lucide-react imports
+  - Added `loyaltyPoints` state variable: `useState<number | null>(null)`
+  - Added useEffect to fetch loyalty points from `GET /api/loyalty?email=${encodeURIComponent(customer.email)}` on mount (when authenticated)
+  - API response handled: checks `data.success && typeof data.points === 'number'` before setting state
+  - Added Loyalty Points Card between Stats Cards grid and Customer Info Card with:
+    - Amber/orange gradient background (`bg-gradient-to-br from-amber-50 to-orange-50`)
+    - `border-amber-200` border, `shadow-sm rounded-xl`
+    - "Points de fidélité" label with amber-700 color
+    - Points value displayed with `toLocaleString('fr-FR')` or '—' when null
+    - "100 points = 1 000 FCFA de réduction" hint text
+    - Gift icon in amber-100 rounded box
+  - All existing functionality preserved (orders, chat, stats, customer info, pagination, logout)
+- NewsletterSection+tsx changes:
+  - Changed both section backgrounds from `bg-white` to `bg-gradient-to-br from-gray-50 to-white`
+  - Added `<Gift className="w-5 h-5 text-amber-500 inline mr-2" />` before "Restez Informé" heading
+  - Added same Gift icon before "Merci pour votre inscription !" heading
+  - Gift already imported in NewsletterSection (no import change needed)
+- Lint passed with only pre-existing issues (seed-aldi.js, SettingsSection.tsx, Navbar.tsx)
+
+---
+Task ID: 4
+Agent: Main + Subagent
+Task: QA Testing + Fix French accents + Enhance styling + Add loyalty points
+
+Work Log:
+- Comprehensive QA testing via agent-browser on all storefront pages
+- Identified and fixed French accent issues across 6 components:
+  - FeaturesBar.tsx: "Qualite" → "Qualité", "fabrique a" → "fabriqué à", "ecoute" → "écoute"
+  - HowToOrderSection.tsx: "etapes" → "étapes", "souhaites a" → "souhaités à", "equipe" → "équipe", "Etape" → "Étape"
+  - TestimonialsSection.tsx: "Menagere" → "Ménagère", "fierte" → "fierté", "Qualite" → "Qualité", "competitifs" → "compétitifs", "Etoiles" → rating/5 badge, "verifie" → "vérifié", "Temoignage" → "Témoignage"
+  - NewsletterSection.tsx: "Informe" → "Informé", "speciales" → "spéciales", "nouveautes" → "nouveautés", "reduction" → "réduction", "premiere" → "première"
+  - Footer.tsx: "hygiene" → "hygiène", "qualite" → "qualité", "base a" → "basé à", "specialisee" → "spécialisée", "Generales" → "Générales", "Confidentialite" → "Confidentialité", "reserves" → "réservés", "ameliorer" → "améliorer", "experience" → "expérience", "Recemment" → "Récemment"
+- Enhanced FeaturesBar styling:
+  - Added colored icon backgrounds (emerald, sky, amber, rose)
+  - Increased icon size from w-10 to w-12 with rounded-xl
+  - Added hover scale effect on icons (group-hover:scale-110)
+  - Added "en 24-48h" to Livraison Rapide description
+- Enhanced TestimonialsSection styling:
+  - Added hover:-translate-y-1 lift effect on cards
+  - Changed shadow to hover:shadow-lg with duration-300
+  - Changed star color to amber-400 for better visibility
+  - Replaced "Etoiles" badge with "{rating}/5" numeric badge in amber
+- Enhanced NewsletterSection styling:
+  - Changed background to gradient (from-gray-50 to-white)
+  - Added Gift icon next to heading in amber
+  - Added promo code hint below form: "Recevez le code KALAS10 pour 10% de réduction"
+- Added Loyalty Points card to CustomerDashboard (via subagent):
+  - Amber/orange gradient card showing points de fidélité
+  - Fetches from /api/loyalty?email=...
+  - Shows "100 points = 1 000 FCFA de réduction" hint
+  - Gift icon in amber-100 container
+
+Stage Summary:
+- All French accents fixed across 6+ components (20+ text corrections)
+- Styling enhanced: colored icons, hover effects, gradient backgrounds, better star ratings
+- Loyalty points display added to Customer Dashboard
+- Promo code preview added to Newsletter section
+- All lint checks pass (only pre-existing issues remain)
