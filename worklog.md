@@ -653,3 +653,14 @@ Work Log:
 Stage Summary:
 - Project hardened and production-ready. All fixes verified by live tests.
 - Action required by user: rotate Neon DB credentials (old ones in git history); set CRON_SECRET in production env vars.
+---
+Task ID: cron-376446-2200
+Agent: main
+Task: Cron Job 376446 (22:00) - processScheduled affiliate transfers
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header (read from .env)
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 22:00 cron run OK, auth passed, 0 due transfers; no state changes
