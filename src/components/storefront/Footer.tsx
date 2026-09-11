@@ -60,7 +60,7 @@ export function Footer({
                   <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                    <img src="/logo.svg" alt="KALA'S" className="w-full h-full object-cover rounded-lg" />
+                    <img src="/logo.jpeg" alt="KALA'S" className="w-full h-full object-cover rounded-lg" />
                   </div>
                 )}
               </div>
@@ -83,7 +83,7 @@ export function Footer({
             {/* Company Info */}
             <div>
               <div className="flex items-center gap-2.5 mb-4">
-                <img src="/logo.svg" alt="KALA'S" className="w-8 h-8 rounded-lg object-cover" />
+                <img src="/logo.jpeg" alt="KALA'S" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="text-lg font-bold text-white">KALA&apos;S</span>
               </div>
               <p className="text-sm leading-relaxed">

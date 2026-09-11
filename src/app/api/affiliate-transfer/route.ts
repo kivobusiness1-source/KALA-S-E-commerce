@@ -25,7 +25,7 @@ async function getAffiliate(request: NextRequest) {
 const createTransferSchema = z.object({
   amount: z.number().positive('Amount must be greater than 0'),
   method: z.enum(['mobile_money', 'bank_transfer', 'cash'], {
-    errorMap: () => ({ message: 'Method must be mobile_money, bank_transfer, or cash' }),
+    message: 'Method must be mobile_money, bank_transfer, or cash',
   }),
   phoneNumber: z.string().optional(),
   bankInfo: z.string().optional(),

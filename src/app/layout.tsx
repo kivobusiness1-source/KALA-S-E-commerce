@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     "nettoyage",
   ],
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/logo.jpeg",
+    apple: "/logo.jpeg",
   },
   openGraph: {
     title: "KALA'S | Produits d'Hygiène",

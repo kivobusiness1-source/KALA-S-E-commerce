@@ -37,6 +37,7 @@ export interface ProductType {
   packSize?: number | null
   packPrice?: number | null
   commissionPerUnit?: number | null
+  brand?: string | null
 }
 
 export interface CategoryType {

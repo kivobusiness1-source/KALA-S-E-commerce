@@ -406,7 +406,7 @@ export default function TeamSection() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-role">Rôle</Label>
-              <Select value={form.role} onValueChange={setForm}>
+              <Select value={form.role} onValueChange={(value) => setForm({ ...form, role: value })}>
                 <SelectTrigger id="team-role" className="w-full">
                   <SelectValue placeholder="Sélectionner un rôle" />
                 </SelectTrigger>
@@ -457,7 +457,7 @@ export default function TeamSection() {
             {canSeeAll && editingUser && admin?.id !== editingUser.id && (
               <div className="space-y-2">
                 <Label>Rôle</Label>
-                <Select value={form.role} onValueChange={setForm}>
+                <Select value={form.role} onValueChange={(value) => setForm({ ...form, role: value })}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>

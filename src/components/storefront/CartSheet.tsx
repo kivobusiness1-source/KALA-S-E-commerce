@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ShoppingCart, Package, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Truck, Star, Heart, Tag, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -989,7 +989,7 @@ export function CartSheet({
 
               <AnimatePresence>
                 {showReviewForm && (
-                  <form
+                  <motion.form
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
@@ -1043,7 +1043,7 @@ export function CartSheet({
                     >
                       {reviewLoading ? 'Envoi en cours...' : 'Publier l\'avis'}
                     </Button>
-                  </form>
+                  </motion.form>
                 )}
               </AnimatePresence>
             </div>

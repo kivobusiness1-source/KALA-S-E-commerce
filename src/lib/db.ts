@@ -24,6 +24,6 @@ const globalForPrisma = globalThis as unknown as {
 const url = getDatabaseUrl()
 export const db =
   globalForPrisma.prisma ??
-  new PrismaClient(url ? { datasourceUrl: url } : {})
+  new PrismaClient(url ? { datasourceUrl: url } : undefined)
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

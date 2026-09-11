@@ -582,3 +582,44 @@ Stage Summary:
 - Project is Z AI-free: no z-ai-web-dev-sdk dependency, no Z AI imports, no Z AI images
 - Comprehensive error handling: global error boundary, 404 page, page error boundary, section ErrorBoundary, API error utilities, React Query error handling, health endpoint
 - Production-ready: clean lint, proper error pages, security headers, no Z AI dependencies
+
+---
+Task ID: logo-restoration
+Agent: Main
+Task: Restore KALA'S original logo.jpeg that was mistakenly deleted and replaced with a programmatic SVG
+
+Work Log:
+- User reported that their original KALA'S logo was removed when they only asked to remove Z AI branding/dependencies
+- Recovered original logo.jpeg (512x512, 52KB) from git history (HEAD~5)
+- Restored public/logo.jpeg
+- Updated all references from /logo.svg to /logo.jpeg in:
+  - src/app/layout.tsx (icons)
+  - src/components/storefront/Navbar.tsx (2 references)
+  - src/components/storefront/Footer.tsx (2 references)
+  - src/app/admin/page.tsx (3 references)
+- Deleted the wrong public/logo.svg file
+- Verified no remaining references to logo.svg in src/
+
+Stage Summary:
+- Original KALA'S logo.jpeg fully restored across all components
+- SVG logo file deleted
+- Zero references to /logo.svg remain
+
+---
+Task ID: ts-errors-fix
+Agent: Main
+Task: Fix all remaining TypeScript errors blocking production build
+
+Work Log:
+- Ran npx tsc --noEmit — found 6 errors:
+  1. affiliate-transfer/route.ts:27 — zod v4 errorMap → message (fixed)
+  2. page.tsx:162 — brand not on ProductType → added brand field to types.ts (fixed)
+  3. TeamSection.tsx:409,460 — setForm passed to onValueChange → explicit (value) => setForm({...form, role: value}) (fixed)
+  4. CartSheet.tsx:993 — <form> with framer-motion props → <motion.form> (fixed)
+  5. db.ts:27 — PrismaClient({} | {datasourceUrl}) type error → undefined instead of {} (fixed)
+- Re-ran npx tsc --noEmit — zero errors
+
+Stage Summary:
+- All 6 TypeScript errors resolved
+- npx tsc --noEmit passes cleanly with zero errors
+- Project is production-build ready
