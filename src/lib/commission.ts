@@ -71,12 +71,15 @@ export function calculateTotalUnits(
 }
 
 /**
- * Determine the commission month for an affiliate+product pair.
+ * Determine the commission month for an affiliate+product+customer triple.
  *
- * Month 1 = the calendar month in which the affiliate first earned commission on this product.
- * Month 2+ = any subsequent calendar month.
+ * IMPORTANT: Each new customer starts at month 1, even if the affiliate has already
+ * earned commissions from other customers for the same product.
  *
- * @param firstCommissionAt - The date of the first commission for this affiliate+product pair (null if none exists yet)
+ * Month 1 = the calendar month in which the affiliate first earned commission on this product FOR THIS CUSTOMER.
+ * Month 2+ = any subsequent calendar month for that same customer.
+ *
+ * @param firstCommissionAt - The date of the first commission for this affiliate+product+customer (null if none exists yet)
  * @param now - Current date/time
  * @returns The commission month number (1 = first month, 2+ = subsequent months)
  */

@@ -292,6 +292,7 @@ export interface AffiliateProductTrack {
   id: string
   affiliateId: string
   productId: string
+  customerId: string
   firstCommissionAt: string
   currentMonth?: number
   product?: {

@@ -640,23 +640,26 @@ model FundTransferRequest {
 
 // ==================== AFFILIATE PRODUCT TRACKING ====================
 
-// Tracks when an affiliate first earned commission on a specific product.
+// Tracks when an affiliate first earned commission on a specific product FOR A SPECIFIC CUSTOMER.
+// Each new customer referred by the same affiliate starts at month 1 commission rate.
 // Used to determine if we're in month 1 or month 2+ for tiered commissions.
 
 model AffiliateProductTrack {
   id                String   @id @default(cuid())
   affiliateId       String
   productId         String
-  firstCommissionAt DateTime // Date of first commission for this affiliate+product pair
+  customerId        String   // Each customer gets their own commission month progression
+  firstCommissionAt DateTime // Date of first commission for this affiliate+product+customer
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   affiliate         Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
   product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([affiliateId, productId])
+  @@unique([affiliateId, productId, customerId])
   @@index([affiliateId])
   @@index([productId])
+  @@index([customerId])
 }
 
 // ==================== ENTERPRISE / BUSINESS DATA ====================

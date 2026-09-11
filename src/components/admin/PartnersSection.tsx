@@ -669,6 +669,7 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
+                    <TableHead>Client</TableHead>
                     <TableHead className="text-right">1er mois (FCFA/unité)</TableHead>
                     <TableHead className="text-right">Mois 2+ (FCFA/unité)</TableHead>
                     <TableHead>Début</TableHead>
@@ -680,6 +681,8 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
                     const p = t.product
                     const m1 = p?.commissionMonth1PerUnit ?? p?.commissionPerUnit ?? null
                     const m2Plus = p?.commissionMonth2PlusPerUnit ?? p?.commissionPerUnit ?? null
+                    const isEmailTrack = t.customerId.startsWith('email:')
+                    const customerLabel = isEmailTrack ? t.customerId.replace('email:', '') : t.customerId
                     return (
                       <TableRow key={t.id}>
                         <TableCell>
@@ -693,6 +696,9 @@ function PartnerDetail({ partnerId, onBack }: { partnerId: string; onBack: () =>
                             )}
                             <span className="text-sm font-medium">{p?.name || '—'}</span>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600 max-w-[120px] truncate" title={customerLabel}>
+                          {customerLabel}
                         </TableCell>
                         <TableCell className="text-right text-sm">
                           {m1 !== null ? formatFCFA(m1) : <span className="text-gray-400">—</span>}

@@ -249,12 +249,26 @@ export async function POST(request: NextRequest) {
 
       const now = new Date()
 
-      // Pre-fetch AffiliateProductTrack records for all products in this order
+      // Resolve customerId for per-customer commission tracking
+      // Each new customer starts at month 1, even if the affiliate already sold to other customers
+      let customerIdForTrack: string | null = null
+      if (data.customerEmail) {
+        const customerRecord = await db.customer.findUnique({
+          where: { email: data.customerEmail },
+          select: { id: true },
+        })
+        customerIdForTrack = customerRecord?.id ?? null
+      }
+      // Fallback: use email hash as identifier if not a registered customer
+      const customerTrackId = customerIdForTrack ?? `email:${data.customerEmail}`
+
+      // Pre-fetch AffiliateProductTrack records for all products in this order, for THIS customer
       const uniqueProductIds = [...new Set(commissionInputs.map(c => c.productId))]
       const existingTracks = await db.affiliateProductTrack.findMany({
         where: {
           affiliateId: affiliate.id,
           productId: { in: uniqueProductIds },
+          customerId: customerTrackId,
         },
       })
       const trackMap = new Map(existingTracks.map(t => [t.productId, t]))
@@ -327,17 +341,20 @@ export async function POST(request: NextRequest) {
               },
             })
 
-            // Upsert AffiliateProductTrack to record first commission date
+            // Upsert AffiliateProductTrack to record first commission date for THIS customer
+            // Each customer gets their own month progression (month 1 on first purchase, month 2+ afterwards)
             await tx.affiliateProductTrack.upsert({
               where: {
-                affiliateId_productId: {
+                affiliateId_productId_customerId: {
                   affiliateId: affiliate!.id,
                   productId: cInput.productId,
+                  customerId: customerTrackId,
                 },
               },
               create: {
                 affiliateId: affiliate!.id,
                 productId: cInput.productId,
+                customerId: customerTrackId,
                 firstCommissionAt: now,
               },
               update: {}, // Don't update if already exists — keep original firstCommissionAt

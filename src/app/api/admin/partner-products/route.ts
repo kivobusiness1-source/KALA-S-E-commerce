@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         id: t.id,
         affiliateId: t.affiliateId,
         productId: t.productId,
+        customerId: t.customerId,
         firstCommissionAt: t.firstCommissionAt.toISOString(),
         currentMonth: Math.max(1, monthDiff),
         product: t.product
