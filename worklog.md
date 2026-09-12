@@ -1509,3 +1509,23 @@ Work Log:
 
 Stage Summary:
 - Pushed 39 commits including products API Prisma fix to GitHub
+---
+Task ID: cloudinary-migration
+Agent: main
+Task: Migrate image storage from local filesystem to Cloudinary
+
+Work Log:
+- Installed cloudinary@2.11.0 SDK
+- Added CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to .env (empty placeholders)
+- Created src/lib/cloudinary.ts utility module with upload, delete, optimize, URL helpers
+- Modified src/app/api/upload/route.ts to upload to Cloudinary first, fallback to local
+- Created src/app/api/upload/delete/route.ts for Cloudinary/local file deletion
+- Created scripts/migrate-to-cloudinary.ts for migrating existing images + updating DB refs
+- Created src/components/OptimizedImage.tsx for optimized Cloudinary image rendering
+- Updated next.config.ts with Cloudinary remote patterns for Next.js Image
+
+Stage Summary:
+- Cloudinary integration code is complete and ready
+- Needs user's Cloudinary credentials (CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET) to activate
+- Once credentials are set, migration script can be run: bun run scripts/migrate-to-cloudinary.ts
+- Fallback to local uploads if Cloudinary is not configured

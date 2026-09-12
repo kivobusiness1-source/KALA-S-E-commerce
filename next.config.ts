@@ -47,6 +47,16 @@ const nextConfig: NextConfig = {
     "preview-chat-42d81610-044a-46b2-83e9-e799ebbbc00e.space-z.ai",
     ".space-z.ai",
   ],
+  // Allow Cloudinary images in Next.js Image component
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+    ],
+  },
   async headers() {
     return [
       {

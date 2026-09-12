@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession, checkRateLimit, hasAdminRole } from '@/lib/auth'
+import { uploadBuffer, isCloudinaryConfigured, type CloudinaryFolder } from '@/lib/cloudinary'
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
@@ -9,8 +10,6 @@ function err(message: string, status = 400) {
 }
 
 // ── Allowed upload types ────────────────────────────────────
-// Extension is ALWAYS derived from the detected MIME type (never from the
-// client-supplied filename) so the generated filename is safe.
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
@@ -28,9 +27,15 @@ const ALLOWED_VIDEO_TYPES: Record<string, string> = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024 // 50 MB
 
+// ── Map upload context to Cloudinary folder ────────────────
+function inferFolder(filename: string, mime: string): CloudinaryFolder {
+  if (mime.startsWith('video/')) return 'videos'
+  // Admin UI can pass a "folder" field in the form data
+  // Default to 'products' as most uploads are product images
+  return 'products'
+}
+
 // ── Magic-byte sniffing (fallback for missing / non-standard MIME) ──
-// Some browsers or tools send "image/jpg" (non-standard) or an empty
-// Content-Type; sniffing the actual bytes is the reliable way.
 function sniffImageType(buf: Buffer): string | null {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg'
   if (
@@ -81,13 +86,15 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     // The admin UI sends images under "image" and videos under "file".
     const fileEntry = formData.get('image') ?? formData.get('file')
+    // Optional folder hint from the admin UI
+    const folderHint = formData.get('folder') as string | null
 
     if (!fileEntry || typeof fileEntry === 'string') {
       console.warn('[upload] rejected: no file field in form')
       return err('Aucun fichier fourni (champs acceptés : "image" ou "file")', 400)
     }
 
-    // File validation (File is a global in Node 20+, required by Next.js 16)
+    // File validation
     const file = fileEntry as File
     if (typeof file.arrayBuffer !== 'function') {
       console.warn('[upload] rejected: entry is not a File')
@@ -145,15 +152,61 @@ export async function POST(request: NextRequest) {
     const random = crypto.randomBytes(6).toString('hex')
     const filename = `${Date.now()}-${random}${ext}`
 
-    // ── Write to public/uploads ─────────────────────────────
+    // ── Determine Cloudinary folder ────────────────────────
+    const cloudinaryFolder: CloudinaryFolder = folderHint && ['products', 'categories', 'hero', 'wholesale', 'videos', 'general'].includes(folderHint)
+      ? folderHint as CloudinaryFolder
+      : inferFolder(filename, mime)
+
+    // ── Upload to Cloudinary (preferred) or local filesystem ──
+    const useCloudinary = isCloudinaryConfigured()
+
+    if (useCloudinary) {
+      // ── Cloudinary upload ───────────────────────────────
+      try {
+        const result = await uploadBuffer(bytes, {
+          filename,
+          folder: cloudinaryFolder,
+          resourceType: isImage ? 'image' : 'video',
+        })
+
+        console.log(`[upload] Cloudinary OK: ${result.secureUrl} (${result.bytes} bytes, ${result.width}x${result.height})`)
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            url: result.secureUrl,
+            filename,
+            size: result.bytes,
+            type: mime,
+            width: result.width,
+            height: result.height,
+            publicId: result.publicId,
+            storage: 'cloudinary',
+          },
+        })
+      } catch (cloudErr) {
+        console.error('[upload] Cloudinary failed, falling back to local:', cloudErr)
+        // Fall through to local upload as fallback
+      }
+    }
+
+    // ── Local filesystem upload (fallback / default) ──────
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
     await mkdir(uploadsDir, { recursive: true })
     await writeFile(path.join(uploadsDir, filename), bytes)
 
     const url = `/uploads/${filename}`
+    console.log(`[upload] Local OK: ${url} (${file.size} bytes)`)
+
     return NextResponse.json({
       success: true,
-      data: { url, filename, size: file.size, type: mime },
+      data: {
+        url,
+        filename,
+        size: file.size,
+        type: mime,
+        storage: 'local',
+      },
     })
   } catch (error) {
     console.error('Upload POST error:', error)
