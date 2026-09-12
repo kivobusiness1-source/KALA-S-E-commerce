@@ -1209,3 +1209,14 @@ Work Log:
 
 Stage Summary:
 - Nothing pushed; code on GitHub remains in sync with local
+---
+Task ID: cron-376446-1100
+Agent: main
+Task: Cron Job 376446 (11:00) - processScheduled affiliate transfers
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 11:00 run OK, auth passed, 0 due transfers; no state changes
