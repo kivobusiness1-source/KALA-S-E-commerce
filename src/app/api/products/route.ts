@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { validateSession, logActivity, hasAdminRole } from '@/lib/auth'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 function ok(data: unknown, status = 200) { return NextResponse.json({ success: true, data }, { status }) }
 function err(message: string, status = 400) { return NextResponse.json({ success: false, error: message }, { status }) }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const admin = await getAdmin(request)
     const isAdmin = !!admin
 
-    const where: Record<string, unknown> = {}
+    const where: Prisma.ProductWhereInput = {}
 
     // Only filter by isActive for non-admin or if 'all' is not set
     if (!isAdmin || query.all !== 'true') {
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
 
     if (query.search) {
       where.OR = [
-        { name: { contains: query.search } },
-        { description: { contains: query.search } },
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
       ]
     }
 
