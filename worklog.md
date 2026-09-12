@@ -1463,3 +1463,14 @@ Work Log:
 
 Stage Summary:
 - 16:15 run OK, auth passed, 0 due transfers; no state changes
+---
+Task ID: cron-376446-1630
+Agent: main
+Task: Cron Job 376446 (16:30) - processScheduled affiliate transfers
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 16:30 run OK, auth passed, 0 due transfers; no state changes
