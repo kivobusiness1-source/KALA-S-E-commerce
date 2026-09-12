@@ -1529,3 +1529,30 @@ Stage Summary:
 - Needs user's Cloudinary credentials (CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET) to activate
 - Once credentials are set, migration script can be run: bun run scripts/migrate-to-cloudinary.ts
 - Fallback to local uploads if Cloudinary is not configured
+---
+Task ID: cron-376446-1715
+Agent: main
+Task: Cron Job 376446 (17:15) - processScheduled affiliate transfers
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 17:15 run OK, 0 due transfers; no state changes
+---
+Task ID: cloudinary-migration-prep
+Agent: main
+Task: Preparation migration images vers Cloudinary (demande utilisateur)
+
+Work Log:
+- Trouve integration Cloudinary deja codee: src/lib/cloudinary.ts, upload route (cloudinary-first + fallback local), delete route, OptimizedImage.tsx, next.config.ts (res.cloudinary.com whitelist), cloudinary@2.11.0 installe
+- Identifiants .env vides: CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET=
+- Inventaire DB: 3 produits avec images locales + hero_image_url setting, 1 MP4 orphelin
+- Cree scripts/migrate-to-cloudinary.js (dry-run support, upload + maj DB products/categories/variants/wholesale/settings)
+- Fix DATABASE_URL shell conflict (ancien SQLite file: exporte) — cause aussi l'erreur VS Code de l'utilisateur (schema.prisma:7)
+- Teste dry-run: detection credentials OK, ping fail propre avec fake creds
+
+Stage Summary:
+- Migration prete: des que user fournit credentials Cloudinary, lancer scripts/migrate-to-cloudinary.js
+- Cause erreur VS Code identifiee: DATABASE_URL=file:... (SQLite) dans le shell ecrase le .env

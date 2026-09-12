@@ -1,0 +1,21 @@
+require('dotenv').config({ override: true });
+const { PrismaClient } = require('@prisma/client');
+const db = new PrismaClient();
+(async () => {
+  const products = await db.product.findMany({ select: { name: true, image: true, images: true } });
+  console.log('=== PRODUCTS ===');
+  products.forEach(p => console.log(`- ${p.name} | image: ${p.image} | images: ${p.images}`));
+  const cats = await db.category.findMany({ select: { name: true, image: true } });
+  console.log('=== CATEGORIES ===');
+  cats.forEach(c => console.log(`- ${c.name}: ${c.image}`));
+  const settings = await db.siteSetting.findMany({ where: { value: { contains: '/uploads/' } } });
+  console.log('=== SETTINGS w/ local uploads ===');
+  settings.forEach(s => console.log(`- ${s.key}: ${s.value.slice(0, 120)}`));
+  const variants = await db.productVariant.findMany({ where: { image: { contains: '/uploads/' } }, select: { name: true, image: true } });
+  console.log('=== VARIANTS w/ local uploads ===');
+  variants.forEach(v => console.log(`- ${v.name}: ${v.image}`));
+  const wholesale = await db.wholesaleProduct.findMany({ where: { image: { contains: '/uploads/' } }, select: { name: true, image: true } });
+  console.log('=== WHOLESALE w/ local uploads ===');
+  wholesale.forEach(w => console.log(`- ${w.name}: ${w.image}`));
+  await db.$disconnect();
+})().catch(e => { console.error(e.message); process.exit(1); });
