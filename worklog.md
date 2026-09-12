@@ -1060,3 +1060,25 @@ Work Log:
 
 Stage Summary:
 - 08:00 run OK, auth passed, 0 due transfers; no state changes
+---
+Task ID: cron-376446-0930 + incident-recovery
+Agent: main
+Task: Cron Job 376446 (09:30) + WORKSPACE RESTORATION INCIDENT
+
+Work Log:
+- CRITICAL: workspace was reset to Sep 8 snapshot between 09:15 and 09:30
+  - Lost: affiliate-transfer route, security fixes (FAQ/wholesale), npm overrides, git remote, recent .env
+  - Endpoint returned HTML 404 instead of JSON
+- RECOVERY executed:
+  1. Re-added git remote (kivobusiness1-source/KALA-S-E-commerce)
+  2. git fetch + git reset --hard origin/main (c3bd954) — restored ALL code fixes
+  3. bun install (sharp 0.35.4, overrides applied)
+  4. Rebuilt .env: merged Neon DATABASE_URL from git history (cd766b7), generated NEW CRON_SECRET
+  5. Cleared .next cache, restarted dev server
+- VERIFIED: home 200, cron endpoint success:true, no-secret 401
+
+Stage Summary:
+- Workspace fully recovered from GitHub backup; zero code loss (last push c3bd954 had everything)
+- New CRON_SECRET generated (old one lost in reset)
+- LESSON: GitHub push cadence saved the project — all work was recoverable
+- 09:30 cron run OK after recovery: 0 due transfers
