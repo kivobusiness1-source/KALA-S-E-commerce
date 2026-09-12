@@ -1584,3 +1584,15 @@ Stage Summary:
 - 本期 0 笔到期转账, 无资金变动
 - 确认 cron 端点安全机制生效: 无 secret 的调用被正确拒绝 (401)
 - 后续 cron 调用需携带 x-cron-secret 请求头
+
+---
+Task ID: cron-376446-1745
+Agent: main (Super Z)
+Task: 定时任务 - 处理到期资金转账 (GET /api/affiliate-transfer?action=processScheduled)
+
+Work Log:
+- 17:45 携带 x-cron-secret 调用成功 (HTTP 200)
+- 响应: {"success": true, "processed": 0}
+
+Stage Summary:
+- 本期 0 笔到期转账, 无资金变动
