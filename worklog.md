@@ -3422,3 +3422,16 @@ Work Log:
 
 Stage Summary:
 - Git: 无需操作
+
+---
+Task ID: cron-376446-2230
+Agent: Super Z (cron loop)
+Task: 定时任务 - 处理到期资金转账 (GET /api/affiliate-transfer?action=processScheduled)
+
+Work Log:
+- 22:30 (09-13) 首次调用返回 HTTP 500 (dev.log 显示瞬时 PrismaClientKnownRequestError)
+- 等待 5 秒后重试, 调用成功 (HTTP 200)
+- 重试响应: {"success": true, "message": "No scheduled requests to process", "processed": 0}
+
+Stage Summary:
+- 本期 0 笔到期转账, 无资金变动; 出现一次瞬时数据库错误, 重试后恢复
