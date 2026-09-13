@@ -2304,3 +2304,15 @@ Work Log:
 
 Stage Summary:
 - 本期 0 笔到期转账, 无资金变动
+
+---
+Task ID: cron-376446-0845
+Agent: main (Super Z)
+Task: 定时任务 - 处理到期资金转账 (GET /api/affiliate-transfer?action=processScheduled)
+
+Work Log:
+- 08:45 (09-13) 携带 x-cron-secret 调用成功 (HTTP 200)
+- 响应: {"success": true, "processed": 0}
+
+Stage Summary:
+- 本期 0 笔到期转账, 无资金变动
