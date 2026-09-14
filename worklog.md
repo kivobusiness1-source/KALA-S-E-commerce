@@ -5935,3 +5935,32 @@ Work Log:
 
 Stage Summary:
 - No pending transfers past scheduledAt time; 0 processed. Next run: 22:00.
+
+---
+Task ID: llm-chatbot-restore
+Agent: main
+Task: Restore LLM chatbot, remove WhatsApp widget, fix product image upload
+
+Work Log:
+- Updated src/lib/llm.ts to use z-ai-web-dev-sdk (dual provider: z-ai + OpenAI fallback)
+- Created src/components/storefront/AIChatWidget.tsx with professional chat UI
+  - Floating button with pulse animation
+  - Chat panel with Bot/User avatars, typing indicator
+  - Quick action buttons (Nos produits, Livraison, Paiement, Contacter)
+  - Clear conversation button
+  - Professional styling matching KALA'S brand
+- Replaced ChatWidget with AIChatWidget in StorefrontLayout.tsx
+- Improved product image upload error handling in ProductsSection.tsx
+  - Added success toast on upload
+  - Added URL validation check
+  - Better error messages
+- Verified WhatsAppWidget is NOT imported anywhere (dead code, kept for reference)
+- Tested with agent-browser: chatbot opens, sends messages, receives AI responses
+- AI correctly answered product questions with KALA'S catalog info
+- All changes already committed (3eed16a) and pushed to origin/main
+
+Stage Summary:
+- LLM chatbot is BACK and working with z-ai-web-dev-sdk
+- WhatsApp widget removed from storefront
+- Product image upload improved with better error feedback
+- Vercel will auto-rebuild from commit 3eed16a
