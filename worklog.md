@@ -5887,3 +5887,38 @@ Work Log:
 
 Stage Summary:
 - No pending transfers past scheduledAt time; 0 processed. Next run: 21:45.
+
+---
+Task ID: cron-378077-2134
+Agent: main (cron loop)
+Task: Git check - commit uncommitted changes, push unpushed commits (Job 378077, 3-min cycle)
+
+Work Log:
+- 21:34:21 ran git status --short: one untracked tool-result temp file (tool-results/read_*.txt, tool artifact, not project code - left uncommitted)
+- Unpushed commits: 6 (was 4 at 21:19, +2 from worklog logging)
+- Non-whitelist files in diff: 0 (all 6 commits touch only worklog.md/dev.log)
+- Per task rule, skipped push (whitelist-only changes)
+
+Stage Summary:
+- Nothing committed, nothing pushed (whitelist-only). Unpushed backlog now 6, all worklog-only. Next run: 21:37.
+
+---
+Task ID: user-fix-llm-whatsapp-upload
+Agent: main
+Task: User request - restore LLM chat (was replaced by WhatsApp), remove WhatsApp button, fix product image upload failure
+
+Work Log:
+- Investigated: commit b8b1492 (09-11) had deleted ChatWidget.tsx, api/ai-chat, api/ai-reply, src/lib/llm.ts and added WhatsAppWidget
+- Restored ai-chat/ai-reply/llm.ts from git history
+- llm.ts rewritten: z-ai-web-dev-sdk (GLM-4, zero config, installed v0.0.18) as primary provider; OpenAI-compatible fallback if OPENAI_API_KEY set
+- Fixed Zod v4 API in restored routes (error.errors -> error.issues)
+- New AIChatWidget.tsx (richer: greeting, clear-chat button) wired into StorefrontLayout; WhatsAppWidget.tsx deleted
+- Diagnosed upload failure: dev.log showed POST /api/upload 401 (admin session expired); API itself works (test upload OK with fresh login)
+- Improved ProductsSection.tsx upload error handling: explicit messages for 401/403/4xx
+- TS check clean in src/; AI chat endpoint tested OK (French responses with correct product prices)
+- Commit 3eed16a pushed to origin/main
+
+Stage Summary:
+- LLM chat restored and working (GLM via z-ai SDK), WhatsApp button removed
+- Upload failures now show "Session expirée, veuillez vous reconnecter" instead of generic error
+- User should reconnect admin session then retry image upload
