@@ -37,7 +37,9 @@ if (!isDev) {
 }
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // "standalone" is for self-hosted (Docker/Node) deployments only.
+  // Vercel manages its own output format and fails with standalone.
+  output: process.env.VERCEL ? undefined : "standalone",
   /* config options here */
   typescript: {
     ignoreBuildErrors: false,
