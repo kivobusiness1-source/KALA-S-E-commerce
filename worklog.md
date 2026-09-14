@@ -5801,3 +5801,22 @@ Stage Summary:
 - Commit 61cb1fb pushed to origin/main
 - GitHub reports 29 Dependabot vulnerabilities (existing, not new)
 - Awaiting Vercel rebuild result
+
+---
+Task ID: vercel-fix-ENOENT
+Agent: main
+Task: Fix Vercel build error ENOENT next-server.js.nft.json
+
+Work Log:
+- User reported Vercel error: ENOENT: no such file or directory, open '.next/next-server.js.nft.json'
+- Root cause: output: "standalone" in next.config.ts is incompatible with Vercel
+- Vercel expects nft.json trace file which standalone mode doesn't generate
+- Fix: Made output conditional - standalone only when NOT on Vercel (process.env.VERCEL check)
+- Committed as fdfd5ff and pushed to GitHub
+- Previous fixes confirmed working: Prisma db push succeeded, DATABASE_URL correct
+
+Stage Summary:
+- Fix pushed: next.config.ts output now conditional (undefined on Vercel, standalone otherwise)
+- Commit fdfd5ff pushed to origin/main
+- Three Vercel fixes applied in sequence: 1) directUrl fix, 2) migrate→db push, 3) standalone→conditional
+- Awaiting Vercel rebuild result
