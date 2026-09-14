@@ -5847,3 +5847,16 @@ Work Log:
 
 Stage Summary:
 - Nothing committed, nothing pushed (whitelist-only). Unpushed backlog now 2, all worklog-only. Next run: 21:07.
+
+---
+Task ID: cron-376446-2115
+Agent: main (cron loop)
+Task: Process scheduled fund transfers via GET /api/affiliate-transfer?action=processScheduled (Job 376446, 15-min cycle)
+
+Work Log:
+- 21:15:01 executed API call with x-cron-secret header
+- Response: {"success": true, "message": "No scheduled requests to process", "processed": 0}
+- HTTP status 200, no errors
+
+Stage Summary:
+- No pending transfers past scheduledAt time; 0 processed. Next run: 21:30.
