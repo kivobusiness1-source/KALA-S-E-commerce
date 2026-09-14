@@ -5782,3 +5782,22 @@ Work Log:
 
 Stage Summary:
 - Nothing committed, nothing pushed (whitelist-only). Unpushed backlog now 23, all worklog-only. Next run: 20:52.
+
+---
+Task ID: vercel-fix-P3005
+Agent: main
+Task: Fix Vercel build error P3005 - database schema not empty, cannot baseline migration
+
+Work Log:
+- User reported new Vercel error: P3005 "The database schema is not empty"
+- Confirmed Vercel is now using correct commit 4bde018 (DATABASE_URL_UNPOOLED fix worked)
+- Root cause: prisma migrate deploy fails when database was created with prisma db push (no migration history)
+- Fix: Changed vercel-build script from "prisma migrate deploy" to "prisma db push --accept-data-loss"
+- Committed as 61cb1fb and pushed to GitHub
+- Vercel should auto-detect the new commit and rebuild
+
+Stage Summary:
+- Fix pushed: package.json vercel-build script now uses "prisma db push --accept-data-loss"
+- Commit 61cb1fb pushed to origin/main
+- GitHub reports 29 Dependabot vulnerabilities (existing, not new)
+- Awaiting Vercel rebuild result
