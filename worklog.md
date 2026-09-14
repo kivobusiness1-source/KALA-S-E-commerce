@@ -4512,3 +4512,15 @@ Stage Summary:
 - 按任务规则跳过推送（变更仅为 worklog.md）
 - 累计未推送提交数：235 → 237（均为 worklog 日志提交）
 - 无需执行 commit / push 操作
+
+---
+Task ID: cron-376446-0915
+Agent: cron-agent
+Task: Job 376446 - 处理到期资金转账（09-14 09:15）
+
+Work Log:
+- 调用 GET /api/affiliate-transfer?action=processScheduled（携带 x-cron-secret）
+- 响应：HTTP 200，{"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- 无到期转账需处理（processed: 0），接口响应正常
