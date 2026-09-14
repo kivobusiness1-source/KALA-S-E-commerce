@@ -60,3 +60,7 @@ server.log
 # ⚠️ IMPORTANT : NE PAS ignorer prisma/migrations/
 # Les migrations doivent être versionnées dans Git
 # pour que la production puisse les appliquer
+# Agent tool artifacts & local upload test files (never commit)
+tool-results/
+public/uploads/*
+!public/uploads/.gitkeep
