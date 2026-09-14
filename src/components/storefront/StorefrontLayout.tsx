@@ -16,7 +16,7 @@ import type { ProductType, CategoryType, ReviewType, TrackedOrder } from '@/comp
 
 import { CartSheet } from '@/components/storefront/CartSheet'
 import { Footer } from '@/components/storefront/Footer'
-import WhatsAppWidget from '@/components/storefront/WhatsAppWidget'
+import AIChatWidget from '@/components/storefront/AIChatWidget'
 import { SocialProofToast } from '@/components/storefront/SocialProofToast'
 import { ProductComparison } from '@/components/storefront/ProductComparison'
 import { CustomerAuthDialog } from '@/components/storefront/CustomerAuthDialog'
@@ -573,7 +573,7 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
         clearAffiliateCode={cart.clearAffiliateCode}
       />
 
-      <WhatsAppWidget />
+      <AIChatWidget />
       <SocialProofToast products={products} />
 
       {/* Customer Auth Dialog */}

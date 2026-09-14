@@ -31,6 +31,23 @@ import {
 import { formatPrice } from './helpers'
 import type { Product, Category } from './types'
 
+// Map an upload failure to a clear user-facing message (handles expired sessions)
+async function uploadErrorMessage(res: Response): Promise<string> {
+  if (res.status === 401) {
+    return 'Session expirée. Veuillez vous reconnecter à l\'administration, puis réessayer.'
+  }
+  if (res.status === 403) {
+    return 'Accès refusé : votre rôle ne permet pas de téléverser des fichiers.'
+  }
+  if (res.status === 413 || res.status === 400) {
+    try {
+      const data = await res.json()
+      if (data?.error) return data.error
+    } catch { /* ignore parse failure */ }
+  }
+  return `Échec du téléversement (code ${res.status})`
+}
+
 function parseImages(imagesStr: string | null | undefined): string[] {
   if (!imagesStr) return []
   try {
@@ -167,7 +184,7 @@ export default function ProductsSection() {
         const formData = new FormData()
         formData.append('image', file)
         const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (!res.ok) throw new Error('Upload failed')
+        if (!res.ok) throw new Error(await uploadErrorMessage(res))
         const data = await res.json()
         return data.data.url as string
       })
@@ -176,8 +193,8 @@ export default function ProductsSection() {
       setGalleryImages(newGallery)
       debouncedSaveGallery(newGallery, editingProduct.image, editingProduct.id)
       toast.success(`${urls.length} photo(s) ajoutée(s)`)
-    } catch {
-      toast.error('Erreur lors du téléchargement')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erreur lors du téléchargement')
     } finally {
       setGalleryUploading(false)
     }
@@ -723,11 +740,13 @@ export default function ProductsSection() {
                       const formData = new FormData()
                       formData.append('image', file)
                       const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                      if (!res.ok) throw new Error('Upload failed')
+                      if (!res.ok) throw new Error(await uploadErrorMessage(res))
                       const data = await res.json()
+                      if (!data.data?.url) throw new Error('URL de l\'image non retournée par le serveur')
                       setEditingProduct(prev => prev ? { ...prev, image: data.data.url } : prev)
-                    } catch {
-                      toast.error('Erreur lors du téléchargement')
+                      toast.success('Image téléchargée')
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Erreur lors du téléchargement')
                     } finally {
                       setUploadingImage(false)
                     }
