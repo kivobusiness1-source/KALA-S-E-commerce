@@ -5647,3 +5647,16 @@ Stage Summary:
 - 按任务规则跳过推送（变更仅为 worklog.md）
 - 累计未推送提交数：11 → 13（均为 worklog 日志提交）
 - 无需执行 commit / push 操作
+
+---
+Task ID: cron-376446-1945
+Agent: main (cron loop)
+Task: Process scheduled fund transfers via GET /api/affiliate-transfer?action=processScheduled (Job 376446, 15-min cycle)
+
+Work Log:
+- 19:45:01 executed API call with x-cron-secret header
+- Response: {"success": true, "message": "No scheduled requests to process", "processed": 0}
+- HTTP status 200, no errors
+
+Stage Summary:
+- No pending transfers past scheduledAt time; 0 processed. Next run: 20:00.
