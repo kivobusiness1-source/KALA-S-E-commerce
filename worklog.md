@@ -5964,3 +5964,21 @@ Stage Summary:
 - WhatsApp widget removed from storefront
 - Product image upload improved with better error feedback
 - Vercel will auto-rebuild from commit 3eed16a
+
+---
+Task ID: cron-378077-0934
+Agent: main (cron loop)
+Task: Git check - commit uncommitted changes, push unpushed commits (Job 378077, 3-min cycle)
+
+Work Log:
+- 09:34:37 post-reset investigation: local main was a STALE lineage (sandbox reset rolled it back BEFORE all of yesterday's work)
+- Local had 12 sandbox cron commits + 12 unpushed; discovered remote origin/main (e0c07bc) already contained the FULL canonical history:
+  3eed16a (AI chat restore, WhatsApp removed) + e0c07bc (cleanup) + Cloudinary prep (lib/cloudinary.ts, OptimizedImage, migrate scripts, cloudinary dep, remotePatterns)
+- First instinct was to restore AI files locally (wrote llm.ts/ai-chat/ai-reply/AIChatWidget + fixes = commit 7e66ced), then push REVEALED remote divergence
+- Tree comparison proved remote is a strict superset: only local-extra file was WhatsAppWidget.tsx (correctly deleted on remote); local "unique" features (partners, commissions, health) identical on remote
+- Resolution: git reset --hard origin/main (abandoned stale lineage; 7e66ced recoverable via reflog)
+- Post-reset verification: working tree clean, 0 unpushed, layout has AIChatWidget (2 refs) & 0 WhatsAppWidget, .env intact (CRON_SECRET + Neon URLs), home page 200
+- AI chat endpoint verified working with canonical route (requires sessionId; TTL conversation memory): GLM-4 responds with full KALA'S catalog
+
+Stage Summary:
+- Sandbox reset had forked local from production; resolved by aligning local to canonical remote e0c07bc. NO push needed (remote was already correct). Local restoration commit 7e66ced discarded as redundant. Production (Vercel) unaffected throughout.
