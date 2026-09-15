@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { PWARegister } from "@/components/pwa/PWARegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,8 +30,20 @@ export const metadata: Metadata = {
     "nettoyage",
   ],
   icons: {
-    icon: "/logo.jpeg",
-    apple: "/logo.jpeg",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "KALA'S",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
   },
   openGraph: {
     title: "KALA'S | Produits d'Hygiène",
@@ -39,6 +52,13 @@ export const metadata: Metadata = {
     siteName: "KALA'S",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1a1a1a",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -55,6 +75,7 @@ export default function RootLayout({
           <div className="min-h-screen flex flex-col">{children}</div>
         </Providers>
         <Toaster richColors position="top-right" />
+        <PWARegister />
       </body>
     </html>
   );
