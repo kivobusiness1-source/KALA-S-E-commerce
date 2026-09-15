@@ -6623,3 +6623,15 @@ Work Log:
 
 Stage Summary:
 - No action taken; unpushed count = 2 (intentionally held)
+
+---
+Task ID: cron-376446-1530
+Agent: main (cron loop)
+Task: Job 376446 — process scheduled affiliate transfers (15:30 run)
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: HTTP 200, {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- No transfers due; nothing processed. API healthy.
