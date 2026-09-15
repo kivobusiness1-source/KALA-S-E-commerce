@@ -129,22 +129,23 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', o
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md p-0 overflow-y-auto max-h-[90dvh]">
-        <DialogHeader className="px-6 pt-6 pb-0">
-          <DialogTitle className="text-[#1a1a1a] text-xl font-bold tracking-tight">
-            Mon Compte KALA&apos;S
-          </DialogTitle>
-          <DialogDescription className="text-[#888888] text-sm">
-            Connectez-vous ou créez votre compte client
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
+        <div className="w-full max-w-md mx-auto px-6 py-8 sm:py-12">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="text-[#1a1a1a] text-xl font-bold tracking-tight">
+              Mon Compte KALA&apos;S
+            </DialogTitle>
+            <DialogDescription className="text-[#888888] text-sm">
+              Connectez-vous ou créez votre compte client
+            </DialogDescription>
+          </DialogHeader>
 
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as 'login' | 'register')}
           className="w-full"
         >
-          <div className="px-6 pt-2">
+          <div className="pt-2">
             <TabsList className="w-full h-10 bg-gray-100 rounded-lg p-1">
               <TabsTrigger
                 value="login"
@@ -162,7 +163,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', o
           </div>
 
           {/* LOGIN TAB */}
-          <TabsContent value="login" className="mt-0 px-6 pb-6 pt-4">
+          <TabsContent value="login" className="mt-0 pb-6 pt-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email" className="text-[#1a1a1a] text-sm font-medium">
@@ -232,7 +233,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', o
           </TabsContent>
 
           {/* REGISTER TAB */}
-          <TabsContent value="register" className="mt-0 px-6 pb-6 pt-4">
+          <TabsContent value="register" className="mt-0 pb-6 pt-4">
             <form onSubmit={handleRegister} className="space-y-3">
               {/* Name */}
               <div className="space-y-1.5">
@@ -412,6 +413,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', o
             </form>
           </TabsContent>
         </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   )

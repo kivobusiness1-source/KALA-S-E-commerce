@@ -293,7 +293,7 @@ export function CustomerDashboard({ open, onOpenChange, onLogout }: CustomerDash
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
         <DialogHeader className="px-6 pt-6 pb-0 sr-only">
           <DialogTitle>Mon Compte</DialogTitle>
         </DialogHeader>

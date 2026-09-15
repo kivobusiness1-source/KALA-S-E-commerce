@@ -234,29 +234,29 @@ export default function EntreprisesPage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-16 sm:py-20 bg-white">
+      <section className="py-10 sm:py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeInSection>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a]">Pourquoi choisir KALA&apos;S ?</h2>
-              <p className="text-[#555555] mt-3 max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Pourquoi choisir KALA&apos;S ?</h2>
+              <p className="text-[#555555] mt-2 max-w-2xl mx-auto text-sm">
                 Un partenaire fiable pour l&apos;approvisionnement en produits d&apos;hygiène de votre entreprise
               </p>
             </div>
           </FadeInSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {benefits.map((benefit, index) => {
               const Icon = benefit.icon
               return (
                 <FadeInSection key={index}>
                   <Card className="border border-[#e5e5e5] hover:shadow-md transition-shadow duration-200 h-full">
-                    <CardContent className="p-6">
-                      <div className="w-12 h-12 rounded-xl bg-gray-900 flex items-center justify-center mb-4">
-                        <Icon className="w-6 h-6 text-emerald-400" />
+                    <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center">
+                      <div className="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center mb-2">
+                        <Icon className="w-4 h-4 text-emerald-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">{benefit.title}</h3>
-                      <p className="text-sm text-[#555555] leading-relaxed">{benefit.description}</p>
+                      <h3 className="text-sm font-semibold text-[#1a1a1a] mb-1">{benefit.title}</h3>
+                      <p className="text-xs text-[#555555] leading-snug">{benefit.description}</p>
                     </CardContent>
                   </Card>
                 </FadeInSection>

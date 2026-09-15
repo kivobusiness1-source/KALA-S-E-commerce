@@ -403,11 +403,11 @@ export function AffiliateDashboard({ open, onOpenChange, onLogout }: AffiliateDa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
         <DialogHeader className="px-6 pt-6 pb-0 sr-only">
           <DialogTitle>Espace Partenaire</DialogTitle>
         </DialogHeader>
-    <div className="space-y-6 px-6 py-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6 px-6 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

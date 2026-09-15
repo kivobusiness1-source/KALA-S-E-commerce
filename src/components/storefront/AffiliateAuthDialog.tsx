@@ -92,34 +92,35 @@ export function AffiliateAuthDialog({ open, onOpenChange, onSwitchToDashboard }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Handshake className="w-5 h-5 text-emerald-600" />
-            Espace Partenaire
-          </DialogTitle>
-          <DialogDescription>
-            Connectez-vous ou devenez partenaire KALA&apos;S
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
+        <div className="w-full max-w-md mx-auto px-6 py-8 sm:py-12">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Handshake className="w-5 h-5 text-emerald-600" />
+              Espace Partenaire
+            </DialogTitle>
+            <DialogDescription>
+              Connectez-vous ou devenez partenaire KALA&apos;S
+            </DialogDescription>
+          </DialogHeader>
 
-        <Tabs defaultValue="login" className="w-full">
-          <div className="px-6 pt-4">
-            <TabsList className="w-full">
-              <TabsTrigger value="login" className="flex-1 gap-1.5">
-                <LogIn className="w-3.5 h-3.5" />
-                Connexion
-              </TabsTrigger>
-              <TabsTrigger value="register" className="flex-1 gap-1.5">
-                <Handshake className="w-3.5 h-3.5" />
-                Devenir Partenaire
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <Tabs defaultValue="login" className="w-full">
+            <div className="pt-4">
+              <TabsList className="w-full">
+                <TabsTrigger value="login" className="flex-1 gap-1.5">
+                  <LogIn className="w-3.5 h-3.5" />
+                  Connexion
+                </TabsTrigger>
+                <TabsTrigger value="register" className="flex-1 gap-1.5">
+                  <Handshake className="w-3.5 h-3.5" />
+                  Devenir Partenaire
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-          {/* Login Tab */}
-          <TabsContent value="login" className="px-6 pb-6 pt-4">
-            <form onSubmit={handleLogin} className="space-y-4">
+            {/* Login Tab */}
+            <TabsContent value="login" className="pb-6 pt-4">
+              <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="affiliate-login-email">Email</Label>
                 <Input
@@ -173,7 +174,7 @@ export function AffiliateAuthDialog({ open, onOpenChange, onSwitchToDashboard }:
           </TabsContent>
 
           {/* Register Tab */}
-          <TabsContent value="register" className="px-6 pb-6 pt-4">
+          <TabsContent value="register" className="pb-6 pt-4">
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="affiliate-reg-name">Nom complet *</Label>
@@ -284,6 +285,7 @@ export function AffiliateAuthDialog({ open, onOpenChange, onSwitchToDashboard }:
             </form>
           </TabsContent>
         </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   )
