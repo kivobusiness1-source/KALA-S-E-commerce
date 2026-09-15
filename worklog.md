@@ -6598,3 +6598,15 @@ Work Log:
 
 Stage Summary:
 - Pushed e53c8d3; unpushed=0; working tree clean
+
+---
+Task ID: cron-376446-1515
+Agent: main (cron loop)
+Task: Job 376446 — process scheduled affiliate transfers (15:15 run)
+
+Work Log:
+- Called GET /api/affiliate-transfer?action=processScheduled with x-cron-secret header
+- Response: HTTP 200, {"success":true,"message":"No scheduled requests to process","processed":0}
+
+Stage Summary:
+- No transfers due; nothing processed. API healthy.
