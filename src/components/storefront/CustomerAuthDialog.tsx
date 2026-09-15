@@ -129,7 +129,7 @@ export function CustomerAuthDialog({ open, onOpenChange, defaultTab = 'login', o
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md p-0 overflow-y-auto max-h-[90dvh]">
         <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="text-[#1a1a1a] text-xl font-bold tracking-tight">
             Mon Compte KALA&apos;S

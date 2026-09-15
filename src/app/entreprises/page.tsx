@@ -207,7 +207,7 @@ export default function EntreprisesPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-gray-600 text-white hover:bg-gray-800 font-semibold text-base px-8"
+                className="border-gray-600 bg-transparent text-white hover:bg-gray-800 font-semibold text-base px-8"
                 onClick={() => document.getElementById('wholesale-section')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Commander en gros

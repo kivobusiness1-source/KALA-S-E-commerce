@@ -75,12 +75,17 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<Ch
       throw new LLMError('Réponse vide du modèle LLM.', 'EMPTY_RESPONSE')
     }
 
+    // Mark z-ai SDK as working
+    setZaiAvailable(true)
+
     return {
       content,
       model: data.model || 'glm',
       usage: data.usage || undefined,
     }
   } catch (error) {
+    // Mark z-ai SDK as broken so isLLMConfigured() returns false on next call
+    setZaiAvailable(false)
     if (error instanceof LLMError) throw error
     throw new LLMError(
       `Erreur SDK z-ai: ${error instanceof Error ? error.message : String(error)}`,
@@ -162,9 +167,25 @@ export class LLMError extends Error {
 
 /**
  * Check if the LLM is configured and available.
- * Always true when z-ai SDK is installed (zero-config provider);
- * otherwise requires OPENAI_API_KEY.
+ * Returns true if OPENAI_API_KEY is set, or if the z-ai SDK is available.
+ * Uses lazy detection: the first call assumes SDK is available,
+ * then caches the result after the first attempt.
  */
+let zaiAvailable: boolean | null = null // null = unknown, true = works, false = broken
+
 export function isLLMConfigured(): boolean {
+  // OpenAI key is always a valid provider
+  if (process.env.OPENAI_API_KEY) return true
+  // z-ai SDK: if we already tried and it failed, it's not available
+  if (zaiAvailable === false) return false
+  // Otherwise (null or true), assume it might work
   return true
+}
+
+/**
+ * Mark the z-ai SDK as available or not (called after actual usage attempts).
+ * Exported for use in chatCompletion error handling.
+ */
+export function setZaiAvailable(available: boolean) {
+  zaiAvailable = available
 }

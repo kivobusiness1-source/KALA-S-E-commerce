@@ -141,9 +141,11 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof LLMError) {
       console.error('LLM Error:', error.code, error.message)
+      // After first failure, isLLMConfigured() will return false
+      // so subsequent requests get the graceful message immediately
       return NextResponse.json({
         success: true,
-        response: 'Désolé, notre assistant est temporairement indisponible. Veuillez nous contacter au +242 06 123 4567.',
+        response: 'Désolé, notre assistant est temporairement indisponible. Veuillez nous contacter au +242 06 123 4567 ou par email à contact@kalas.cg.',
       })
     }
     console.error('AI Chat error:', error)
