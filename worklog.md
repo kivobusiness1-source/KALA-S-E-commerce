@@ -6565,3 +6565,36 @@ Stage Summary:
 - All client/partner panels now full-page instead of small dialog windows
 - Partner auth dialog is now responsive (was not before due to overflow-hidden)
 - Push 9c1aae4 triggers Vercel production redeploy
+
+---
+Task ID: user-ui-fixes-1508
+Agent: Super Z (main)
+Task: Entreprise benefits cards too big + client/partner panels should be full pages; verify parallel work before push
+
+Work Log:
+- Found parallel instance had already implemented the request (working tree, then committed 9c1aae4 and pushed while I was verifying). My earlier max-w-6xl centering edit on AffiliateDashboard content was included.
+- Discovered CRITICAL bug in 9c1aae4 AFTER it reached production: full-screen DialogContent override used unprefixed max-w-full/rounded-none, but shadcn base has sm:max-w-lg + sm:rounded-lg — tailwind-merge keeps them (different modifier group), so on >=640px viewports panels rendered as 512px strips (measured w=512 h=900 in browser).
+- Fixed all 4 dialogs (CustomerAuthDialog, CustomerDashboard, AffiliateAuthDialog, AffiliateDashboard): added sm:max-w-full sm:rounded-none to override className.
+- Verified in browser: desktop 1440x900 → 1440x900 full page, maxWidth 100%, radius 0; mobile 375x812 → 375x812, no horizontal overflow, inputs 327px; partner auth inner column centered max-w-md (448px).
+- Entreprises "Pourquoi choisir KALA'S" verified: 6 cards one row on desktop (189x236 each), section 428px total.
+- ESLint clean on 5 touched files; tsc --noEmit: 0 errors in src/; next build compiles (local TS failures only in untracked skills/ dir, invisible to Vercel).
+- Also fixed local env: npm install restored missing cloudinary pkg (declared in package.json, build was failing locally only).
+- Committed e53c8d3, pushed (9c1aae4..e53c8d3). Vercel auto-redeploys.
+
+Stage Summary:
+- All requested UI changes live: compact benefit cards, 4 panels now true full pages, responsive on mobile
+- Desktop 512px strip bug from 9c1aae4 fixed before it could hurt users long
+- Lesson recorded: when overriding shadcn base classes, must also override their sm: variants explicitly
+
+---
+Task ID: cron-378077-1504
+Agent: main (cron loop)
+Task: 15:04 git check (executed 15:10 alongside UI fix task)
+
+Work Log:
+- Working tree had the 4 UI files in flight (parallel agent mid-task); held push until fix verified
+- Parallel instance pushed everything through 9c1aae4, then this instance pushed e53c8d3 on top
+- a475b37 (worklog-only) rode along in the e53c8d3 push — acceptable: push contained real code changes per user's explicit push request
+
+Stage Summary:
+- Pushed e53c8d3; unpushed=0; working tree clean
