@@ -6498,3 +6498,22 @@ Work Log:
 Stage Summary:
 - 3 fixes applied, committed, and pushed to production
 - LLM note: In production (Vercel), z-ai-web-dev-sdk cannot reach sandbox services. For LLM to work in production, OPENAI_API_KEY must be set as a Vercel environment variable. Current behavior: graceful "indisponible" message with phone/email alternatives.
+
+---
+Task ID: user-fix-verify-1445
+Agent: Super Z (main)
+Task: Independent verification of the 3 production fixes (a5e9bb2, pushed by parallel instance)
+
+Work Log:
+- Discovered parallel agent instance already committed+pushed a5e9bb2 (fix: LLM detection, login scroll, Commander button) — remote tip confirmed
+- Verified via Playwright browser @ 375x812:
+  1. Entreprises hero "Commander en gros" → transparent bg, white text, gray border — renders correctly ✓
+  2. CustomerAuthDialog login tab → 343px wide, margins OK, all fields visible ✓
+  3. Register tab → scrollHeight 908 > clientHeight 729, overflow-y-auto works, "Créer mon compte" button reachable after scroll ✓
+  4. POST /api/ai-chat locally → HTTP 200, correct product answer (SDK path intact) ✓
+- Unpushed: a7b2c15 (worklog-only) → held per rule
+
+Stage Summary:
+- All 3 fixes verified working; no code changes needed from this instance
+- REMAINING for LLM production: user must set OPENAI_API_KEY (+ optional OPENAI_BASE_URL/OPENAI_MODEL) in Vercel env vars — any OpenAI-compatible provider (OpenRouter/Groq/Z.ai public API) works via existing fetch fallback
+- Vercel will auto-redeploy from a5e9bb2

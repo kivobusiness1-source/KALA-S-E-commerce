@@ -64,3 +64,4 @@ server.log
 tool-results/
 public/uploads/*
 !public/uploads/.gitkeep
+scripts/*.png
