@@ -92,7 +92,7 @@ export function AffiliateAuthDialog({ open, onOpenChange, onSwitchToDashboard }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
+      <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-full sm:max-w-full translate-x-0 translate-y-0 rounded-none sm:rounded-none border-0 shadow-none p-0 overflow-y-auto bg-background">
         <div className="w-full max-w-md mx-auto px-6 py-8 sm:py-12">
           <DialogHeader className="pb-0">
             <DialogTitle className="flex items-center gap-2 text-xl">
