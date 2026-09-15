@@ -6544,3 +6544,24 @@ Work Log:
 
 Stage Summary:
 - No transfers were due; nothing processed. API healthy.
+
+---
+Task ID: fix-entreprise-ui
+Agent: main
+Task: Compact "Pourquoi choisir KALA'S" cards + convert client/partner dialogs to full-page
+
+Work Log:
+- Analyzed Entreprises page: benefits section had large p-6 cards in 3-col grid causing excessive scrolling
+- Analyzed dialog components: CustomerAuthDialog (sm:max-w-md), CustomerDashboard (sm:max-w-3xl), AffiliateAuthDialog (sm:max-w-md), AffiliateDashboard (sm:max-w-4xl) — all small windows
+- Reduced benefits section: py-16→py-10, p-6→p-3, grid-cols-3→grid-cols-6, icons w-12→w-9, text-lg→text-sm, text-sm→text-xs
+- Converted all 4 dialogs to full-page overlays: fixed inset-0, w-full h-full, no border/shadow/rounded
+- Added centered max-w-md container inside auth dialogs for proper form centering on full page
+- Verified with agent-browser: both client and partner dialogs open full-page, page renders correctly
+- Lint: only pre-existing errors, no new issues
+- Committed 9c1aae4 and pushed to origin/main (triggers Vercel redeploy)
+
+Stage Summary:
+- Benefits section now compact: all 6 items in one row on desktop, 2-col on mobile, minimal padding
+- All client/partner panels now full-page instead of small dialog windows
+- Partner auth dialog is now responsive (was not before due to overflow-hidden)
+- Push 9c1aae4 triggers Vercel production redeploy
