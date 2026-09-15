@@ -6482,3 +6482,19 @@ Stage Summary:
   2. Phone login page not responsive
   3. Entreprise page big "Commander" button all white/invisible
 - Priority: user issues > cron loop
+
+---
+Task ID: fix-prod-issues
+Agent: Super Z (main)
+Task: Fix 3 production issues reported by user
+
+Work Log:
+- Issue 1: LLM unavailable in production → Fixed `isLLMConfigured()` in llm.ts to actually check OPENAI_API_KEY and lazily cache z-ai SDK availability. After first SDK failure, subsequent calls return graceful "indisponible" message immediately. Enhanced error message to include email.
+- Issue 2: Login dialog not responsive on mobile → Changed `overflow-hidden` to `overflow-y-auto max-h-[90dvh]` on DialogContent so register form scrolls on small screens.
+- Issue 3: "Commander en gros" button all white → The shadcn/ui outline variant applies `bg-background` (white). Added `bg-transparent` to override it, making white text visible on the dark hero background.
+- Committed as a5e9bb2 and pushed to origin/main for Vercel redeployment.
+- Verified locally: AI chat responds, login dialog opens with scrollable register form, Entreprise page loads with visible button.
+
+Stage Summary:
+- 3 fixes applied, committed, and pushed to production
+- LLM note: In production (Vercel), z-ai-web-dev-sdk cannot reach sandbox services. For LLM to work in production, OPENAI_API_KEY must be set as a Vercel environment variable. Current behavior: graceful "indisponible" message with phone/email alternatives.
